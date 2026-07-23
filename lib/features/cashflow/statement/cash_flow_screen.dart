@@ -438,117 +438,153 @@ class CashFlowHomeScreen extends ConsumerWidget {
                           ),
                         )
                       else
-                        ...data.transactions.map((tx) {
-                          final isIncome = tx.amount > 0;
-                          final amountColor = isIncome ? AppColors.primary : Colors.red;
-                          final amountSign = isIncome ? '+' : '-';
-                          final category = TransactionCategory.fromValue(tx.category);
+                        Builder(
+                          builder: (context) {
+                            // Group filtered transactions by account name:
+                            final grouped = <String, List<Transaction>>{};
+                            for (final tx in data.transactions) {
+                              final name = data.accountNamesMap[tx.accountId] ?? 'Cash on hand / Manual Entries';
+                              grouped.putIfAbsent(name, () => []).add(tx);
+                            }
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.divider),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-                                    color: isIncome ? AppColors.primary : AppColors.textSecondary,
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        tx.merchant,
+                            final sortedGroupNames = grouped.keys.toList()..sort();
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: sortedGroupNames.map<Widget>((groupName) {
+                                final txs = grouped[groupName]!;
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 12.0, bottom: 8.0, left: 4.0),
+                                      child: Text(
+                                        groupName.toUpperCase(),
                                         style: const TextStyle(
+                                          fontSize: 11,
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${DateFormat('d MMM').format(DateTime.fromMillisecondsSinceEpoch(tx.date * 1000))} · ${category.displayName}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
+                                          letterSpacing: 0.5,
                                           color: AppColors.textSecondary,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '$amountSign${currencyFormatter.format(tx.amount.abs())}',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: amountColor,
-                                        fontSize: 14,
-                                      ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
-                                          onPressed: () {}, // Optional future edit dialog
+                                    ...txs.map((tx) {
+                                      final isIncome = tx.amount > 0;
+                                      final amountColor = isIncome ? AppColors.primary : Colors.red;
+                                      final amountSign = isIncome ? '+' : '-';
+                                      final category = TransactionCategory.fromValue(tx.category);
+
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 12),
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surface,
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(color: AppColors.divider),
                                         ),
-                                        const SizedBox(width: 8),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
-                                          onPressed: () async {
-                                            final confirm = await showDialog<bool>(
-                                              context: context,
-                                              builder: (ctx) => AlertDialog(
-                                                title: const Text('Delete Transaction'),
-                                                content: const Text('Are you sure you want to delete this transaction?'),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () => Navigator.of(ctx).pop(false),
-                                                    child: const Text('Cancel'),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(10),
+                                              decoration: const BoxDecoration(
+                                                color: AppColors.white,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                isIncome ? Icons.arrow_downward : Icons.arrow_upward,
+                                                color: isIncome ? AppColors.primary : AppColors.textSecondary,
+                                                size: 18,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    tx.merchant,
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 14,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
                                                   ),
-                                                  TextButton(
-                                                    onPressed: () => Navigator.of(ctx).pop(true),
-                                                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                                    child: const Text('Delete'),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    '${DateFormat('d MMM').format(DateTime.fromMillisecondsSinceEpoch(tx.date * 1000))} · ${category.displayName}',
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: AppColors.textSecondary,
+                                                    ),
                                                   ),
                                                 ],
                                               ),
-                                            );
-                                            if (confirm == true) {
-                                              operations.deleteTransaction(tx.id);
-                                            }
-                                          },
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  '$amountSign${currencyFormatter.format(tx.amount.abs())}',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: amountColor,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Row(
+                                                  children: [
+                                                    IconButton(
+                                                      icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+                                                      padding: EdgeInsets.zero,
+                                                      constraints: const BoxConstraints(),
+                                                      onPressed: () {}, // Optional future edit dialog
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    IconButton(
+                                                      icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                                                      padding: EdgeInsets.zero,
+                                                      constraints: const BoxConstraints(),
+                                                      onPressed: () async {
+                                                        final confirm = await showDialog<bool>(
+                                                          context: context,
+                                                          builder: (ctx) => AlertDialog(
+                                                            title: const Text('Delete Transaction'),
+                                                            content: const Text('Are you sure you want to delete this transaction?'),
+                                                            actions: [
+                                                              TextButton(
+                                                                onPressed: () => Navigator.of(ctx).pop(false),
+                                                                child: const Text('Cancel'),
+                                                              ),
+                                                              TextButton(
+                                                                onPressed: () => Navigator.of(ctx).pop(true),
+                                                                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                                                child: const Text('Delete'),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        );
+                                                        if (confirm == true) {
+                                                          operations.deleteTransaction(tx.id);
+                                                        }
+                                                      },
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
+                                      );
+                                    }),
                                   ],
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
                     ],
                   ),
                 ),
