@@ -220,6 +220,17 @@ class RewardCardData {
       }
     }
 
+    if (currency.contains('idr')) {
+      final match = cashbackRates.firstWhere(
+        (r) => r['category'].toString().toLowerCase().contains('idr'),
+        orElse: () => <String, dynamic>{},
+      );
+      if (match.isNotEmpty) {
+        final r = double.tryParse(match['rate']?.toString() ?? '0') ?? 0.0;
+        return r > 1.0 ? r / 100.0 : r;
+      }
+    }
+
     final match = cashbackRates.firstWhere(
       (r) {
         final cat = r['category'].toString().toLowerCase();
@@ -429,26 +440,24 @@ final rewardsCardsProvider = FutureProvider.autoDispose<List<RewardCardData>>((r
           }
         }
       } else {
-        // Fallback defaults
-        if (card.cardName.contains('PremierMiles')) {
-          milesEarnedStatement = 465;
-          milesOpeningVal = 104889;
-          milesBonusVal = 203;
-          milesRedeemedVal = 0;
-          milesEndingVal = 105354;
-          milesEarnedRateVal = 1.2;
-          milesRatesList = [
-            {'category': 'SGD Spend', 'rate': '1.2', 'minSpend': '', 'maxSpend': ''},
-            {'category': 'Foreign Currency Spend', 'rate': '2.0', 'minSpend': '', 'maxSpend': ''}
-          ];
-        } else if (card.bankName.toLowerCase().contains('mari') || card.cardName.toLowerCase().contains('mari')) {
-          cashbackEarnedStatement = 0.0;
-          cashbackRateVal = 0.015;
-          cashbackCategory = 'SGD Spend';
-          cashbackRatesList = [
-            {'category': 'SGD Spend', 'rate': '1.5', 'minSpend': '0', 'maxSpend': ''},
-            {'category': 'FCY spend', 'rate': '3.0', 'minSpend': '0', 'maxSpend': ''}
-          ];
+        // Strict user saved rates load: card rules registry is used if no user overrides exist
+        final rule = CardRulesRegistry.getRule(card.bankName, card.cardName);
+        for (final r in rule.defaultRatesList) {
+          if (card.rewardType == 'miles' || card.rewardType == 'points') {
+            milesRatesList.add({
+              'category': r['category']?.toString() ?? 'SGD Spend',
+              'rate': r['rate']?.toString() ?? '1.2',
+              'minSpend': r['minSpend']?.toString() ?? '',
+              'maxSpend': r['maxSpend']?.toString() ?? '',
+            });
+          } else {
+            cashbackRatesList.add({
+              'category': r['category']?.toString() ?? 'SGD Spend',
+              'rate': r['rate']?.toString() ?? '1.0',
+              'minSpend': r['minSpend']?.toString() ?? '',
+              'maxSpend': r['maxSpend']?.toString() ?? '',
+            });
+          }
         }
       }
 

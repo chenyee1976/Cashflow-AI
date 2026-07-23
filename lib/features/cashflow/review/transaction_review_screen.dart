@@ -145,11 +145,11 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
 
   static const List<String> _categoryOptions = [
     'All spend',
+    'Base Rate (All Spend)',
     'SGD Spend',
     'FCY Spend',
-    'MYR spend',
-    'IDR spend',
-    'FCY spend',
+    'MYR Spend',
+    'IDR Spend',
     'Automobile',
     'Beauty & Wellness',
     'Commute',
@@ -157,7 +157,9 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
     'Entertainment',
     'Groceries',
     'Kids & Pets',
-    'Online',
+    'Online Shopping',
+    'Sports & Sports Apparels',
+    'Telco & Streaming',
     'SimplyGo',
     'Shopping',
     'Fuel',
@@ -172,7 +174,9 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
     'Entertainment',
     'Groceries',
     'Kids & Pets',
-    'Online',
+    'Online Shopping',
+    'Sports & Sports Apparels',
+    'Telco & Streaming',
     'SimplyGo',
     'Shopping',
     'Fuel',
@@ -294,10 +298,11 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
             _cardNumberCtrl.text = cd.cardNumber;
 
             final cardNameLower = cd.cardName.toLowerCase();
+            final isMaybankFamily = cardNameLower.contains('maybank') && cardNameLower.contains('family');
             final isYuuCard = cardNameLower.contains('yuu');
-            final isMilesCard = (cd.hasMiles || cardNameLower.contains('90') || cardNameLower.contains('miles') || cardNameLower.contains('points') || cardNameLower.contains('voyage') || cardNameLower.contains('altitude') || cardNameLower.contains('prvi')) && !isYuuCard;
+            final isMilesCard = !isMaybankFamily && (cd.hasMiles || cardNameLower.contains('90') || cardNameLower.contains('miles') || cardNameLower.contains('points') || cardNameLower.contains('voyage') || cardNameLower.contains('altitude') || cardNameLower.contains('prvi')) && !isYuuCard;
             _hasMiles = isMilesCard;
-            _hasCashback = isYuuCard || (cd.hasCashback && !isMilesCard);
+            _hasCashback = isMaybankFamily || isYuuCard || (cd.hasCashback && !isMilesCard);
 
             _milesOpeningCtrl.text = cd.milesOpening;
             _milesEarnedCtrl.text = cd.milesEarned;
@@ -310,25 +315,48 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
             _totalSpendCtrl.text = cd.totalSpend;
             _paymentDueDate = cd.paymentDueDate;
 
-            // Earn rates are always populated directly from CardRulesRegistry
-            final rule = CardRulesRegistry.getRule(_cardIssuerCtrl.text, _cardNameCtrl.text);
+            // Earn rates: load saved user overrides from draft or CardRulesRegistry
             _milesRates.clear();
             _cashbackRates.clear();
-            for (final r in rule.defaultRatesList) {
-              if (_hasMiles) {
-                _milesRates.add(ReviewRateItem(
-                  category: r['category']?.toString() ?? 'SGD Spend',
-                  rate: r['rate']?.toString() ?? '1.3',
-                  minSpend: r['minSpend']?.toString() ?? '',
-                  maxSpend: r['maxSpend']?.toString() ?? '',
-                ));
-              } else {
+
+            final rawCashbackRates = cd.cashbackRates;
+            final rawMilesRates = cd.milesRates;
+
+            if (rawCashbackRates.isNotEmpty) {
+              for (final r in rawCashbackRates) {
                 _cashbackRates.add(ReviewRateItem(
                   category: r['category']?.toString() ?? 'SGD Spend',
                   rate: r['rate']?.toString() ?? '1.0',
                   minSpend: r['minSpend']?.toString() ?? '',
                   maxSpend: r['maxSpend']?.toString() ?? '',
                 ));
+              }
+            } else if (isMaybankFamily) {
+              _cashbackRates.addAll([
+                ReviewRateItem(category: 'Base Rate (All Spend)', rate: '0.22', minSpend: '', maxSpend: ''),
+                ReviewRateItem(category: 'MYR Spend', rate: '6.0', minSpend: '800', maxSpend: '333.33'),
+                ReviewRateItem(category: 'IDR Spend', rate: '6.0', minSpend: '800', maxSpend: '333.33'),
+              ]);
+              _cashbackMinSpendCtrl.text = '';
+              _cashbackMaxSpendCtrl.text = '333.33';
+            } else {
+              final rule = CardRulesRegistry.getRule(_cardIssuerCtrl.text, _cardNameCtrl.text);
+              for (final r in rule.defaultRatesList) {
+                if (_hasMiles) {
+                  _milesRates.add(ReviewRateItem(
+                    category: r['category']?.toString() ?? 'SGD Spend',
+                    rate: r['rate']?.toString() ?? '1.3',
+                    minSpend: r['minSpend']?.toString() ?? '',
+                    maxSpend: r['maxSpend']?.toString() ?? '',
+                  ));
+                } else {
+                  _cashbackRates.add(ReviewRateItem(
+                    category: r['category']?.toString() ?? 'SGD Spend',
+                    rate: r['rate']?.toString() ?? '1.0',
+                    minSpend: r['minSpend']?.toString() ?? '',
+                    maxSpend: r['maxSpend']?.toString() ?? '',
+                  ));
+                }
               }
             }
           }
@@ -382,17 +410,18 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
               _cardNumberCtrl.text = matchingCard.lastFour != null ? 'xxxx-xxxx-xxxx-${matchingCard.lastFour}' : '';
 
               final cardNameLower = matchingCard.cardName.toLowerCase();
+              final isMaybankFamily = cardNameLower.contains('maybank') && cardNameLower.contains('family');
               final isYuuCard = cardNameLower.contains('yuu');
-              final isMilesCard = (matchingCard.rewardType == 'miles' || matchingCard.rewardType == 'points' || cardNameLower.contains('90') || cardNameLower.contains('miles')) && !isYuuCard;
+              final isMilesCard = !isMaybankFamily && (matchingCard.rewardType == 'miles' || matchingCard.rewardType == 'points' || cardNameLower.contains('90') || cardNameLower.contains('miles')) && !isYuuCard;
               _hasMiles = isMilesCard;
-              _hasCashback = isYuuCard || (matchingCard.rewardType == 'cashback' && !isMilesCard);
+              _hasCashback = isMaybankFamily || isYuuCard || (matchingCard.rewardType == 'cashback' && !isMilesCard);
 
               if (savedRewards != null) {
                 if (savedRewards['hasMiles'] != null) {
-                  _hasMiles = (savedRewards['hasMiles'] as bool) && !isYuuCard;
+                  _hasMiles = !isMaybankFamily && (savedRewards['hasMiles'] as bool) && !isYuuCard;
                 }
                 if (savedRewards['hasCashback'] != null) {
-                  _hasCashback = isYuuCard || (savedRewards['hasCashback'] as bool);
+                  _hasCashback = isMaybankFamily || isYuuCard || (savedRewards['hasCashback'] as bool);
                 }
                 _cashbackEarnedCtrl.text = savedRewards['cashbackEarnedStatement']?.toString() ?? '0.00';
                 _totalSpendCtrl.text = savedRewards['totalSpend']?.toString() ?? '0.00';
@@ -408,25 +437,57 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                 _milesEarnedCtrl.text = savedRewards['milesEarnedStatement']?.toString() ?? '0';
               }
 
-              // Earn rates are always populated directly from CardRulesRegistry for accuracy
-              final rule = CardRulesRegistry.getRule(_cardIssuerCtrl.text, _cardNameCtrl.text);
+              // Earn rates: load saved user overrides from DB storage first
               _milesRates.clear();
               _cashbackRates.clear();
-              for (final r in rule.defaultRatesList) {
-                if (_hasMiles) {
-                  _milesRates.add(ReviewRateItem(
-                    category: r['category']?.toString() ?? 'SGD Spend',
-                    rate: r['rate']?.toString() ?? '1.3',
-                    minSpend: r['minSpend']?.toString() ?? '',
-                    maxSpend: r['maxSpend']?.toString() ?? '',
-                  ));
-                } else {
+
+              final savedCashbackRates = savedRewards?['cashbackRates'] as List<dynamic>?;
+              final savedMilesRates = savedRewards?['milesRates'] as List<dynamic>?;
+
+              if (savedCashbackRates != null && savedCashbackRates.isNotEmpty) {
+                for (final r in savedCashbackRates) {
                   _cashbackRates.add(ReviewRateItem(
                     category: r['category']?.toString() ?? 'SGD Spend',
                     rate: r['rate']?.toString() ?? '1.0',
                     minSpend: r['minSpend']?.toString() ?? '',
                     maxSpend: r['maxSpend']?.toString() ?? '',
                   ));
+                }
+              } else if (savedMilesRates != null && savedMilesRates.isNotEmpty) {
+                for (final r in savedMilesRates) {
+                  _milesRates.add(ReviewRateItem(
+                    category: r['category']?.toString() ?? 'SGD Spend',
+                    rate: r['rate']?.toString() ?? '1.3',
+                    minSpend: r['minSpend']?.toString() ?? '',
+                    maxSpend: r['maxSpend']?.toString() ?? '',
+                  ));
+                }
+              } else if (isMaybankFamily) {
+                _cashbackRates.addAll([
+                  ReviewRateItem(category: 'Base Rate (All Spend)', rate: '0.22', minSpend: '', maxSpend: ''),
+                  ReviewRateItem(category: 'MYR Spend', rate: '6.0', minSpend: '800', maxSpend: '333.33'),
+                  ReviewRateItem(category: 'IDR Spend', rate: '6.0', minSpend: '800', maxSpend: '333.33'),
+                ]);
+                _cashbackMinSpendCtrl.text = '';
+                _cashbackMaxSpendCtrl.text = '333.33';
+              } else {
+                final rule = CardRulesRegistry.getRule(_cardIssuerCtrl.text, _cardNameCtrl.text);
+                for (final r in rule.defaultRatesList) {
+                  if (_hasMiles) {
+                    _milesRates.add(ReviewRateItem(
+                      category: r['category']?.toString() ?? 'SGD Spend',
+                      rate: r['rate']?.toString() ?? '1.3',
+                      minSpend: r['minSpend']?.toString() ?? '',
+                      maxSpend: r['maxSpend']?.toString() ?? '',
+                    ));
+                  } else {
+                    _cashbackRates.add(ReviewRateItem(
+                      category: r['category']?.toString() ?? 'SGD Spend',
+                      rate: r['rate']?.toString() ?? '1.0',
+                      minSpend: r['minSpend']?.toString() ?? '',
+                      maxSpend: r['maxSpend']?.toString() ?? '',
+                    ));
+                  }
                 }
               }
 
@@ -653,7 +714,15 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
   void _addRate(bool isMiles) {
     setState(() {
       final list = isMiles ? _milesRates : _cashbackRates;
-      list.add(ReviewRateItem(category: 'All spend', rate: '', minSpend: '', maxSpend: ''));
+      final existingCats = list.map((e) => e.category).toSet();
+      String nextCat = 'Telco & Streaming';
+      for (final cat in _categoryOptions) {
+        if (cat != 'All spend' && cat != 'SGD Spend' && cat != 'FCY Spend' && !existingCats.contains(cat)) {
+          nextCat = cat;
+          break;
+        }
+      }
+      list.add(ReviewRateItem(category: nextCat, rate: '6.0', minSpend: '', maxSpend: ''));
     });
   }
 
@@ -861,14 +930,18 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
         mainAccountId = accountId;
 
         final cashbackRatesList = _cashbackRates.map((r) => {
-          'category': r.category,
+          'category': r.category == 'Others' && r.customCategoryCtrl.text.trim().isNotEmpty
+              ? r.customCategoryCtrl.text.trim()
+              : r.category,
           'rate': r.rateCtrl.text,
           'minSpend': _cashbackMinSpendCtrl.text,
           'maxSpend': _cashbackMaxSpendCtrl.text,
         }).toList();
 
         final milesRatesList = _milesRates.map((r) => {
-          'category': r.category,
+          'category': r.category == 'Others' && r.customCategoryCtrl.text.trim().isNotEmpty
+              ? r.customCategoryCtrl.text.trim()
+              : r.category,
           'rate': r.rateCtrl.text,
           'minSpend': _milesMinSpendCtrl.text,
           'maxSpend': _milesMaxSpendCtrl.text,
@@ -890,6 +963,36 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
           hasMiles: _hasMiles,
           hasCashback: _hasCashback,
         );
+
+        // Also save updated draft content so reopening draft shows updated rate categories
+        final updatedCardDraft = ExtractedCreditCardDraft(
+          issuer: _cardIssuerCtrl.text,
+          cardType: _cardType,
+          cardName: _cardNameCtrl.text,
+          cardNumber: _cardNumberCtrl.text,
+          hasMiles: _hasMiles,
+          milesOpening: _milesOpeningCtrl.text,
+          milesEarned: _milesEarnedCtrl.text,
+          milesBonus: _milesBonusCtrl.text,
+          milesRedeemed: _milesRedeemedCtrl.text,
+          milesEnding: _milesEndingCtrl.text,
+          milesRates: milesRatesList,
+          hasCashback: _hasCashback,
+          cashbackEarned: _cashbackEarnedCtrl.text,
+          cashbackRates: cashbackRatesList,
+          totalSpend: _totalSpendCtrl.text,
+          paymentDueDate: _paymentDueDate,
+        );
+
+        final existingDraft = await DraftStatementService.loadDraft(statementId);
+        if (existingDraft != null) {
+          final updatedDraftData = DraftStatementData(
+            accounts: existingDraft.accounts,
+            transactions: existingDraft.transactions,
+            cardDraft: updatedCardDraft,
+          );
+          await DraftStatementService.saveDraft(statementId, updatedDraftData);
+        }
 
         if (_hasMiles) {
           final milesEnding = double.tryParse(_milesEndingCtrl.text) ?? 0.0;
@@ -1724,16 +1827,11 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                     Builder(
                       builder: (context) {
                         String resolvedCategory = 'Others';
-                        if (_categoryOptions.contains(rate.category)) {
-                          resolvedCategory = rate.category;
-                        } else {
-                          final lower = rate.category.toLowerCase();
-                          if (lower.contains('fcy') || lower.contains('foreign')) {
-                            resolvedCategory = 'FCY Spend';
-                          } else if (lower.contains('sgd') || lower.contains('local')) {
-                            resolvedCategory = 'SGD Spend';
-                          }
+                        final optionsList = List<String>.from(_categoryOptions);
+                        if (!optionsList.contains(rate.category)) {
+                          optionsList.add(rate.category);
                         }
+                        resolvedCategory = rate.category;
 
                         return DropdownButtonFormField<String>(
                           value: resolvedCategory,
@@ -1741,13 +1839,14 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                             contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             border: OutlineInputBorder(),
                           ),
-                          items: _categoryOptions
+                          items: optionsList
                               .map((cat) => DropdownMenuItem(value: cat, child: Text(cat, style: const TextStyle(fontSize: 12))))
                               .toList(),
                           onChanged: (newCat) {
                             if (newCat != null) {
                               setState(() {
                                 rate.category = newCat;
+                                rate.customCategoryCtrl.text = newCat;
                               });
                             }
                           },

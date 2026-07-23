@@ -827,37 +827,73 @@ class _CashbackOnlySection extends StatelessWidget {
           ),
           const SizedBox(height: 14),
         ] else if (card.cashbackRates.isNotEmpty) ...[
-          for (final rate in card.cashbackRates) ...[
-            _MetricRow(
-              icon: Icons.percent_rounded,
-              iconColor: AppColors.success,
-              label: 'CASHBACK EARNED RATE (%)',
-              value: '${rate['rate']}%',
-              sublabel: rate['category']?.toString() ?? 'All Spend',
-              valueColor: AppColors.textPrimary,
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.divider),
             ),
-            const SizedBox(height: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Expanded(flex: 3, child: Text('CATEGORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary))),
+                    Expanded(flex: 2, child: Text('RATE (% CASHBACK)', textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary))),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Divider(height: 1, color: AppColors.divider),
+                const SizedBox(height: 8),
+                ...card.cashbackRates.map((rate) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            rate['category']?.toString() ?? 'All Spend',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            '${rate['rate']}%',
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.success),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (card.cashbackRates.any((r) => (double.tryParse(r['minSpend']?.toString() ?? '') ?? 0.0) > 0)) ...[
             _MetricRow(
               icon: Icons.arrow_downward_rounded,
               iconColor: AppColors.warning,
-              label: 'MIN SPEND TO EARN CASHBACK (${rate['category']})',
-              value: (double.tryParse(rate['minSpend']?.toString() ?? '') ?? 0.0) > 0
-                  ? 'S\$${cf.format(double.tryParse(rate['minSpend']?.toString() ?? '')!)}'
-                  : '—',
+              label: 'MIN SPEND TO EARN CASHBACK',
+              value: 'S\$${cf.format(double.tryParse(card.cashbackRates.firstWhere((r) => (double.tryParse(r['minSpend']?.toString() ?? '') ?? 0.0) > 0)['minSpend'].toString()) ?? 0.0)}',
               valueColor: AppColors.textSecondary,
             ),
             const SizedBox(height: 14),
+          ],
+          if (card.cashbackRates.any((r) => (double.tryParse(r['maxSpend']?.toString() ?? '') ?? 0.0) > 0)) ...[
             _MetricRow(
               icon: Icons.arrow_upward_rounded,
               iconColor: AppColors.error,
-              label: 'MAX SPEND CAPPED TO EARN CASHBACK (${rate['category']})',
-              value: (double.tryParse(rate['maxSpend']?.toString() ?? '') ?? 0.0) > 0
-                  ? 'S\$${cf.format(double.tryParse(rate['maxSpend']?.toString() ?? '')!)}'
-                  : '—',
+              label: 'MAX SPEND CAP TO EARN CASHBACK',
+              value: 'S\$${cf.format(double.tryParse(card.cashbackRates.firstWhere((r) => (double.tryParse(r['maxSpend']?.toString() ?? '') ?? 0.0) > 0)['maxSpend'].toString()) ?? 0.0)}',
               valueColor: AppColors.textSecondary,
             ),
             const SizedBox(height: 14),
-          ]
+          ],
         ] else ...[
           _MetricRow(
             icon: Icons.percent_rounded,
