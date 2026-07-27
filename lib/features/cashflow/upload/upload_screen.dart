@@ -460,25 +460,19 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
   void _simulateUpload(BuildContext context, UploadNotifier notifier, String type) async {
     try {
       FilePickerResult? result;
-      if (kIsWeb) {
-        // Direct fallback for web browsers to prevent OperationError with custom MIME types
+      try {
+        result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf', 'csv', 'jpg', 'jpeg', 'png'],
+          allowMultiple: true,
+          withData: true,
+        );
+      } catch (pickerErr) {
         result = await FilePicker.platform.pickFiles(
           type: FileType.any,
-          allowMultiple: true,
+          allowMultiple: false,
+          withData: true,
         );
-      } else {
-        try {
-          result = await FilePicker.platform.pickFiles(
-            type: FileType.custom,
-            allowedExtensions: ['pdf', 'csv', 'jpg', 'png'],
-            allowMultiple: true,
-          );
-        } catch (e) {
-          result = await FilePicker.platform.pickFiles(
-            type: FileType.any,
-            allowMultiple: true,
-          );
-        }
       }
 
       if (result != null && result.files.isNotEmpty) {

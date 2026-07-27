@@ -65,11 +65,18 @@ class SecureStorageService {
   Future<String?> getRewardFocus() =>
       _storage.read(key: AppConstants.keyRewardFocus);
 
+  static const String defaultGeminiApiKey = String.fromEnvironment('GEMINI_API_KEY');
+
   Future<void> saveGeminiApiKey(String key) =>
       _storage.write(key: AppConstants.keyGeminiApiKey, value: key);
 
-  Future<String?> getGeminiApiKey() =>
-      _storage.read(key: AppConstants.keyGeminiApiKey);
+  Future<String?> getGeminiApiKey() async {
+    final value = await _storage.read(key: AppConstants.keyGeminiApiKey);
+    if (value != null && value.trim().isNotEmpty) {
+      return value.trim();
+    }
+    return defaultGeminiApiKey.isNotEmpty ? defaultGeminiApiKey : null;
+  }
 
   Future<void> saveMobileNumber(String mobile) =>
       _storage.write(key: 'mobile_number', value: mobile);

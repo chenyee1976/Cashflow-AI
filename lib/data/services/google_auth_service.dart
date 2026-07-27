@@ -5,10 +5,13 @@ import 'package:drift/drift.dart';
 import '../database/app_database.dart';
 import '../secure_storage/secure_storage_service.dart';
 
+import 'analytics_service.dart';
+
 final googleAuthServiceProvider = Provider<GoogleAuthService>((ref) {
   return GoogleAuthService(
     db: ref.watch(appDatabaseProvider),
     storage: ref.watch(secureStorageProvider),
+    analytics: ref.watch(analyticsServiceProvider),
   );
 });
 
@@ -36,14 +39,19 @@ class GoogleAuthException implements Exception {
 class GoogleAuthService {
   final AppDatabase _db;
   final SecureStorageService _storage;
+  final AnalyticsService _analytics;
 
   static final _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
   );
 
-  GoogleAuthService({required AppDatabase db, required SecureStorageService storage})
-      : _db = db,
-        _storage = storage;
+  GoogleAuthService({
+    required AppDatabase db,
+    required SecureStorageService storage,
+    required AnalyticsService analytics,
+  })  : _db = db,
+        _storage = storage,
+        _analytics = analytics;
 
   /// Sign in with Google. Returns auth result with userId and isNewUser flag.
   Future<GoogleAuthResult> signIn() async {
@@ -105,6 +113,8 @@ class GoogleAuthService {
     if (isExistingAccount) {
       await _storage.setOnboardingComplete();
     }
+
+    _analytics.setUser(userId, 'chenwallpaper@gmail.com');
 
     return GoogleAuthResult(
       userId: userId,
@@ -170,6 +180,8 @@ class GoogleAuthService {
     if (isExistingAccount) {
       await _storage.setOnboardingComplete();
     }
+
+    _analytics.setUser(userId, account.email);
 
     return GoogleAuthResult(
       userId: userId,

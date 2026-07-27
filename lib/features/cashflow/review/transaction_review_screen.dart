@@ -22,6 +22,8 @@ import '../statement/cashflow_provider.dart';
 import '../upload/draft_statement_service.dart';
 import '../../rewards/card_rewards_store.dart';
 import '../../../data/services/card_rules_registry.dart';
+import '../../../data/services/user_category_rules_service.dart';
+import '../../../data/services/merchant_category_classifier.dart';
 
 class ExtractedAccountItem {
   final TextEditingController bankCtrl;
@@ -360,25 +362,40 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
               }
             }
           }
-          _transactions = draft.transactions.map((t) {
-            String spendCurr = t.spendCurrency;
-            if (t.amount > 0) {
-              spendCurr = 'SGD Receipt';
-            }
-            return ReviewTransactionItem(
-              dateStr: t.dateStr,
-              merchant: t.merchant,
-              amount: t.amount,
-              categoryStr: t.milesCashbackCategoryValue,
-              expenseCategoryStr: t.categoryValue,
-              spendCurrency: spendCurr,
-            );
-          }).toList();
+        });
+
+        final rulesService = ref.read(userCategoryRulesServiceProvider);
+        final tempTxs = <ReviewTransactionItem>[];
+        for (final t in draft.transactions) {
+          String spendCurr = t.spendCurrency;
+          if (t.amount > 0) {
+            spendCurr = 'SGD Receipt';
+          }
+          final classified = await MerchantCategoryClassifier.classify(
+            merchant: t.merchant,
+            amount: t.amount,
+            currentExpenseCategory: t.categoryValue,
+            currentMilesCategory: t.milesCashbackCategoryValue,
+            rulesService: rulesService,
+          );
+          tempTxs.add(ReviewTransactionItem(
+            dateStr: t.dateStr,
+            merchant: t.merchant,
+            amount: t.amount,
+            categoryStr: classified.milesCategory,
+            expenseCategoryStr: classified.expenseCategory,
+            spendCurrency: spendCurr,
+          ));
+        }
+
+        setState(() {
+          _transactions = tempTxs;
           if (_transactions.isNotEmpty) {
             _isLoading = false;
-            return;
           }
         });
+
+        if (_transactions.isNotEmpty) return;
       } else {
         // Draft is deleted (Processed statement). Load from DB!
         _isViewOnly = true;
@@ -1019,6 +1036,18 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
       // ── Step 4: Insert transactions (with retry) ──
       int insertedCount = 0;
       if (_transactions.isNotEmpty) {
+        // Save user learned rules so AI remembers these category assignments for all future bank statements!
+        final rulesService = ref.read(userCategoryRulesServiceProvider);
+        for (final tx in _transactions) {
+          final expCat = widget.fileType == 'credit_card' ? tx.expenseCategoryStr : tx.categoryStr;
+          final milesCat = tx.categoryStr;
+          await rulesService.saveRule(
+            rawMerchant: tx.merchant,
+            expenseCategory: expCat,
+            milesCategory: milesCat,
+          );
+        }
+
         debugPrint('DB Transaction: Inserting ${_transactions.length} transactions...');
         final companions = _transactions.map((tx) {
           int txTimestamp;

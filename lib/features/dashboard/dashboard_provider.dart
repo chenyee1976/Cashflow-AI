@@ -351,18 +351,31 @@ final monthlyIncomeProvider = FutureProvider.autoDispose<MonthSummaryModel>((ref
     }
   }
 
-  final now = DateTime.now();
-  final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, now) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
-  final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(now.year, now.month - 1)) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
-  final twoMonthsAgoTxs = txs.where((t) => _isSameMonth(t.date, DateTime(now.year, now.month - 2)) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
+  DateTime refDate = DateTime.now();
+  if (txs.isNotEmpty) {
+    final hasCurrent = txs.any((t) => _isSameMonth(t.date, refDate));
+    if (!hasCurrent) {
+      int maxTs = 0;
+      for (final t in txs) {
+        if (t.date > maxTs) maxTs = t.date;
+      }
+      if (maxTs > 0) {
+        refDate = DateTime.fromMillisecondsSinceEpoch(maxTs * 1000);
+      }
+    }
+  }
+
+  final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
+  final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
+  final twoMonthsAgoTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 2)) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
 
   return MonthSummaryModel(
     currentMonthAmount: currentMonthTxs.fold<double>(0.0, (sum, item) => sum + item.amount),
     lastMonthAmount: lastMonthTxs.fold<double>(0.0, (sum, item) => sum + item.amount),
     twoMonthsAgoAmount: twoMonthsAgoTxs.fold<double>(0.0, (sum, item) => sum + item.amount),
-    currentMonthStr: _getMonthName(now),
-    lastMonthStr: _getMonthName(DateTime(now.year, now.month - 1)),
-    twoMonthsAgoStr: _getMonthName(DateTime(now.year, now.month - 2)),
+    currentMonthStr: _getMonthName(refDate),
+    lastMonthStr: _getMonthName(DateTime(refDate.year, refDate.month - 1)),
+    twoMonthsAgoStr: _getMonthName(DateTime(refDate.year, refDate.month - 2)),
     currentMonthBreakdown: _getSummaryBreakdown(currentMonthTxs),
     lastMonthBreakdown: _getSummaryBreakdown(lastMonthTxs),
     twoMonthsAgoBreakdown: _getSummaryBreakdown(twoMonthsAgoTxs),
@@ -390,18 +403,31 @@ final monthlyExpensesProvider = FutureProvider.autoDispose<MonthSummaryModel>((r
     }
   }
 
-  final now = DateTime.now();
-  final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, now) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
-  final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(now.year, now.month - 1)) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
-  final twoMonthsAgoTxs = txs.where((t) => _isSameMonth(t.date, DateTime(now.year, now.month - 2)) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
+  DateTime refDate = DateTime.now();
+  if (txs.isNotEmpty) {
+    final hasCurrent = txs.any((t) => _isSameMonth(t.date, refDate));
+    if (!hasCurrent) {
+      int maxTs = 0;
+      for (final t in txs) {
+        if (t.date > maxTs) maxTs = t.date;
+      }
+      if (maxTs > 0) {
+        refDate = DateTime.fromMillisecondsSinceEpoch(maxTs * 1000);
+      }
+    }
+  }
+
+  final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
+  final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
+  final twoMonthsAgoTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 2)) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
 
   return MonthSummaryModel(
     currentMonthAmount: currentMonthTxs.fold<double>(0.0, (sum, item) => sum + item.amount.abs()),
     lastMonthAmount: lastMonthTxs.fold<double>(0.0, (sum, item) => sum + item.amount.abs()),
     twoMonthsAgoAmount: twoMonthsAgoTxs.fold<double>(0.0, (sum, item) => sum + item.amount.abs()),
-    currentMonthStr: _getMonthName(now),
-    lastMonthStr: _getMonthName(DateTime(now.year, now.month - 1)),
-    twoMonthsAgoStr: _getMonthName(DateTime(now.year, now.month - 2)),
+    currentMonthStr: _getMonthName(refDate),
+    lastMonthStr: _getMonthName(DateTime(refDate.year, refDate.month - 1)),
+    twoMonthsAgoStr: _getMonthName(DateTime(refDate.year, refDate.month - 2)),
     currentMonthBreakdown: _getSummaryBreakdown(currentMonthTxs),
     lastMonthBreakdown: _getSummaryBreakdown(lastMonthTxs),
     twoMonthsAgoBreakdown: _getSummaryBreakdown(twoMonthsAgoTxs),

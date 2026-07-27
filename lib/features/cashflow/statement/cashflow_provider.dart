@@ -68,15 +68,34 @@ final cashFlowScreenProvider = FutureProvider.autoDispose<CashFlowMonthData>((re
       }
     }
   }
-    final monthTxs = allTxs.where((t) {
+  var targetMonth = selectedMonth;
+  if (allTxs.isNotEmpty) {
+    final hasTxsInSelected = allTxs.any((t) {
       final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
       return d.year == selectedMonth.year && d.month == selectedMonth.month;
-    }).toList();
+    });
+    if (!hasTxsInSelected) {
+      // Find latest transaction timestamp
+      int maxTimestamp = 0;
+      for (final tx in allTxs) {
+        if (tx.date > maxTimestamp) maxTimestamp = tx.date;
+      }
+      if (maxTimestamp > 0) {
+        final latestDate = DateTime.fromMillisecondsSinceEpoch(maxTimestamp * 1000);
+        targetMonth = DateTime(latestDate.year, latestDate.month);
+      }
+    }
+  }
 
-    double income = 0.0;
-    double expenses = 0.0;
-    double transfersIn = 0.0;
-    double transfersOut = 0.0;
+  final monthTxs = allTxs.where((t) {
+    final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
+    return d.year == targetMonth.year && d.month == targetMonth.month;
+  }).toList();
+
+  double income = 0.0;
+  double expenses = 0.0;
+  double transfersIn = 0.0;
+  double transfersOut = 0.0;
 
     Map<String, double> categorySums = {};
 

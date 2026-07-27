@@ -4,6 +4,9 @@ import 'package:dio/dio.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../../features/cashflow/upload/draft_statement_service.dart';
 
+import 'merchant_category_classifier.dart';
+import 'user_category_rules_service.dart';
+
 class GeminiExtractionService {
   final String _apiKey;
 
@@ -35,16 +38,26 @@ class GeminiExtractionService {
       Content.multi([
         filePart,
         TextPart('''
-You are an expert financial AI. Analyze the uploaded bank statement or credit card statement and extract:
+You are an expert financial AI specializing in Singapore bank and credit card statements. Analyze the uploaded statement and extract:
 1. If this is a Bank Statement, extract Account Details into "accounts" (Bank Name, Account Name, Account Number, Statement Ending Balance, Currency, and Statement Ending Date).
 2. If this is a Credit Card Statement, extract Credit Card Details into "cardDraft" (Issuer, Card Type, Card Name, Card Number, Reward/Miles summary, Miles rates, Cashback summary, Cashback rates, Total Spend, Payment Due Date).
 3. All Transactions listed in the statement (Date, Merchant/Description, Amount, and Category).
+
+STRICT CATEGORIZATION RULES FOR SINGAPORE TRANSACTIONS:
+- ATM Cash Withdrawals ("ATM", "CASH WITHDRAWAL", "CASH W/DRAWAL"): categoryValue MUST BE 'expense_transfer_to_cash'.
+- Taxes & Government Fees ("IRAS", "ETAX", "INLAND REVEN", "MINISTRY OF MANPOWER", "MOM", "TAX", "CUSTOMS"): categoryValue MUST BE 'expense_tax'.
+- Interest & Bonus Interest ("BONUS INTEREST", "SAVINGS INT", "INTEREST", "CO SPEND BONUS"): categoryValue MUST BE 'income_other' for positive amounts.
+- Transfers ("PAYNOW", "FAST PAYMENT", "PAYMENT W/TRANSFER", "TRF", "GIRO"): Use 'income_transfer' if amount > 0, else 'expense_transfer' (or 'expense_education' if tuition/course).
+- Groceries ("NTUC", "FAIRPRICE", "SHENG SIONG", "COLD STORAGE", "GIANT", "DON DON DONKI"): categoryValue 'expense_groceries', milesCashbackCategoryValue 'Groceries'.
+- Transport & SimplyGo ("GRAB", "GOJEK", "SIMPLYGO", "SMRT", "TRANSIT", "TADA"): categoryValue 'expense_transport', milesCashbackCategoryValue 'SimplyGo' or 'Commute'.
+- Dining ("FOODPANDA", "DELIVEROO", "GRABFOOD", "MCDONALD", "KFC", "RESTAURANT", "CAFE", "STARBUCKS"): categoryValue 'expense_dining', milesCashbackCategoryValue 'Dining & Food Delivery'.
+- Utilities & Telco ("SINGTEL", "STARHUB", "M1", "SP SERVICES", "PUB"): categoryValue 'expense_utilities'.
 
 You MUST return a raw JSON object containing precisely the following format:
 {
   "accounts": [
     {
-      "bank": "Bank/Institution Name (e.g. Citi, DBS, MariBank)",
+      "bank": "Bank/Institution Name (e.g. Citi, DBS, MariBank, OCBC, UOB)",
       "name": "Account Name (e.g. Savings Account)",
       "num": "Last 4 digits or full account number if visible",
       "currency": "3-letter currency code (e.g. SGD, USD)",
@@ -53,12 +66,12 @@ You MUST return a raw JSON object containing precisely the following format:
     }
   ],
   "cardDraft": {
-    "issuer": "Credit Card issuer bank (e.g. Citibank, HSBC, DBS)",
+    "issuer": "Credit Card issuer bank (e.g. Citibank, HSBC, DBS, OCBC, UOB)",
     "cardType": "One of: Visa, Mastercard, Amex, JCB",
     "cardName": "Card Product Name (e.g. CITI PREMIERMILES WORLD MASTER)",
     "cardNumber": "Full or partially masked card number (e.g. 5425-5033-0193-7628)",
-    "hasMiles": true, // set to true if statement contains any miles or reward points summary details
-    "milesOpening": "Opening balance of miles/points (e.g. 104889) as string",
+    "hasMiles": true,
+    "milesOpening": "Opening balance of miles/points as string",
     "milesEarned": "Miles earned this month as string",
     "milesBonus": "Bonus miles earned this month as string",
     "milesRedeemed": "Miles redeemed or adjusted as string",
@@ -71,8 +84,8 @@ You MUST return a raw JSON object containing precisely the following format:
         "maxSpend": "Maximum spend cap as string, or empty string"
       }
     ],
-    "hasCashback": true, // set to true if statement contains any cashback summary details
-    "cashbackEarned": "Cashback earned amount (e.g. 12.50) as string",
+    "hasCashback": true,
+    "cashbackEarned": "Cashback earned amount as string",
     "cashbackRates": [
       {
         "category": "Spend Category (e.g. Dining, Online Spend)",
@@ -90,37 +103,8 @@ You MUST return a raw JSON object containing precisely the following format:
       "merchant": "Cleaned merchant/description (e.g. Sheng Siong Supermarket)",
       "amount": "The transaction amount as a double. EXPENSES MUST BE NEGATIVE NUMBERS, INCOME MUST BE POSITIVE NUMBERS (e.g. -42.50 or 150.00)",
       "spendCurrency": "For credit card transactions: IF amount is POSITIVE (> 0), spendCurrency MUST BE 'SGD Receipt'. Otherwise IF negative, select one of: SGD Spend, MYR spend, IDR spend, FCY Spend (based on transaction currency). Default is SGD Spend",
-      "categoryValue": "Map the transaction to one of the following exact string values:
-        - 'expense_transfer_to_cash' (Use for ATM cash withdrawals, cash payouts, cash transfers)
-        - 'expense_dining' (Use for dining, food, restaurants, pizza, cafe, food delivery etc.)
-        - 'expense_groceries' (Use for supermarkets, biomarks, convenience stores etc.)
-        - 'expense_transport' (Use for commute, train, bus, ride sharing, metro etc.)
-        - 'expense_shopping' (Use for clothing, online shopping, department stores etc.)
-        - 'expense_entertainment' (Use for cinemas, shows, games etc.)
-        - 'expense_travel' (Use for flights, hotels, bookings etc.)
-        - 'expense_utilities' (Use for phone, water, electricity bills etc.)
-        - 'expense_investments' (Use for stocks, insurance, investments etc.)
-        - 'expense_tax' (Use for income tax, property tax, tax services, IRAS, custom taxes etc.)
-        - 'expense_transfer'
-        - 'expense_other'
-        - 'income_salary'
-        - 'income_transfer'
-        - 'income_investments'
-        - 'income_dividends'
-        - 'income_other'",
-      "milesCashbackCategoryValue": "For credit card transactions, map to one of the following exact string values (do not create others):
-        - 'Automobile'
-        - 'Beauty & Wellness'
-        - 'Commute'
-        - 'Dining & Food Delivery' (Use for restaurant, pizza, kebab, food outlets, cafes etc.)
-        - 'Entertainment'
-        - 'Groceries' (Use for supermarkets, minimarts, biomarks etc.)
-        - 'Kids & Pets'
-        - 'Online'
-        - 'SimplyGo' (Use for public transit transactions like SimplyGo, bus, train)
-        - 'Shopping' (Use for fashion, souvenir, department store, mall purchases etc.)
-        - 'Fuel' (Use for petrol/gas stations)
-        - 'Others'"
+      "categoryValue": "Map the transaction to one of exact string values: 'expense_transfer_to_cash', 'expense_tax', 'expense_dining', 'expense_groceries', 'expense_transport', 'expense_shopping', 'expense_entertainment', 'expense_travel', 'expense_utilities', 'expense_investments', 'expense_education', 'expense_transfer', 'expense_other', 'income_salary', 'income_transfer', 'income_investments', 'income_dividends', 'income_other'",
+      "milesCashbackCategoryValue": "For credit card transactions, map to one of exact string values: 'Automobile', 'Beauty & Wellness', 'Commute', 'Dining & Food Delivery', 'Entertainment', 'Groceries', 'Kids & Pets', 'Online', 'SimplyGo', 'Shopping', 'Fuel', 'Others'"
     }
   ]
 }
@@ -182,27 +166,55 @@ You MUST return a raw JSON object containing precisely the following format:
         milesBonus: cardMap['milesBonus'] as String? ?? '',
         milesRedeemed: cardMap['milesRedeemed'] as String? ?? '',
         milesEnding: cardMap['milesEnding'] as String? ?? '',
-        milesRates: rawMilesRates.map((r) => ExtractedRewardRate.fromJson(r as Map<String, dynamic>)).toList(),
+        milesRates: rawMilesRates.map((r) => ExtractedRewardRate(
+          category: r['category'] as String? ?? 'SGD Spend',
+          rate: r['rate'] as String? ?? '1.2',
+          minSpend: r['minSpend'] as String? ?? '',
+          maxSpend: r['maxSpend'] as String? ?? '',
+        )).toList(),
         hasCashback: cardMap['hasCashback'] as bool? ?? false,
         cashbackEarned: cardMap['cashbackEarned'] as String? ?? '',
-        cashbackRates: rawCashbackRates.map((r) => ExtractedRewardRate.fromJson(r as Map<String, dynamic>)).toList(),
-        totalSpend: cardMap['totalSpend'] as String? ?? '',
+        cashbackRates: rawCashbackRates.map((r) => ExtractedRewardRate(
+          category: r['category'] as String? ?? 'Dining',
+          rate: r['rate'] as String? ?? '1.5',
+          minSpend: r['minSpend'] as String? ?? '',
+          maxSpend: r['maxSpend'] as String? ?? '',
+        )).toList(),
+        totalSpend: cardMap['totalSpend'] as String? ?? '0.00',
         paymentDueDate: cardMap['paymentDueDateIso'] != null
             ? DateTime.parse(cardMap['paymentDueDateIso'] as String)
-            : DateTime.now(),
+            : DateTime.now().add(const Duration(days: 20)),
       );
     }
 
-    final transactions = rawTransactions.map((tx) {
-      return ExtractedTransactionDraft(
-        dateStr: tx['dateStr'] as String? ?? '',
-        merchant: tx['merchant'] as String? ?? '',
-        amount: (tx['amount'] as num? ?? 0.0).toDouble(),
-        categoryValue: tx['categoryValue'] as String? ?? 'expense_other',
-        milesCashbackCategoryValue: tx['milesCashbackCategoryValue'] as String? ?? 'Others',
-        spendCurrency: tx['spendCurrency'] as String? ?? 'SGD Spend',
+    final rulesService = UserCategoryRulesService();
+
+    final transactions = <ExtractedTransactionDraft>[];
+    for (final tx in rawTransactions) {
+      final merchantStr = tx['merchant'] as String? ?? 'Transaction';
+      final rawAmount = (tx['amount'] as num? ?? 0.0).toDouble();
+      final geminiCat = tx['categoryValue'] as String? ?? 'expense_other';
+      final geminiMilesCat = tx['milesCashbackCategoryValue'] as String? ?? 'Others';
+      final spendCur = tx['spendCurrency'] as String? ?? 'SGD Spend';
+
+      // Pass through Intelligent Classifier + User Learned Rules Engine
+      final classified = await MerchantCategoryClassifier.classify(
+        merchant: merchantStr,
+        amount: rawAmount,
+        currentExpenseCategory: geminiCat,
+        currentMilesCategory: geminiMilesCat,
+        rulesService: rulesService,
       );
-    }).toList();
+
+      transactions.add(ExtractedTransactionDraft(
+        dateStr: tx['dateStr'] as String? ?? '',
+        merchant: merchantStr,
+        amount: rawAmount,
+        categoryValue: classified.expenseCategory,
+        milesCashbackCategoryValue: classified.milesCategory,
+        spendCurrency: spendCur,
+      ));
+    }
 
     return DraftStatementData(
       accounts: accounts,
