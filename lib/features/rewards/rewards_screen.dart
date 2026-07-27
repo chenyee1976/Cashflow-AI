@@ -947,16 +947,22 @@ class _CashbackOnlySection extends StatelessWidget {
             result: '= ${NumberFormat('#,##0.00', 'en_SG').format(card.calculatedCashback)} yuu pts',
             color: AppColors.success,
           )
+        else if (card.bankName.toLowerCase().contains('maybank') || card.cardName.toLowerCase().contains('family'))
+          _CalculatedResultBox(
+            icon: Icons.savings_rounded,
+            label: 'CALCULATED CASHBACK',
+            formula: '',
+            result: '= S\$${cf.format(card.calculatedCashback)}',
+            color: AppColors.success,
+          )
         else
           _CalculatedResultBox(
             icon: Icons.savings_rounded,
             label: 'CALCULATED CASHBACK',
             formula: card.cashbackRate > 0
                 ? 'S\$${cf.format(card.cardSpendThisMonth)} × ${pf.format(card.cashbackRate * 100)}%'
-                : 'Set cashback rate to calculate',
-            result: card.cashbackRate > 0
-                ? '= S\$${cf.format(card.calculatedCashback)}'
-                : '—',
+                : 'Sum of category cashback rates',
+            result: '= S\$${cf.format(card.calculatedCashback)}',
             color: AppColors.success,
           ),
         if (card.transactions.isNotEmpty) ...[
@@ -1170,10 +1176,296 @@ class _CashbackOnlySection extends StatelessWidget {
                                     Text('${cf.format(bonus2PointsSum)} pts', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: bonus2PointsSum > 0 ? AppColors.primary : AppColors.textSecondary)),
                                   ],
                                 ),
+                                const SizedBox(height: 12),
+                                // ── DBS Yuu Disclaimer Box ──
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFFBEB),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFFCD34D)),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFD97706)),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: RichText(
+                                          text: const TextSpan(
+                                            style: TextStyle(fontSize: 10.5, color: Color(0xFF92400E), height: 1.4),
+                                            children: [
+                                              TextSpan(text: 'Disclaimer: ', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF78350F))),
+                                              TextSpan(text: 'The calculations above are estimated based on your DBS Yuu credit card statement posting period. DBS Yuu awards base yuu points upon transaction posting with your linked yuu ID, whereas monthly bonus yuu points are calculated and credited separately once per month. For official awarded yuu points balance, please refer to the official yuu app.'),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                         ],
+                      );
+                    },
+                  )
+                else if (card.bankName.toLowerCase().contains('maybank') || card.cardName.toLowerCase().contains('family'))
+                  Builder(
+                    builder: (context) {
+                      bool isRepaymentOrCashback(dynamic t) {
+                        if (t.amount <= 0) return false;
+                        final expCat = (t.category ?? '').toLowerCase();
+                        final m = t.merchant.toLowerCase();
+
+                        final isRepayment = expCat.contains('repayment') ||
+                                            expCat.contains('transfer') ||
+                                            expCat.contains('card payment') ||
+                                            expCat.contains('bill payment') ||
+                                            expCat == 'payment' ||
+                                            m.contains('payment by giro') ||
+                                            m.contains('giro pymt') ||
+                                            m.contains('giro payment') ||
+                                            m.contains('autopay') ||
+                                            m.contains('thank you - payment') ||
+                                            m.contains('payment received');
+
+                        final isCashbackReceived = expCat.contains('cashback') ||
+                                                   expCat.contains('rebate') ||
+                                                   expCat.contains('reward credit') ||
+                                                   m.contains('cashback') ||
+                                                   m.contains('rebate');
+
+                        return isRepayment || isCashbackReceived;
+                      }
+
+                      final validTxs = card.transactions.where((t) => !isRepaymentOrCashback(t)).toList();
+                      final totalSpend = card.cardSpendThisMonth;
+
+                      // Base Reward
+                      final baseCashback = totalSpend * 0.0022;
+
+                      // Category spends map
+                      final catSpends = <String, double>{
+                        'MYR Spend': 0.0,
+                        'IDR Spend': 0.0,
+                        'Commute': 0.0,
+                        'Dining & Food Delivery': 0.0,
+                        'Groceries': 0.0,
+                        'Online Shopping': 0.0,
+                        'Telco & Streaming': 0.0,
+                      };
+
+                      for (final tx in validTxs) {
+                        final cat = (tx.category ?? '').toLowerCase();
+                        final merchant = (tx.merchant ?? '').toLowerCase();
+                        final currency = (tx.currency ?? '').toLowerCase();
+                        final netAmt = tx.amount < 0 ? tx.amount.abs() : -tx.amount.abs();
+
+                        if (currency.contains('myr')) {
+                          catSpends['MYR Spend'] = (catSpends['MYR Spend'] ?? 0.0) + netAmt;
+                        } else if (currency.contains('idr')) {
+                          catSpends['IDR Spend'] = (catSpends['IDR Spend'] ?? 0.0) + netAmt;
+                        } else if (cat.contains('commute') || merchant.contains('bus/mrt')) {
+                          catSpends['Commute'] = (catSpends['Commute'] ?? 0.0) + netAmt;
+                        } else if (cat.contains('dining') || cat.contains('food') || merchant.contains('mcdonalds') || merchant.contains('kopitiam') || merchant.contains('grab') || merchant.contains('kfc') || merchant.contains('hainan') || merchant.contains('coffee')) {
+                          catSpends['Dining & Food Delivery'] = (catSpends['Dining & Food Delivery'] ?? 0.0) + netAmt;
+                        } else if (cat.contains('grocer') || merchant.contains('sheng siong') || merchant.contains('fairprice') || merchant.contains('giant') || merchant.contains('prime supermarket') || merchant.contains('cheers') || merchant.contains('cold storage')) {
+                          catSpends['Groceries'] = (catSpends['Groceries'] ?? 0.0) + netAmt;
+                        } else if (cat.contains('online') || merchant.contains('shopee') || merchant.contains('pinduoduo') || merchant.contains('taobao')) {
+                          catSpends['Online Shopping'] = (catSpends['Online Shopping'] ?? 0.0) + netAmt;
+                        } else if (cat.contains('telco') || cat.contains('streaming') || merchant.contains('m1') || merchant.contains('whiz') || merchant.contains('simba') || merchant.contains('vivifi') || merchant.contains('eight telecom')) {
+                          catSpends['Telco & Streaming'] = (catSpends['Telco & Streaming'] ?? 0.0) + netAmt;
+                        }
+                      }
+
+                      double bonusTier1Total = 0.0;
+                      double bonusTier2Total = 0.0;
+
+                      if (totalSpend >= 1600.0) {
+                        catSpends.forEach((catLabel, catAmt) {
+                          final rate = catLabel == 'Groceries' ? 0.06 : 0.08;
+                          bonusTier2Total += catAmt * rate;
+                        });
+                      } else if (totalSpend >= 800.0) {
+                        catSpends.forEach((catLabel, catAmt) {
+                          bonusTier1Total += catAmt * 0.06;
+                        });
+                      }
+
+                      final grandTotal = baseCashback + bonusTier1Total + bonusTier2Total;
+
+                      return Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── 1. Base Reward ──
+                            const Text(
+                              '1. Base Reward (Total Spend × 0.22%)',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                            ),
+                            const SizedBox(height: 4),
+                            Text('   Total Spend: S\$${cf.format(totalSpend)}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('   Total cashback: S\$${cf.format(totalSpend)} × 0.22%', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                Text('= S\$${cf.format(baseCashback)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.success)),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            const Divider(height: 1, color: AppColors.divider),
+                            const SizedBox(height: 12),
+
+                            // ── 2. Bonus Tier 1 ──
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  '2. Bonus Tier 1: (Spend ≥ S\$800 @ 6%)',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                ),
+                                Text(
+                                  totalSpend >= 800.0 && totalSpend < 1600.0 ? 'Met (≥ S\$800)' : (totalSpend >= 1600.0 ? 'Superseded by Tier 2' : 'Below S\$800 threshold'),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: totalSpend >= 800.0 && totalSpend < 1600.0 ? AppColors.success : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text('   Total Spend: S\$${cf.format(totalSpend)}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            const SizedBox(height: 6),
+
+                            for (final entry in catSpends.entries) ...[
+                              Padding(
+                                padding: const EdgeInsets.only(left: 12, bottom: 4),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('${entry.key}: S\$${cf.format(entry.value)}', style: const TextStyle(fontSize: 11, color: AppColors.textPrimary)),
+                                    Text(
+                                      totalSpend >= 800.0 && totalSpend < 1600.0
+                                          ? 'Total cashback = S\$${cf.format(entry.value * 0.06)}'
+                                          : 'S\$0.00',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: totalSpend >= 800.0 && totalSpend < 1600.0 ? AppColors.success : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('   Total Bonus Tier 1:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                                Text('S\$${cf.format(bonusTier1Total)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: bonusTier1Total > 0 ? AppColors.success : AppColors.textSecondary)),
+                              ],
+                            ),
+
+                            const SizedBox(height: 12),
+                            const Divider(height: 1, color: AppColors.divider),
+                            const SizedBox(height: 12),
+
+                            // ── 3. Bonus Tier 2 ──
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  '3. Bonus Tier 2: (Spend ≥ S\$1,600 @ 8%/6%)',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                ),
+                                Text(
+                                  totalSpend >= 1600.0 ? 'Met (≥ S\$1,600)' : 'Below S\$1,600 threshold',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: totalSpend >= 1600.0 ? AppColors.success : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text('   Total Spend: S\$${cf.format(totalSpend)}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            const SizedBox(height: 6),
+
+                            if (totalSpend >= 1600.0) ...[
+                              for (final entry in catSpends.entries) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 12, bottom: 4),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('${entry.key}: S\$${cf.format(entry.value)}', style: const TextStyle(fontSize: 11, color: AppColors.textPrimary)),
+                                      Text(
+                                        'Total cashback = S\$${cf.format(entry.value * (entry.key == "Groceries" ? 0.06 : 0.08))}',
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('   Total Bonus Tier 2:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                                Text('S\$${cf.format(bonusTier2Total)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: bonusTier2Total > 0 ? AppColors.success : AppColors.textSecondary)),
+                              ],
+                            ),
+
+                            const SizedBox(height: 12),
+                            const Divider(height: 2, color: AppColors.primary),
+                            const SizedBox(height: 10),
+
+                            // ── Grand Total ──
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Total Calculated Cashback:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                                Text('S\$${cf.format(grandTotal)}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.success)),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            // ── Disclaimer Box ──
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFFBEB),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFFCD34D)),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFD97706)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: RichText(
+                                      text: const TextSpan(
+                                        style: TextStyle(fontSize: 10.5, color: Color(0xFF92400E), height: 1.4),
+                                        children: [
+                                          TextSpan(text: 'Disclaimer: ', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF78350F))),
+                                          TextSpan(text: 'The calculations above are estimated based on your Maybank credit card statement posting period. Maybank awards bonus cashback based on transactions posted within the calendar month rather than the statement cycle. For official awarded cashback balance, please refer to the Maybank TREATS SG app.'),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     },
                   )
@@ -1239,27 +1531,29 @@ class _CashbackOnlySection extends StatelessWidget {
                     ],
                   );
                 }).toList(),
-                // Summary Total row
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Total Calculated Cashback:',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'S\$${cf.format(card.calculatedCashback)}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.success,
+
+                // Summary Total row (only for generic non-customized cards)
+                if (!card.cardName.toLowerCase().contains('yuu') && !card.bankName.toLowerCase().contains('maybank') && !card.cardName.toLowerCase().contains('family'))
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total Calculated Cashback:',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                         ),
-                      ),
-                    ],
+                        Text(
+                          'S\$${cf.format(card.calculatedCashback)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -1592,16 +1886,18 @@ class _CalculatedResultBox extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            formula,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
+          if (formula.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              formula,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
+          ],
+          const SizedBox(height: 6),
           Text(
             result,
             style: TextStyle(

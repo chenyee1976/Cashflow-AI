@@ -64,9 +64,13 @@ class GoogleAuthService {
     const userId = 'chenyee_user';
     final user = await _db.getUserById(userId);
     final statements = await _db.getStatementsByUser(userId);
+    final bankAccounts = await _db.getBankAccountsByUser(userId);
+    final creditCards = await _db.getCreditCardsByUser(userId);
     final onboardingComplete = await _storage.isOnboardingComplete();
-    // User is existing if database user record exists, onboarding is complete, or user has existing statements
-    final isNewUser = (user == null && statements.isEmpty) && !onboardingComplete;
+    
+    // User is an existing account if DB user record exists, statements/accounts/cards exist, or onboarding was completed
+    final isExistingAccount = user != null || statements.isNotEmpty || bankAccounts.isNotEmpty || creditCards.isNotEmpty || onboardingComplete;
+    final isNewUser = !isExistingAccount;
 
     if (user == null) {
       final companion = UsersCompanion.insert(
@@ -74,7 +78,7 @@ class GoogleAuthService {
         firstName: 'Chen Yee',
         lastName: 'Tok',
         email: 'chenwallpaper@gmail.com',
-        googleId: 'mock_google_id_12345',
+        googleId: 'google_mock_12345',
         displayName: const Value('Tok Chen Yee'),
         photoUrl: const Value(''),
         createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -90,18 +94,23 @@ class GoogleAuthService {
     }
     await _storage.saveGoogleUser(
       userId: userId,
-      googleId: 'mock_google_id_12345',
-      email: 'user@cashflowai.sg',
+      googleId: 'google_mock_12345',
+      email: 'chenwallpaper@gmail.com',
     );
     await _storage.saveSessionExpiry(
       DateTime.now().add(const Duration(days: 30)),
     );
 
+    // If existing account, ensure onboarding is marked complete
+    if (isExistingAccount) {
+      await _storage.setOnboardingComplete();
+    }
+
     return GoogleAuthResult(
       userId: userId,
       isNewUser: isNewUser,
-      displayName: 'SG Individual User',
-      email: 'user@cashflowai.sg',
+      displayName: user?.displayName ?? 'Tok Chen Yee',
+      email: user?.email ?? 'chenwallpaper@gmail.com',
     );
   }
 
@@ -120,8 +129,13 @@ class GoogleAuthService {
     // Check if user already exists in DB and onboarding is complete
     final existing = await _db.getUserByGoogleId(account.id);
     final onboardingComplete = await _storage.isOnboardingComplete();
-    final isNewUser = existing == null && !onboardingComplete;
+    
     final userId = existing?.id ?? const Uuid().v4();
+    final statements = await _db.getStatementsByUser(userId);
+    final bankAccounts = await _db.getBankAccountsByUser(userId);
+    final creditCards = await _db.getCreditCardsByUser(userId);
+    final isExistingAccount = existing != null || statements.isNotEmpty || bankAccounts.isNotEmpty || creditCards.isNotEmpty || onboardingComplete;
+    final isNewUser = !isExistingAccount;
 
     final companion = UsersCompanion.insert(
       id: userId,
@@ -152,6 +166,10 @@ class GoogleAuthService {
     await _storage.saveSessionExpiry(
       DateTime.now().add(const Duration(days: 30)),
     );
+
+    if (isExistingAccount) {
+      await _storage.setOnboardingComplete();
+    }
 
     return GoogleAuthResult(
       userId: userId,

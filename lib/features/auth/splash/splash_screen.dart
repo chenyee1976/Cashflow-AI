@@ -43,24 +43,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       final sessionValid = await storage.isSessionValid();
       final onboardingComplete = await storage.isOnboardingComplete();
       
-      const userId = 'chenyee_user';
-      final existingUser = await db.getUserById(userId);
-      final statements = await db.getStatementsByUser(userId);
-      final isExistingAccount = existingUser != null || statements.isNotEmpty || onboardingComplete;
+      final savedUserId = await storage.getUserId() ?? 'chenyee_user';
+      final existingUser = await db.getUserById(savedUserId);
+      final statements = await db.getStatementsByUser(savedUserId);
+      final bankAccounts = await db.getBankAccountsByUser(savedUserId);
+      final creditCards = await db.getCreditCardsByUser(savedUserId);
+      final isExistingAccount = existingUser != null || statements.isNotEmpty || bankAccounts.isNotEmpty || creditCards.isNotEmpty || onboardingComplete;
 
       if (!mounted) return;
 
-      if (sessionValid) {
-        if (isExistingAccount) {
-          context.go('/home/dashboard');
-        } else {
-          context.go('/onboarding');
-        }
+      if (isExistingAccount) {
+        await storage.setOnboardingComplete();
+        await storage.saveSessionExpiry(DateTime.now().add(const Duration(days: 30)));
+        context.go('/home/dashboard');
+      } else if (sessionValid) {
+        context.go('/onboarding');
       } else {
         context.go('/login');
       }
     } catch (e) {
-      // flutter_secure_storage may not work on web — go to login
       debugPrint('Splash session check error: $e');
       if (mounted) {
         context.go('/login');
@@ -106,13 +107,35 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                'CashFlow AI™',
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 32,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'SGCashFlowAI™',
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 32,
+                        ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                     ),
+                    child: const Text(
+                      'Beta',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               Text(

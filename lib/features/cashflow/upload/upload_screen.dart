@@ -493,13 +493,28 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         for (final file in result.files) {
           if (file.name.isNotEmpty) {
             final fileName = file.name;
-            String institution = type == 'bank' ? 'POSB' : 'Citibank';
-            if (fileName.toLowerCase().contains('mari')) {
+            final lowerName = fileName.toLowerCase();
+            String institution = 'Statement';
+            if (lowerName.contains('mari')) {
               institution = 'MariBank';
-            } else if (fileName.toLowerCase().contains('chocolate')) {
+            } else if (lowerName.contains('chocolate')) {
               institution = 'Chocolate Finance';
-            } else if (fileName.toLowerCase().contains('citi')) {
+            } else if (lowerName.contains('citi')) {
               institution = 'Citibank';
+            } else if (lowerName.contains('maybank')) {
+              institution = 'Maybank';
+            } else if (lowerName.contains('dbs')) {
+              institution = 'DBS';
+            } else if (lowerName.contains('posb')) {
+              institution = 'POSB';
+            } else if (lowerName.contains('uob')) {
+              institution = 'UOB';
+            } else if (lowerName.contains('ocbc')) {
+              institution = 'OCBC';
+            } else if (lowerName.contains('hsbc')) {
+              institution = 'HSBC';
+            } else if (lowerName.contains('sc') || lowerName.contains('standard')) {
+              institution = 'Standard Chartered';
             }
 
             // Simulate file parsing delay

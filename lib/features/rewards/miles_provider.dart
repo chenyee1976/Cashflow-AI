@@ -11,6 +11,7 @@ class MilesScreenData {
   final int programCount;
   final List<MilesWalletData> airlinePrograms;
   final List<MilesWalletData> bankPrograms;
+  final List<MilesWalletData> otherPrograms;
   final TravelGoal? travelGoal;
 
   const MilesScreenData({
@@ -18,6 +19,7 @@ class MilesScreenData {
     required this.programCount,
     required this.airlinePrograms,
     required this.bankPrograms,
+    required this.otherPrograms,
     this.travelGoal,
   });
 }
@@ -35,6 +37,7 @@ final milesScreenProvider = FutureProvider.autoDispose<MilesScreenData>((ref) as
         programCount: 0,
         airlinePrograms: [],
         bankPrograms: [],
+        otherPrograms: [],
       );
     }
 
@@ -73,8 +76,6 @@ final milesScreenProvider = FutureProvider.autoDispose<MilesScreenData>((ref) as
 
           if (savedRewards != null && savedRewards['milesEnding'] != null) {
             endingMiles = double.tryParse(savedRewards['milesEnding'].toString()) ?? 0.0;
-          } else if (card.cardName.contains('PremierMiles')) {
-            endingMiles = 105354.0;
           }
 
           final cardStatements = ccStatements.where((s) => 
@@ -114,6 +115,7 @@ final milesScreenProvider = FutureProvider.autoDispose<MilesScreenData>((ref) as
 
     final airline = list.where((item) => item.programType == 'airline').toList();
     final bank = list.where((item) => item.programType == 'bank').toList();
+    final other = list.where((item) => item.programType == 'other').toList();
     final total = list.fold<double>(0.0, (sum, item) => sum + item.balance);
 
     return MilesScreenData(
@@ -121,6 +123,7 @@ final milesScreenProvider = FutureProvider.autoDispose<MilesScreenData>((ref) as
       programCount: list.length,
       airlinePrograms: airline,
       bankPrograms: bank,
+      otherPrograms: other,
       travelGoal: goal,
     );
   } catch (e) {
@@ -129,6 +132,7 @@ final milesScreenProvider = FutureProvider.autoDispose<MilesScreenData>((ref) as
       programCount: 0,
       airlinePrograms: [],
       bankPrograms: [],
+      otherPrograms: [],
     );
   }
 });
@@ -182,6 +186,32 @@ class MilesOperations {
       ),
     );
 
+    _ref.invalidate(milesScreenProvider);
+  }
+
+  Future<void> updateLoyaltyProgram({
+    required String id,
+    required String userId,
+    required String programName,
+    required String programType,
+    required double balance,
+  }) async {
+    await _db.upsertMilesWallet(
+      MilesWalletCompanion.insert(
+        id: id,
+        userId: userId,
+        programName: programName,
+        programType: programType,
+        balance: Value(balance),
+        lastUpdated: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      ),
+    );
+
+    _ref.invalidate(milesScreenProvider);
+  }
+
+  Future<void> deleteLoyaltyProgram(String id) async {
+    await (_db.delete(_db.milesWallet)..where((t) => t.id.equals(id))).go();
     _ref.invalidate(milesScreenProvider);
   }
 }

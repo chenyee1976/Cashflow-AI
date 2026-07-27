@@ -325,10 +325,10 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
             if (rawCashbackRates.isNotEmpty) {
               for (final r in rawCashbackRates) {
                 _cashbackRates.add(ReviewRateItem(
-                  category: r['category']?.toString() ?? 'SGD Spend',
-                  rate: r['rate']?.toString() ?? '1.0',
-                  minSpend: r['minSpend']?.toString() ?? '',
-                  maxSpend: r['maxSpend']?.toString() ?? '',
+                  category: r.category,
+                  rate: r.rate,
+                  minSpend: r.minSpend ?? '',
+                  maxSpend: r.maxSpend ?? '',
                 ));
               }
             } else if (isMaybankFamily) {
@@ -374,9 +374,11 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
               spendCurrency: spendCurr,
             );
           }).toList();
-          _isLoading = false;
+          if (_transactions.isNotEmpty) {
+            _isLoading = false;
+            return;
+          }
         });
-        return;
       } else {
         // Draft is deleted (Processed statement). Load from DB!
         _isViewOnly = true;
@@ -397,6 +399,26 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
             (c) => c?.sourceStatementId == widget.statementId,
             orElse: () => null,
           );
+          // Fallback: try to match card by name from the file name
+          if (matchingCard == null) {
+            final fileNameLower = widget.fileName.toLowerCase();
+            matchingCard = cards.cast<CreditCard?>().firstWhere(
+              (c) {
+                if (c == null) return false;
+                final cName = c.cardName.toLowerCase();
+                // Match by key words in the file name against the card name
+                if (fileNameLower.contains('maybank') && cName.contains('maybank')) return true;
+                if (fileNameLower.contains('citi') && cName.contains('citi')) return true;
+                if (fileNameLower.contains('dbs') && cName.contains('dbs')) return true;
+                if (fileNameLower.contains('uob') && cName.contains('uob')) return true;
+                if (fileNameLower.contains('ocbc') && cName.contains('ocbc')) return true;
+                if (fileNameLower.contains('hsbc') && cName.contains('hsbc')) return true;
+                if (fileNameLower.contains('sc ') && cName.contains('standard chartered')) return true;
+                return false;
+              },
+              orElse: () => null,
+            );
+          }
 
           if (matchingCard != null) {
             final savedRewards = await CardRewardsDataStore.loadRewards(matchingCard.id, statementId: widget.statementId);
@@ -491,6 +513,34 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                 }
               }
 
+              final savedTxCategories = (savedRewards?['txRewardCategories'] as Map<String, dynamic>?) ?? {};
+
+              _transactions = statementTxs.map((t) {
+                final formattedDate = DateFormat('dd MMM yyyy').format(
+                  DateTime.fromMillisecondsSinceEpoch(t.date * 1000),
+                );
+                String spendCurr = t.currency ?? 'SGD Spend';
+                if (t.amount > 0) {
+                  spendCurr = 'SGD Receipt';
+                }
+                final savedCat = savedTxCategories[t.id]?.toString() ?? savedTxCategories['${t.merchant}_${t.amount}']?.toString() ?? 'Others';
+                return ReviewTransactionItem(
+                  dateStr: formattedDate,
+                  merchant: t.merchant,
+                  amount: t.amount,
+                  categoryStr: savedCat,
+                  expenseCategoryStr: t.category,
+                  spendCurrency: spendCurr,
+                );
+              }).toList();
+
+              _isLoading = false;
+            });
+            return;
+          } else if (statementTxs.isNotEmpty) {
+            // No card matched but we DO have transactions — still show them
+            debugPrint('DB: No matching card found, but ${statementTxs.length} transactions exist. Showing them.');
+            setState(() {
               _transactions = statementTxs.map((t) {
                 final formattedDate = DateFormat('dd MMM yyyy').format(
                   DateTime.fromMillisecondsSinceEpoch(t.date * 1000),
@@ -508,7 +558,6 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                   spendCurrency: spendCurr,
                 );
               }).toList();
-
               _isLoading = false;
             });
             return;
@@ -580,115 +629,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
     });
   }
 
-  void _populateMockData() {
-    final nameLower = widget.fileName.toLowerCase();
 
-    if (widget.fileType == 'credit_card') {
-      _cardIssuerCtrl.text = 'Citibank';
-      _cardType = 'Mastercard';
-      _cardNameCtrl.text = 'CITI PREMIERMILES WORLD MASTER';
-      _cardNumberCtrl.text = '5425-5033-0193-7628';
-      _hasMiles = true;
-      _milesOpeningCtrl.text = '104889';
-      _milesEarnedCtrl.text = '262';
-      _milesBonusCtrl.text = '203';
-      _milesRedeemedCtrl.text = '0';
-      _milesEndingCtrl.text = '105354';
-
-      final rule = CardRulesRegistry.getRule(_cardIssuerCtrl.text, _cardNameCtrl.text);
-      _milesRates.clear();
-      for (final r in rule.defaultRatesList) {
-        _milesRates.add(ReviewRateItem(
-          category: r['category']?.toString() ?? 'SGD Spend',
-          rate: r['rate']?.toString() ?? '1.2',
-          minSpend: '',
-          maxSpend: '',
-        ));
-      }
-
-      _hasCashback = false;
-      _cashbackEarnedCtrl.text = '';
-      _cashbackRates.clear();
-
-      _totalSpendCtrl.text = '220.57';
-      _paymentDueDate = DateTime(2026, 6, 2);
-
-      _transactions = [
-        ReviewTransactionItem(
-          dateStr: '12 May 2026',
-          merchant: 'Sheng Siong Supermarket',
-          amount: -42.50,
-          categoryStr: 'Groceries',
-          expenseCategoryStr: 'expense_groceries',
-          spendCurrency: 'SGD Spend',
-        ),
-        ReviewTransactionItem(
-          dateStr: '15 May 2026',
-          merchant: 'Grab Taxi',
-          amount: -18.00,
-          categoryStr: 'Commute',
-          expenseCategoryStr: 'expense_transport',
-          spendCurrency: 'SGD Spend',
-        ),
-      ];
-    } else {
-      if (nameLower.contains('mari')) {
-        _accounts.add(
-          ExtractedAccountItem(
-            bank: 'MariBank',
-            name: 'Mari Savings Account',
-            num: '195-549-028',
-            currency: 'SGD',
-            balance: '6.00',
-            balanceAsOf: DateTime(2026, 5, 31),
-          ),
-        );
-        _accounts.add(
-          ExtractedAccountItem(
-            bank: 'MariBank',
-            name: 'Mari Investment Account',
-            num: '800-215-2166-101',
-            currency: 'SGD',
-            balance: '997.84',
-            balanceAsOf: DateTime(2026, 5, 29),
-          ),
-        );
-        _transactions = [
-          ReviewTransactionItem(
-            dateStr: '20 May 2026',
-            merchant: 'TOK CHEN YEE (PayNow Transfer)',
-            amount: 20.00,
-            categoryStr: TransactionCategory.incomeTransfer.value,
-          ),
-          ReviewTransactionItem(
-            dateStr: '21 May 2026',
-            merchant: 'SEN SEN STEW SOUP',
-            amount: -5.00,
-            categoryStr: TransactionCategory.expenseDining.value,
-          ),
-        ];
-      } else {
-        _accounts.add(
-          ExtractedAccountItem(
-            bank: 'Chocolate Finance',
-            name: 'Flexible Account',
-            num: 'CHOC-PRESENT-KEY',
-            currency: 'SGD',
-            balance: '1003.84',
-            balanceAsOf: DateTime(2026, 5, 31),
-          ),
-        );
-        _transactions = [
-          ReviewTransactionItem(
-            dateStr: '30 May 2026',
-            merchant: 'Interest Earned',
-            amount: 0.55,
-            categoryStr: TransactionCategory.incomeInterest.value,
-          ),
-        ];
-      }
-    }
-  }
 
   void _addNewAccount() {
     setState(() {
@@ -805,6 +746,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
     final statementId = widget.statementId.isNotEmpty ? widget.statementId : const Uuid().v4();
 
     try {
+      // ── Step 1: Ensure user row exists ──
       debugPrint('DB: Getting user row for id $nonNullUserId');
       final user = await db.getUserById(nonNullUserId);
       if (user == null) {
@@ -821,60 +763,15 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
         );
       }
 
-      debugPrint('DB Transaction: Creating or updating statement row...');
-      final statementsList = await db.getStatementsByUser(nonNullUserId);
-      Statement? existing;
-      for (var s in statementsList) {
-        if (s.id == statementId) {
-          existing = s;
-          break;
-        }
-      }
-
-      final bankOrCardName = widget.fileType == 'credit_card' ? _cardIssuerCtrl.text : (_accounts.isNotEmpty ? _accounts[0].bankCtrl.text : 'Unknown');
-
-      final statementMonthTimestamp = _statementMonth.millisecondsSinceEpoch ~/ 1000;
-
-      if (existing != null) {
-        final statementCompanion = StatementsCompanion(
-          id: drift.Value(statementId),
-          userId: drift.Value(nonNullUserId),
-          fileName: drift.Value(widget.fileName),
-          filePath: drift.Value(existing.filePath),
-          fileType: drift.Value(widget.fileType),
-          fileSizeBytes: drift.Value(existing.fileSizeBytes),
-          status: const drift.Value('Processed'),
-          bankOrCard: drift.Value(bankOrCardName),
-          accountType: drift.Value(widget.fileType),
-          transactionCount: drift.Value(_transactions.length),
-          periodEnd: drift.Value(statementMonthTimestamp),
-          uploadedAt: drift.Value(existing.uploadedAt),
-          processedAt: drift.Value(DateTime.now().millisecondsSinceEpoch ~/ 1000),
-        );
-        await (db.update(db.statements)..where((t) => t.id.equals(statementId))).write(statementCompanion);
-      } else {
-        await db.insertStatement(
-          StatementsCompanion.insert(
-            id: statementId,
-            userId: nonNullUserId,
-            fileName: widget.fileName,
-            filePath: '',
-            fileType: widget.fileType,
-            fileSizeBytes: 1024 * 100, // mock size
-            status: const drift.Value('Processed'),
-            bankOrCard: drift.Value(bankOrCardName),
-            accountType: drift.Value(widget.fileType),
-            periodEnd: drift.Value(statementMonthTimestamp),
-            uploadedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-            processedAt: drift.Value(DateTime.now().millisecondsSinceEpoch ~/ 1000),
-          ),
-        );
-      }
-
+      // ── Step 2: Delete old transactions FIRST ──
       if (widget.statementId.isNotEmpty) {
-        // We are updating an existing statement! Delete previous transactions first.
+        debugPrint('DB: Deleting old transactions for statement $statementId...');
         await db.deleteTransactionsByStatement(widget.statementId);
       }
+
+      // ── Step 3: Upsert accounts / credit cards ──
+      final bankOrCardName = widget.fileType == 'credit_card' ? _cardIssuerCtrl.text : (_accounts.isNotEmpty ? _accounts[0].bankCtrl.text : 'Unknown');
+      final statementMonthTimestamp = _statementMonth.millisecondsSinceEpoch ~/ 1000;
 
       String? mainAccountId;
       if (widget.fileType == 'credit_card') {
@@ -947,6 +844,14 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
           'maxSpend': _milesMaxSpendCtrl.text,
         }).toList();
 
+        final Map<String, String> txRewardCategories = {};
+        for (final tx in _transactions) {
+          final cat = tx.categoryStr == 'Others' && tx.customCategoryCtrl.text.trim().isNotEmpty
+              ? tx.customCategoryCtrl.text.trim()
+              : tx.categoryStr;
+          txRewardCategories['${tx.merchant}_${tx.amount}'] = cat;
+        }
+
         await CardRewardsDataStore.saveRewards(
           cardId: accountId,
           statementId: statementId,
@@ -962,6 +867,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
           milesEnding: _milesEndingCtrl.text.trim(),
           hasMiles: _hasMiles,
           hasCashback: _hasCashback,
+          txRewardCategories: txRewardCategories,
         );
 
         // Also save updated draft content so reopening draft shows updated rate categories
@@ -976,19 +882,43 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
           milesBonus: _milesBonusCtrl.text,
           milesRedeemed: _milesRedeemedCtrl.text,
           milesEnding: _milesEndingCtrl.text,
-          milesRates: milesRatesList,
+          milesRates: milesRatesList.map((m) => ExtractedRewardRate(
+            category: m['category'] ?? '',
+            rate: m['rate'] ?? '',
+            minSpend: m['minSpend'] ?? '',
+            maxSpend: m['maxSpend'] ?? '',
+          )).toList(),
           hasCashback: _hasCashback,
           cashbackEarned: _cashbackEarnedCtrl.text,
-          cashbackRates: cashbackRatesList,
+          cashbackRates: cashbackRatesList.map((m) => ExtractedRewardRate(
+            category: m['category'] ?? '',
+            rate: m['rate'] ?? '',
+            minSpend: m['minSpend'] ?? '',
+            maxSpend: m['maxSpend'] ?? '',
+          )).toList(),
           totalSpend: _totalSpendCtrl.text,
           paymentDueDate: _paymentDueDate,
         );
 
         final existingDraft = await DraftStatementService.loadDraft(statementId);
         if (existingDraft != null) {
+          final updatedTxDrafts = _transactions.map((tx) {
+            final cat = tx.categoryStr == 'Others' && tx.customCategoryCtrl.text.trim().isNotEmpty
+                ? tx.customCategoryCtrl.text.trim()
+                : tx.categoryStr;
+            return ExtractedTransactionDraft(
+              dateStr: tx.dateStr,
+              merchant: tx.merchant,
+              amount: tx.amount,
+              categoryValue: tx.expenseCategoryStr,
+              milesCashbackCategoryValue: cat,
+              spendCurrency: tx.spendCurrency,
+            );
+          }).toList();
+
           final updatedDraftData = DraftStatementData(
             accounts: existingDraft.accounts,
-            transactions: existingDraft.transactions,
+            transactions: updatedTxDrafts,
             cardDraft: updatedCardDraft,
           );
           await DraftStatementService.saveDraft(statementId, updatedDraftData);
@@ -1001,8 +931,8 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
           final cardName = _cardNameCtrl.text.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
           final programName = cardName.isNotEmpty ? '$bankName $cardName'.replaceAll(RegExp(r'\s+'), ' ').trim() : (bankName.isNotEmpty ? bankName : 'Unknown Card');
           // Use a stable wallet ID based on normalized card identity
-          String _norm(String s) => s.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
-          final walletId = 'bank_miles_${_norm(programName)}';
+          String _norm2(String s) => s.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+          final walletId = 'bank_miles_${_norm2(programName)}';
           // Use statement month as the "last updated" date
           final statementTimestamp = _statementMonth.millisecondsSinceEpoch ~/ 1000;
           await db.upsertMilesWallet(
@@ -1086,7 +1016,8 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
         }
       }
 
-      // Save transactions
+      // ── Step 4: Insert transactions (with retry) ──
+      int insertedCount = 0;
       if (_transactions.isNotEmpty) {
         debugPrint('DB Transaction: Inserting ${_transactions.length} transactions...');
         final companions = _transactions.map((tx) {
@@ -1116,14 +1047,77 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
           );
         }).toList();
 
-        await db.insertTransactions(companions);
+        // Retry transaction insertion up to 3 times on failure
+        int retries = 3;
+        while (retries > 0) {
+          try {
+            await db.insertTransactions(companions);
+            insertedCount = companions.length;
+            debugPrint('DB: Successfully inserted $insertedCount transactions.');
+            break;
+          } catch (e) {
+            retries--;
+            debugPrint('DB: Transaction insert failed (retries left: $retries): $e');
+            if (retries <= 0) rethrow;
+            await Future.delayed(const Duration(milliseconds: 300));
+          }
+        }
       }
-      debugPrint('DB Save Committed Successfully!');
 
-      // Remove draft statement
+      // ── Step 5: Update statement row AFTER transactions are inserted ──
+      debugPrint('DB: Updating statement row with transactionCount=$insertedCount...');
+      final statementsList = await db.getStatementsByUser(nonNullUserId);
+      Statement? existing;
+      for (var s in statementsList) {
+        if (s.id == statementId) {
+          existing = s;
+          break;
+        }
+      }
+
+      if (existing != null) {
+        final statementCompanion = StatementsCompanion(
+          id: drift.Value(statementId),
+          userId: drift.Value(nonNullUserId),
+          fileName: drift.Value(widget.fileName),
+          filePath: drift.Value(existing.filePath),
+          fileType: drift.Value(widget.fileType),
+          fileSizeBytes: drift.Value(existing.fileSizeBytes),
+          status: const drift.Value('Processed'),
+          bankOrCard: drift.Value(bankOrCardName),
+          accountType: drift.Value(widget.fileType),
+          transactionCount: drift.Value(insertedCount),
+          periodEnd: drift.Value(statementMonthTimestamp),
+          uploadedAt: drift.Value(existing.uploadedAt),
+          processedAt: drift.Value(DateTime.now().millisecondsSinceEpoch ~/ 1000),
+        );
+        await (db.update(db.statements)..where((t) => t.id.equals(statementId))).write(statementCompanion);
+      } else {
+        await db.insertStatement(
+          StatementsCompanion.insert(
+            id: statementId,
+            userId: nonNullUserId,
+            fileName: widget.fileName,
+            filePath: '',
+            fileType: widget.fileType,
+            fileSizeBytes: 1024 * 100, // mock size
+            status: const drift.Value('Processed'),
+            bankOrCard: drift.Value(bankOrCardName),
+            accountType: drift.Value(widget.fileType),
+            transactionCount: drift.Value(insertedCount),
+            periodEnd: drift.Value(statementMonthTimestamp),
+            uploadedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            processedAt: drift.Value(DateTime.now().millisecondsSinceEpoch ~/ 1000),
+          ),
+        );
+      }
+
+      debugPrint('DB Save Committed Successfully! Transactions: $insertedCount');
+
+      // ── Step 6: Delete draft ONLY after everything succeeded ──
       await DraftStatementService.deleteDraft(statementId);
 
-      context.showTopSnackBar('Saved and updated successfully!');
+      context.showTopSnackBar('Saved $insertedCount transactions successfully!');
 
       ref.invalidate(cashFlowScreenProvider);
       ref.invalidate(cashPositionProvider);

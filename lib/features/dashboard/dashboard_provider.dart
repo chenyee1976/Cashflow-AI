@@ -128,7 +128,7 @@ Map<String, double> _calculateIndividualBalancesAsOf(List<BankAccount> consolida
           }
         }
         // Base cash set for that specific month:
-        final base = monthCashBases['${date.year}_${date.month}'] ?? 1000.0;
+        final base = monthCashBases['${date.year}_${date.month}'] ?? 0.0;
         balances[acc.id] = base + cashTxsUpToDate;
       }
       continue;
@@ -224,9 +224,9 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
   final endOfLastMonth = DateTime(now.year, now.month, 0, 23, 59, 59);
   final endOfLastYear = DateTime(now.year - 1, 12, 31, 23, 59, 59);
 
-  final currentBase = await storage.getCashOnHandBaseForMonth(year: now.year, month: now.month) ?? 1000.0;
-  final prevMonthBase = await storage.getCashOnHandBaseForMonth(year: endOfLastMonth.year, month: endOfLastMonth.month) ?? 1000.0;
-  final prevYearBase = await storage.getCashOnHandBaseForMonth(year: endOfLastYear.year, month: endOfLastYear.month) ?? 1000.0;
+  final currentBase = await storage.getCashOnHandBaseForMonth(year: now.year, month: now.month) ?? 0.0;
+  final prevMonthBase = await storage.getCashOnHandBaseForMonth(year: endOfLastMonth.year, month: endOfLastMonth.month) ?? 0.0;
+  final prevYearBase = await storage.getCashOnHandBaseForMonth(year: endOfLastYear.year, month: endOfLastYear.month) ?? 0.0;
 
   final monthBases = {
     '${now.year}_${now.month}': currentBase,
@@ -236,20 +236,22 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
 
   final currentCashOnHand = currentBase + cashAdjustmentsTotal; // Net after cash expenses & ATM withdrawals
 
-  final cashOnHandAcc = BankAccount(
-    id: 'manual_cash_account',
-    userId: userId,
-    bankName: 'Cash on hand',
-    accountType: 'Physical Cash',
-    accountNumber: 'Cash',
-    currentBalance: currentCashOnHand,
-    openingBalance: currentBase,
-    currency: 'SGD',
-    sourceStatementId: null,
-    createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-  );
+  if (currentBase > 0 || cashAdjustmentsTotal != 0.0) {
+    final cashOnHandAcc = BankAccount(
+      id: 'manual_cash_account',
+      userId: userId,
+      bankName: 'Cash on hand',
+      accountType: 'Physical Cash',
+      accountNumber: 'Cash',
+      currentBalance: currentCashOnHand,
+      openingBalance: currentBase,
+      currency: 'SGD',
+      sourceStatementId: null,
+      createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    );
 
-  consolidatedAccounts.insert(0, cashOnHandAcc);
+    consolidatedAccounts.insert(0, cashOnHandAcc);
+  }
 
   double current = 0.0;
   for (final item in consolidatedAccounts) {

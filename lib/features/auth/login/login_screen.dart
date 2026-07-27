@@ -50,13 +50,35 @@ class LoginScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'CashFlow AI™',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'SGCashFlowAI™',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                      ),
+                      child: const Text(
+                        'Beta',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 const Text(
@@ -144,7 +166,7 @@ class LoginScreen extends ConsumerWidget {
                                   children: [
                                     // Custom Google logo drawing
                                     Image.network(
-                                      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png',
+                                      'https://lh3.googleusercontent.com/COxitdu2Yi1AKPrmZAaWFftERe1vY0Rlab44s8-t2iLYXA9wf6y8oOiwhUXGuOoW5A',
                                       width: 22,
                                       height: 22,
                                       errorBuilder: (c, e, s) => const Icon(

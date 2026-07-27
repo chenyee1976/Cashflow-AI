@@ -30,10 +30,29 @@ class RewardCardData {
       return milesEarnedStatement + milesBonus;
     }
 
+    bool isBillPayment(Transaction t) {
+      final m = t.merchant.toLowerCase();
+      final c = (t.category ?? '').toLowerCase();
+      return m.contains('payment by giro') ||
+             m.contains('giro pymt') ||
+             m.contains('giro payment') ||
+             m.contains('ibank payment') ||
+             m.contains('fast payment') ||
+             m.contains('cash payment') ||
+             m.contains('autopay') ||
+             m.contains('thank you - payment') ||
+             m.contains('payment received') ||
+             m.startsWith('payment ') ||
+             m == 'payment' ||
+             c == 'payment' ||
+             c == 'bill payment';
+    }
+
     final rule = CardRulesRegistry.getRule(bankName, cardName);
     if (transactions.isNotEmpty && milesRates.isNotEmpty) {
       double sum = 0.0;
       for (final tx in transactions) {
+        if (isBillPayment(tx)) continue;
         final rate = getMilesRateForTx(tx);
         double amt = tx.amount.abs();
         
@@ -57,9 +76,13 @@ class RewardCardData {
             finalMiles = double.parse(rawMiles.toStringAsFixed(2));
             break;
         }
-        sum += finalMiles;
+        if (tx.amount < 0) {
+          sum += finalMiles;
+        } else {
+          sum -= finalMiles;
+        }
       }
-      return sum;
+      return sum < 0 ? 0.0 : sum;
     }
     
     double totalAmt = cardSpendThisMonth;
@@ -153,9 +176,118 @@ class RewardCardData {
       return basePointsSum + bonus1PointsSum + bonus2PointsSum;
     }
 
+    final isMaybankFnF = bankName.toLowerCase().contains('maybank') || cardName.toLowerCase().contains('family');
+
+    if (isMaybankFnF) {
+      bool isRepaymentOrCashback(Transaction t) {
+        if (t.amount <= 0) return false;
+        final expCat = (t.category ?? '').toLowerCase();
+        final m = t.merchant.toLowerCase();
+
+        final isRepayment = expCat.contains('repayment') ||
+                            expCat.contains('transfer') ||
+                            expCat.contains('card payment') ||
+                            expCat.contains('bill payment') ||
+                            expCat == 'payment' ||
+                            m.contains('payment by giro') ||
+                            m.contains('giro pymt') ||
+                            m.contains('giro payment') ||
+                            m.contains('autopay') ||
+                            m.contains('thank you - payment') ||
+                            m.contains('payment received');
+
+        final isCashbackReceived = expCat.contains('cashback') ||
+                                   expCat.contains('rebate') ||
+                                   expCat.contains('reward credit') ||
+                                   m.contains('cashback') ||
+                                   m.contains('rebate');
+
+        return isRepayment || isCashbackReceived;
+      }
+
+      final validTxs = transactions.where((t) => !isRepaymentOrCashback(t)).toList();
+      final totalSpend = cardSpendThisMonth;
+
+      // 1. Base Reward: Total spend * 0.22%
+      final baseReward = totalSpend * 0.0022;
+
+      final catSpends = <String, double>{
+        'MYR Spend': 0.0,
+        'IDR Spend': 0.0,
+        'Commute': 0.0,
+        'Dining & Food Delivery': 0.0,
+        'Groceries': 0.0,
+        'Online Shopping': 0.0,
+        'Telco & Streaming': 0.0,
+      };
+
+      for (final tx in validTxs) {
+        final cat = (tx.category ?? '').toLowerCase();
+        final merchant = (tx.merchant ?? '').toLowerCase();
+        final currency = (tx.currency ?? '').toLowerCase();
+        // Outflow (amount < 0) -> +spend. Vendor Refund (amount > 0) -> -spend.
+        final netAmt = tx.amount < 0 ? tx.amount.abs() : -tx.amount.abs();
+
+        if (currency.contains('myr')) {
+          catSpends['MYR Spend'] = (catSpends['MYR Spend'] ?? 0.0) + netAmt;
+        } else if (currency.contains('idr')) {
+          catSpends['IDR Spend'] = (catSpends['IDR Spend'] ?? 0.0) + netAmt;
+        } else if (cat.contains('commute') || merchant.contains('bus/mrt')) {
+          catSpends['Commute'] = (catSpends['Commute'] ?? 0.0) + netAmt;
+        } else if (cat.contains('dining') || cat.contains('food') || merchant.contains('mcdonalds') || merchant.contains('kopitiam') || merchant.contains('grab') || merchant.contains('kfc') || merchant.contains('hainan') || merchant.contains('coffee')) {
+          catSpends['Dining & Food Delivery'] = (catSpends['Dining & Food Delivery'] ?? 0.0) + netAmt;
+        } else if (cat.contains('grocer') || merchant.contains('sheng siong') || merchant.contains('fairprice') || merchant.contains('giant') || merchant.contains('prime supermarket') || merchant.contains('cheers') || merchant.contains('cold storage')) {
+          catSpends['Groceries'] = (catSpends['Groceries'] ?? 0.0) + netAmt;
+        } else if (cat.contains('online') || merchant.contains('shopee') || merchant.contains('pinduoduo') || merchant.contains('taobao')) {
+          catSpends['Online Shopping'] = (catSpends['Online Shopping'] ?? 0.0) + netAmt;
+        } else if (cat.contains('telco') || cat.contains('streaming') || merchant.contains('m1') || merchant.contains('whiz') || merchant.contains('simba') || merchant.contains('vivifi') || merchant.contains('eight telecom')) {
+          catSpends['Telco & Streaming'] = (catSpends['Telco & Streaming'] ?? 0.0) + netAmt;
+        }
+      }
+
+      double bonusTier1Total = 0.0;
+      double bonusTier2Total = 0.0;
+
+      if (totalSpend >= 1600.0) {
+        catSpends.forEach((catLabel, catAmt) {
+          if (catAmt > 0) {
+            final rate = catLabel == 'Groceries' ? 0.06 : 0.08;
+            bonusTier2Total += catAmt * rate;
+          }
+        });
+      } else if (totalSpend >= 800.0) {
+        catSpends.forEach((catLabel, catAmt) {
+          if (catAmt > 0) {
+            bonusTier1Total += catAmt * 0.06;
+          }
+        });
+      }
+
+      return baseReward + bonusTier1Total + bonusTier2Total;
+    }
+
     if (transactions.isNotEmpty && cashbackRates.isNotEmpty) {
+      bool isBillPayment(Transaction t) {
+        final m = t.merchant.toLowerCase();
+        final c = (t.category ?? '').toLowerCase();
+        return m.contains('payment by giro') ||
+               m.contains('giro pymt') ||
+               m.contains('giro payment') ||
+               m.contains('ibank payment') ||
+               m.contains('fast payment') ||
+               m.contains('cash payment') ||
+               m.contains('autopay') ||
+               m.contains('thank you - payment') ||
+               m.contains('payment received') ||
+               m.startsWith('payment ') ||
+               m == 'payment' ||
+               c == 'payment' ||
+               c == 'bill payment';
+      }
+
       double sum = 0.0;
       for (final tx in transactions) {
+        if (isBillPayment(tx)) continue;
         final rate = getRateForTx(tx);
         double amt = tx.amount.abs();
         
@@ -179,9 +311,13 @@ class RewardCardData {
             finalCashback = double.parse(rawCashback.toStringAsFixed(2));
             break;
         }
-        sum += finalCashback;
+        if (tx.amount < 0) {
+          sum += finalCashback;
+        } else {
+          sum -= finalCashback;
+        }
       }
-      return sum;
+      return sum < 0 ? 0.0 : sum;
     }
     
     double totalAmt = cardSpendThisMonth;
@@ -303,9 +439,20 @@ final rewardsCardsProvider = FutureProvider.autoDispose<List<RewardCardData>>((r
       for (final s in allStatements) s.id: s
     };
 
-    // Filter transactions for the selected month and credit card accounts
-    // Group transaction into the selected month if it belongs to a statement whose periodEnd is in this selected month.
-    // If it has no statementId, fallback to the transaction's own calendar month.
+    // Step 1: Find all credit card statements for the selected month
+    final monthCCStatements = allStatements.where((s) {
+      final isCC = s.fileType == 'credit_card' || s.accountType == 'credit_card';
+      if (!isCC) return false;
+      final sDate = DateTime.fromMillisecondsSinceEpoch((s.periodEnd ?? s.uploadedAt) * 1000);
+      return sDate.year == selectedMonth.year && sDate.month == selectedMonth.month;
+    }).toList();
+
+    // Step 2: If NO credit card statements exist for this month, return an empty list immediately!
+    if (monthCCStatements.isEmpty) {
+      return [];
+    }
+
+    // Step 3: Filter transactions for the selected month and credit card accounts
     final monthTxs = allTxs.where((t) {
       if (t.accountType != 'credit_card') return false;
       if (t.statementId != null && statementMap.containsKey(t.statementId)) {
@@ -325,7 +472,6 @@ final rewardsCardsProvider = FutureProvider.autoDispose<List<RewardCardData>>((r
       if (!uniqueCardsMap.containsKey(key)) {
         uniqueCardsMap[key] = card;
       } else {
-        // Keep the one with the latest creation time or statement connection
         final existing = uniqueCardsMap[key]!;
         if (card.createdAt > existing.createdAt) {
           uniqueCardsMap[key] = card;
@@ -334,7 +480,6 @@ final rewardsCardsProvider = FutureProvider.autoDispose<List<RewardCardData>>((r
     }
     final consolidatedCards = uniqueCardsMap.values.toList();
 
-    // Map all duplicate card IDs to the canonical representation card ID
     final Map<String, String> duplicateToCanonicalId = {};
     for (final card in rawCards) {
       final key = '${_norm(card.bankName)}_${_norm(card.cardName)}_${_norm(card.lastFour ?? '')}';
@@ -344,10 +489,54 @@ final rewardsCardsProvider = FutureProvider.autoDispose<List<RewardCardData>>((r
     final List<RewardCardData> results = [];
 
     for (final card in consolidatedCards) {
-      // Calculate total spend by summing transactions across all duplicate/canonical card instances
       final cardTxs = monthTxs.where((t) => duplicateToCanonicalId[t.accountId] == card.id).toList();
-      final spendTxs = cardTxs.where((t) => !(t.currency ?? '').toLowerCase().contains('receipt')).toList();
-      final totalSpend = spendTxs.fold<double>(0.0, (sum, t) => sum + t.amount.abs());
+      double totalSpend = 0.0;
+      for (final t in cardTxs) {
+        if (t.amount > 0) {
+          final expCat = (t.category ?? '').toLowerCase();
+          final m = t.merchant.toLowerCase();
+          final isRepayment = expCat.contains('repayment') ||
+                              expCat.contains('transfer') ||
+                              expCat.contains('card payment') ||
+                              expCat.contains('bill payment') ||
+                              expCat == 'payment' ||
+                              m.contains('payment by giro') ||
+                              m.contains('giro pymt') ||
+                              m.contains('giro payment') ||
+                              m.contains('autopay') ||
+                              m.contains('thank you - payment') ||
+                              m.contains('payment received');
+
+          final isCashbackReceived = expCat.contains('cashback') ||
+                                     expCat.contains('rebate') ||
+                                     expCat.contains('reward credit') ||
+                                     m.contains('cashback') ||
+                                     m.contains('rebate');
+
+          if (isRepayment || isCashbackReceived) {
+            // Case 1 & 2: Repayment back to card or Cashback Received -> NOT SPEND
+            continue;
+          }
+        }
+
+        if (t.amount < 0) {
+          totalSpend += t.amount.abs();
+        } else {
+          // Case 3: Vendor Refund -> REDUCTION TO SPEND
+          totalSpend -= t.amount.abs();
+        }
+      }
+      if (totalSpend < 0) totalSpend = 0.0;
+
+      final hasStatementForThisMonth = monthCCStatements.any((s) =>
+        s.id == card.sourceStatementId ||
+        s.bankOrCard == card.id ||
+        cardTxs.any((t) => t.statementId == s.id)
+      );
+
+      if (!hasStatementForThisMonth) {
+        continue;
+      }
 
       // Load saved reward data (try canonical first, fallback to duplicate instances if needed)
       final monthStatementTxs = cardTxs.where((t) => t.statementId != null).toList();
@@ -364,7 +553,6 @@ final rewardsCardsProvider = FutureProvider.autoDispose<List<RewardCardData>>((r
           }
         }
       }
-      print('REWARDS_DEBUG: card.id=${card.id}, card.cardName=${card.cardName}, savedRewards=$savedRewards');
 
       double cashbackEarnedStatement = 0.0;
       double cashbackRateVal = 0.0;
@@ -374,7 +562,7 @@ final rewardsCardsProvider = FutureProvider.autoDispose<List<RewardCardData>>((r
       List<Map<String, dynamic>> cashbackRatesList = [];
 
       double milesEarnedStatement = 0.0;
-      double milesOpeningVal = card.cardName.contains('PremierMiles') ? 104889.0 : 0.0;
+      double milesOpeningVal = 0.0;
       double milesBonusVal = 0.0;
       double milesRedeemedVal = 0.0;
       double milesEndingVal = 0.0;
@@ -384,14 +572,7 @@ final rewardsCardsProvider = FutureProvider.autoDispose<List<RewardCardData>>((r
       double milesMaxSpendVal = 0.0;
       List<Map<String, dynamic>> milesRatesList = [];
 
-      // Check if a statement was actually uploaded for this card and this month
-      // By mapping all transactions belonging to this statement into the selected month,
-      // hasStatement check becomes robust.
-      final hasStatement = cardTxs.any((t) => t.statementId != null);
-
-      if (!hasStatement) {
-        continue;
-      }
+      final hasStatement = hasStatementForThisMonth;
 
       if (savedRewards != null) {
         cashbackEarnedStatement = hasStatement 

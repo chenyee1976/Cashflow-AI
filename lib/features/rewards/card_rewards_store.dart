@@ -17,6 +17,7 @@ class CardRewardsDataStore {
     String? milesEnding,
     bool? hasMiles,
     bool? hasCashback,
+    Map<String, String>? txRewardCategories,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final data = {
@@ -32,29 +33,43 @@ class CardRewardsDataStore {
       if (milesEnding != null) 'milesEnding': milesEnding,
       if (hasMiles != null) 'hasMiles': hasMiles,
       if (hasCashback != null) 'hasCashback': hasCashback,
+      if (txRewardCategories != null) 'txRewardCategories': txRewardCategories,
     };
     if (statementId != null && statementId.isNotEmpty) {
       await prefs.setString('card_rewards_${cardId}_$statementId', jsonEncode(data));
+      await prefs.setString('card_rewards_stmt_$statementId', jsonEncode(data));
     }
-    await prefs.setString('card_rewards_$cardId', jsonEncode(data));
+    if (cardId.isNotEmpty) {
+      await prefs.setString('card_rewards_$cardId', jsonEncode(data));
+    }
   }
 
   static Future<Map<String, dynamic>?> loadRewards(String cardId, {String? statementId}) async {
     final prefs = await SharedPreferences.getInstance();
     if (statementId != null && statementId.isNotEmpty) {
-      final jsonStr = prefs.getString('card_rewards_${cardId}_$statementId');
+      if (cardId.isNotEmpty) {
+        final jsonStr = prefs.getString('card_rewards_${cardId}_$statementId');
+        if (jsonStr != null) {
+          try {
+            return jsonDecode(jsonStr) as Map<String, dynamic>;
+          } catch (_) {}
+        }
+      }
+      final stmtJsonStr = prefs.getString('card_rewards_stmt_$statementId');
+      if (stmtJsonStr != null) {
+        try {
+          return jsonDecode(stmtJsonStr) as Map<String, dynamic>;
+        } catch (_) {}
+      }
+    }
+    if (cardId.isNotEmpty) {
+      final jsonStr = prefs.getString('card_rewards_$cardId');
       if (jsonStr != null) {
         try {
           return jsonDecode(jsonStr) as Map<String, dynamic>;
         } catch (_) {}
       }
     }
-    final jsonStr = prefs.getString('card_rewards_$cardId');
-    if (jsonStr == null) return null;
-    try {
-      return jsonDecode(jsonStr) as Map<String, dynamic>;
-    } catch (_) {
-      return null;
-    }
+    return null;
   }
 }

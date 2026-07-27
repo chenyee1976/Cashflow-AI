@@ -200,7 +200,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         const SizedBox(height: 24),
         const Text(
-          'Welcome to CashFlow AI™',
+          'Welcome to SGCashFlowAI™',
           style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
         ),
         const SizedBox(height: 8),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../shared/widgets/app_header_brand.dart';
@@ -12,9 +13,6 @@ class SupportScreen extends StatefulWidget {
 }
 
 class _SupportScreenState extends State<SupportScreen> {
-  final _subjectCtrl = TextEditingController();
-  final _messageCtrl = TextEditingController();
-
   final List<Map<String, String>> _faqs = [
     {
       'q': 'How do I upload a statement?',
@@ -42,17 +40,32 @@ class _SupportScreenState extends State<SupportScreen> {
     },
   ];
 
-  void _sendMessage() {
-    final subject = _subjectCtrl.text.trim();
-    final message = _messageCtrl.text.trim();
-    if (subject.isEmpty || message.isEmpty) {
-      context.showTopSnackBar('Please fill in both fields', isError: true);
-      return;
+  Future<void> _openEmail() async {
+    const email = 'sgcashflowai@gmail.com';
+    // 1. Copy email address to clipboard as a reliable guarantee for web/desktop users
+    await Clipboard.setData(const ClipboardData(text: email));
+    if (mounted) {
+      context.showTopSnackBar('Email copied to clipboard ($email)!');
     }
 
-    context.showTopSnackBar('Message sent successfully! We will get back to you soon.');
-    _subjectCtrl.clear();
-    _messageCtrl.clear();
+    // 2. Trigger mailto once
+    final uri = Uri.parse('mailto:$email');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // Ignored if OS has no default desktop mail handler (email is already copied to clipboard)
+    }
+  }
+
+  Future<void> _openLink(String urlStr) async {
+    final uri = Uri.parse(urlStr);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        context.showTopSnackBar('Could not open link: $urlStr', isError: true);
+      }
+    }
   }
 
   @override
@@ -87,24 +100,36 @@ class _SupportScreenState extends State<SupportScreen> {
               ),
               const SizedBox(height: 24),
 
-              // 2. Dual Side-by-side Contact Cards
+              // 2. Triple Contact Cards (Email, WhatsApp, Telegram)
               Row(
                 children: [
                   Expanded(
                     child: _buildContactCard(
                       icon: Icons.email_outlined,
+                      iconColor: const Color(0xFF2563EB),
                       title: 'Email us',
-                      subtitle: 'support@cashflow.ai',
-                      onTap: () {},
+                      subtitle: 'sgcashflowai@gmail.com',
+                      onTap: _openEmail,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: _buildContactCard(
                       icon: Icons.chat_bubble_outline_rounded,
+                      iconColor: const Color(0xFF16A34A),
                       title: 'WhatsApp',
-                      subtitle: 'Chat with us',
-                      onTap: () {},
+                      subtitle: 'Chat with us\n+65 8719 4254',
+                      onTap: () => _openLink('https://wa.me/6587194254'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildContactCard(
+                      icon: Icons.send_rounded,
+                      iconColor: const Color(0xFF0284C7),
+                      title: 'Telegram',
+                      subtitle: 'Join SGCashFlowAI group',
+                      onTap: () => _openLink('https://t.me/SGCashFlowAI'),
                     ),
                   ),
                 ],
@@ -140,99 +165,7 @@ class _SupportScreenState extends State<SupportScreen> {
               ),
               const SizedBox(height: 32),
 
-              // 4. Send Message Form
-              Row(
-                children: const [
-                  Icon(Icons.mail_outline_rounded, size: 16, color: AppColors.textSecondary),
-                  SizedBox(width: 8),
-                  Text(
-                    'SEND US A MESSAGE',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.divider),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Subject',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _subjectCtrl,
-                      decoration: InputDecoration(
-                        hintText: 'What can we help with?',
-                        hintStyle: const TextStyle(fontSize: 14, color: AppColors.textHint),
-                        fillColor: AppColors.white,
-                        filled: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.divider),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.divider),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Message',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _messageCtrl,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: 'Describe the issue or question...',
-                        hintStyle: const TextStyle(fontSize: 14, color: AppColors.textHint),
-                        fillColor: AppColors.white,
-                        filled: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.divider),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.divider),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _sendMessage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.white,
-                        minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                      child: const Text('Send message', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // 5. More Section
+              // 4. More Section
               Row(
                 children: const [
                   Icon(Icons.settings_outlined, size: 16, color: AppColors.textSecondary),
@@ -257,18 +190,28 @@ class _SupportScreenState extends State<SupportScreen> {
                 ),
                 child: Column(
                   children: [
-                    _buildMoreRow(icon: Icons.assignment_outlined, title: 'Terms of Service', onTap: () {}),
+                    _buildMoreRow(
+                      icon: Icons.assignment_outlined,
+                      title: 'Terms of Service',
+                      statusTag: 'In progress',
+                      onTap: () {},
+                    ),
                     const Divider(height: 1, color: AppColors.divider),
-                    _buildMoreRow(icon: Icons.shield_outlined, title: 'Privacy Policy', onTap: () {}),
+                    _buildMoreRow(
+                      icon: Icons.shield_outlined,
+                      title: 'Privacy Policy',
+                      statusTag: 'In progress',
+                      onTap: () {},
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 32),
 
-              // 6. Version Footer
+              // 5. Version Footer
               const Center(
                 child: Text(
-                  'CashFlow AI™ v1.0 — made in Singapore 🇸🇬',
+                  'SGCashFlowAI™ v1.0 — made in Singapore 🇸🇬',
                   style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                 ),
               ),
@@ -282,6 +225,7 @@ class _SupportScreenState extends State<SupportScreen> {
 
   Widget _buildContactCard({
     required IconData icon,
+    required Color iconColor,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
@@ -301,21 +245,23 @@ class _SupportScreenState extends State<SupportScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: AppColors.white,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 20, color: AppColors.primary),
+              child: Icon(icon, size: 20, color: iconColor),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text(
               title,
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               subtitle,
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
             ),
           ],
         ),
@@ -347,6 +293,7 @@ class _SupportScreenState extends State<SupportScreen> {
   Widget _buildMoreRow({
     required IconData icon,
     required String title,
+    required String statusTag,
     required VoidCallback onTap,
   }) {
     return ListTile(
@@ -355,7 +302,29 @@ class _SupportScreenState extends State<SupportScreen> {
         title,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textHint),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppColors.error.withOpacity(0.3)),
+            ),
+            child: Text(
+              statusTag,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: AppColors.error,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textHint),
+        ],
+      ),
       onTap: onTap,
     );
   }

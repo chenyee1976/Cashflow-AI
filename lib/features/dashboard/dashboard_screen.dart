@@ -309,6 +309,23 @@ class DashboardScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                      ),
+                      child: const Text(
+                        'In progress',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.error,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

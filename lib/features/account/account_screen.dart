@@ -485,16 +485,37 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
                   // Membership Section Header
                   Row(
-                    children: const [
-                      Icon(Icons.card_membership, size: 16, color: AppColors.textSecondary),
-                      SizedBox(width: 8),
-                      Text(
-                        'MEMBERSHIP',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.8,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(Icons.card_membership, size: 16, color: AppColors.textSecondary),
+                          SizedBox(width: 8),
+                          Text(
+                            'MEMBERSHIP',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                        ),
+                        child: const Text(
+                          'In progress',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.error,
+                          ),
                         ),
                       ),
                     ],
@@ -1000,7 +1021,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   // Footer version info
                   const Center(
                     child: Text(
-                      'CashFlow AI™ v1.0',
+                      'SGCashFlowAI™ v1.0',
                       style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                     ),
                   ),

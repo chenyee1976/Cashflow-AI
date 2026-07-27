@@ -7,15 +7,7 @@ extension TopSnackBarExtension on BuildContext {
     ScaffoldMessenger.of(this).hideCurrentSnackBar();
     ScaffoldMessenger.of(this).showSnackBar(
       SnackBar(
-        dismissDirection: DismissDirection.up,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.only(
-          bottom: height - 100,
-          left: 16,
-          right: 16,
-        ),
         backgroundColor: isError ? AppColors.error : AppColors.primary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         content: Text(
           message,
           style: const TextStyle(

@@ -81,12 +81,25 @@ class UploadNotifier extends StateNotifier<UploadState> {
       list.sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
       
       print('loadStatements count: ${list.length} for user: $userId');
+      final allTxs = await DatabaseMutex.run(() => db.getTransactionsByUser(userId));
+      final Map<String, int> txCountMap = {};
+      for (final tx in allTxs) {
+        if (tx.statementId != null) {
+          txCountMap[tx.statementId!] = (txCountMap[tx.statementId!] ?? 0) + 1;
+        }
+      }
+
       final mapped = list.map((item) {
+        // Always prefer the actual count of transactions in the DB.
+        // Fall back to the stored transactionCount only if no DB transactions exist.
+        final dbCount = txCountMap[item.id] ?? 0;
+        final actualCount = dbCount > 0 ? dbCount : item.transactionCount;
+
         return UploadedStatementItem(
           id: item.id,
           fileName: item.fileName,
           status: item.status ?? 'Processed',
-          transactionCount: item.transactionCount,
+          transactionCount: actualCount,
           institution: item.bankOrCard ?? 'Unknown',
           fileType: item.fileType,
         );

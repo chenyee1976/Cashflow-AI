@@ -54,6 +54,7 @@ dependencies:
   equatable: ^2.0.5
   collection: ^1.18.0
   shared_preferences: ^2.2.3
+  url_launcher: ^6.2.5
 
   # Image
   cached_network_image: ^3.3.1
