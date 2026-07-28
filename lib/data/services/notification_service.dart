@@ -81,21 +81,31 @@ class NotificationService {
 
   /// Get list of all published notifications
   Future<List<AppNotification>> getNotifications() async {
+    final local = await _getLocalNotifications();
+
     try {
       final res = await _dio.get('$_baseUrl/api/notifications');
       if (res.statusCode == 200 && res.data is List) {
-        final list = (res.data as List)
+        final serverList = (res.data as List)
             .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
             .toList();
         
-        // Cache locally
-        _cacheLocally(list);
-        return list;
+        // Merge local + server notifications (preserving all user-published items by ID)
+        final map = <String, AppNotification>{};
+        for (final item in local) {
+          map[item.id] = item;
+        }
+        for (final item in serverList) {
+          map[item.id] = item;
+        }
+        final merged = map.values.toList();
+        merged.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+        await _cacheLocally(merged);
+        return merged;
       }
     } catch (_) {}
 
-    // Fallback to local cache
-    return _getLocalNotifications();
+    return local;
   }
 
   /// Publish a new notification (Admin only)
