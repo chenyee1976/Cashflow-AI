@@ -272,27 +272,30 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                   child: const Icon(Icons.notifications_outlined, color: AppColors.primary, size: 22),
                 ),
                 const SizedBox(width: 12),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'App Notifications',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'App Notifications',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Latest updates & beta announcements',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
+                      Text(
+                        'Latest updates & beta announcements',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () {
                     if (!_isAdminUnlocked) {
@@ -301,16 +304,16 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                       _showPublishDialog();
                     }
                   },
-                  icon: const Icon(Icons.add_circle_outline, size: 16, color: Colors.white),
-                  label: const Text('+ Add / Edit Notification', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                  icon: const Icon(Icons.add, size: 14, color: Colors.white),
+                  label: const Text('+ Add / Edit', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     elevation: 1,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
                 IconButton(
                   icon: const Icon(Icons.close, color: AppColors.textHint),
                   onPressed: () => Navigator.pop(context),
