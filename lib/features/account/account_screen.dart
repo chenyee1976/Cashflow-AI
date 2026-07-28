@@ -19,7 +19,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
   final _mobileCtrl = TextEditingController();
-  final _geminiApiKeyCtrl = TextEditingController(text: SecureStorageService.defaultGeminiApiKey);
+  String _currentGeminiKey = SecureStorageService.defaultGeminiApiKey;
   String _rewardFocus = 'Both';
   String _currency = 'SGD — Singapore Dollar';
 
@@ -49,19 +49,23 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   }
 
   void _loadGeminiKey() async {
-    final storage = ref.read(secureStorageProvider);
-    final key = await storage.getGeminiApiKey();
-    if (key != null) {
-      setState(() {
-        _geminiApiKeyCtrl.text = key;
-      });
+    try {
+      final storage = ref.read(secureStorageProvider);
+      final key = await storage.getGeminiApiKey();
+      if (key != null && key.trim().isNotEmpty && mounted) {
+        setState(() {
+          _currentGeminiKey = key;
+        });
+      }
+    } catch (_) {
+      // flutter_secure_storage can fail on web; keep the default key
     }
   }
 
   void _showGeminiKeyDialog() {
-    final keyCtrl = TextEditingController(text: _geminiApiKeyCtrl.text);
-    final isCustom = _geminiApiKeyCtrl.text.isNotEmpty &&
-        _geminiApiKeyCtrl.text != SecureStorageService.defaultGeminiApiKey;
+    final keyCtrl = TextEditingController(text: _currentGeminiKey);
+    final isCustom = _currentGeminiKey.isNotEmpty &&
+        _currentGeminiKey != SecureStorageService.defaultGeminiApiKey;
 
     showDialog(
       context: context,
@@ -110,7 +114,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 final storage = ref.read(secureStorageProvider);
                 await storage.saveGeminiApiKey('');
                 setState(() {
-                  _geminiApiKeyCtrl.text = SecureStorageService.defaultGeminiApiKey;
+                  _currentGeminiKey = SecureStorageService.defaultGeminiApiKey;
                 });
                 if (mounted) {
                   context.showTopSnackBar('Reset to Default Gemini API Key');
@@ -130,7 +134,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               final storage = ref.read(secureStorageProvider);
               await storage.saveGeminiApiKey(newKey);
               setState(() {
-                _geminiApiKeyCtrl.text = newKey.isNotEmpty ? newKey : SecureStorageService.defaultGeminiApiKey;
+                _currentGeminiKey = newKey.isNotEmpty ? newKey : SecureStorageService.defaultGeminiApiKey;
               });
               if (mounted) {
                 context.showTopSnackBar('Gemini API Key updated successfully');
@@ -171,8 +175,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     _lastNameCtrl.text = data.lastName;
     _mobileCtrl.text = data.mobileNumber;
     _rewardFocus = data.rewardFocus;
-    if (_geminiApiKeyCtrl.text.isEmpty) {
-      _geminiApiKeyCtrl.text = SecureStorageService.defaultGeminiApiKey;
+    if (_currentGeminiKey.isEmpty) {
+      _currentGeminiKey = SecureStorageService.defaultGeminiApiKey;
     }
     _initialized = true;
   }
@@ -247,7 +251,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       rewardFocus: _rewardFocus,
     );
     final storage = ref.read(secureStorageProvider);
-    final keyToSave = _geminiApiKeyCtrl.text.trim();
+    final keyToSave = _currentGeminiKey.trim();
     print('DEBUG Saving key: "$keyToSave"');
     await storage.saveGeminiApiKey(keyToSave);
     final checkKey = await storage.getGeminiApiKey();
@@ -569,16 +573,17 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                         Row(
                           children: [
                             Expanded(
-                              child: TextField(
-                                controller: _geminiApiKeyCtrl,
-                                maxLines: 1,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                                decoration: InputDecoration(
-                                  fillColor: AppColors.white,
-                                  filled: true,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.primary, width: 1.5),
+                                ),
+                                child: SelectableText(
+                                  _currentGeminiKey,
+                                  maxLines: 1,
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                                 ),
                               ),
                             ),
