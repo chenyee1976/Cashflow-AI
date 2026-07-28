@@ -580,9 +580,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(color: AppColors.primary, width: 1.5),
                                 ),
-                                child: SelectableText(
+                                child: Text(
                                   _currentGeminiKey,
                                   maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                                 ),
                               ),
