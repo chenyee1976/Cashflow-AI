@@ -303,47 +303,42 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
           ),
           const Divider(height: 16),
 
-          // Action Bar (Always visible)
+          // Action Bar Button (Always visible & full-width, guaranteed no overflow)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: _isAdminUnlocked ? AppColors.primary.withOpacity(0.08) : AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _isAdminUnlocked ? AppColors.primary.withOpacity(0.3) : AppColors.divider),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _isAdminUnlocked ? Icons.verified_user : Icons.admin_panel_settings_outlined,
-                    color: AppColors.primary,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _isAdminUnlocked ? 'Admin Active 🔒' : 'Admin Controls',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
-                  ),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      if (!_isAdminUnlocked) {
-                        _promptAdminPin();
-                      } else {
-                        _showPublishDialog();
-                      }
-                    },
-                    icon: const Icon(Icons.add_circle_outline, size: 16, color: Colors.white),
-                    label: const Text('+ Publish / Add Notification', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 1,
+            child: InkWell(
+              onTap: () {
+                if (!_isAdminUnlocked) {
+                  _promptAdminPin();
+                } else {
+                  _showPublishDialog();
+                }
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.primary.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _isAdminUnlocked ? Icons.add_circle_outline : Icons.lock_outline,
+                      color: Colors.white,
+                      size: 18,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Text(
+                      _isAdminUnlocked ? '+ Publish / Add New Notification' : 'Admin Mode: Unlock & Add Announcement 🔒',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
