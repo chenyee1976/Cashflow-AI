@@ -272,10 +272,10 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                   child: const Icon(Icons.notifications_outlined, color: AppColors.primary, size: 22),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
                         'App Notifications',
                         style: TextStyle(
@@ -290,30 +290,10 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                           fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    if (!_isAdminUnlocked) {
-                      _promptAdminPin();
-                    } else {
-                      _showPublishDialog();
-                    }
-                  },
-                  icon: const Icon(Icons.add, size: 14, color: Colors.white),
-                  label: const Text('+ Add / Edit', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    elevation: 1,
-                  ),
-                ),
-                const SizedBox(width: 4),
                 IconButton(
                   icon: const Icon(Icons.close, color: AppColors.textHint),
                   onPressed: () => Navigator.pop(context),
@@ -321,43 +301,53 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
               ],
             ),
           ),
-          const Divider(height: 24),
+          const Divider(height: 16),
 
-          // Admin Bar if unlocked
-          if (_isAdminUnlocked) ...[
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          // Action Bar (Always visible)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08),
+                color: _isAdminUnlocked ? AppColors.primary.withOpacity(0.08) : AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                border: Border.all(color: _isAdminUnlocked ? AppColors.primary.withOpacity(0.3) : AppColors.divider),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.verified_user, color: AppColors.primary, size: 18),
+                  Icon(
+                    _isAdminUnlocked ? Icons.verified_user : Icons.admin_panel_settings_outlined,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Admin Mode Active',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  Text(
+                    _isAdminUnlocked ? 'Admin Active 🔒' : 'Admin Controls',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
                   ),
                   const Spacer(),
                   ElevatedButton.icon(
-                    onPressed: _showPublishDialog,
+                    onPressed: () {
+                      if (!_isAdminUnlocked) {
+                        _promptAdminPin();
+                      } else {
+                        _showPublishDialog();
+                      }
+                    },
                     icon: const Icon(Icons.add_circle_outline, size: 16, color: Colors.white),
                     label: const Text('+ Publish / Add Notification', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 2,
+                      elevation: 1,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
-          ],
+          ),
+          const SizedBox(height: 8),
 
           // Notifications List
           Expanded(
