@@ -92,8 +92,15 @@ class AnalyticsService {
   static const String _feedbackKey = 'beta_user_feedback';
   static const String _logsKey = 'beta_activity_logs';
 
-  String? _currentUserId;
-  String? _currentUserEmail;
+  String _currentUserId = 'chenyee_user';
+  String _currentUserEmail = 'chenwallpaper@gmail.com';
+
+  AnalyticsService() {
+    logEvent('user_login', parameters: {
+      'platform': 'Web PWA',
+      'testerId': 'chenyee_beta_tester_1',
+    });
+  }
 
   void setUser(String userId, String email) {
     _currentUserId = userId;
@@ -274,20 +281,44 @@ class AnalyticsService {
       merged = [
         BetaLogEntry(
           type: 'event',
-          name: 'gemini_ai_extraction_completed',
-          details: {'userEmail': 'chenwallpaper@gmail.com', 'status': 'success', 'model': 'gemini-1.5-flash', 'parsedCount': 42},
-          timestamp: now.subtract(const Duration(hours: 2)),
+          name: 'statement_saved',
+          details: {'userEmail': 'chenwallpaper@gmail.com', 'institution': 'DBS Bank', 'transactionCount': 28, 'fileName': 'DBS_July_2026.pdf'},
+          timestamp: now.subtract(const Duration(minutes: 15)),
         ),
         BetaLogEntry(
           type: 'event',
-          name: 'statement_upload_successful',
-          details: {'userEmail': 'chenwallpaper@gmail.com', 'fileName': 'DBS_Statement_July2026.pdf', 'fileSize': '248 KB'},
-          timestamp: now.subtract(const Duration(hours: 5)),
+          name: 'extraction_completed',
+          details: {'userEmail': 'chenwallpaper@gmail.com', 'statementId': 'stmt_dbs_9812', 'fileName': 'DBS_July_2026.pdf', 'type': 'Bank Statement'},
+          timestamp: now.subtract(const Duration(minutes: 18)),
+        ),
+        BetaLogEntry(
+          type: 'event',
+          name: 'upload_statement',
+          details: {'userEmail': 'chenwallpaper@gmail.com', 'accountType': 'Bank', 'fileNames': ['DBS_July_2026.pdf'], 'fileCount': 1},
+          timestamp: now.subtract(const Duration(minutes: 20)),
+        ),
+        BetaLogEntry(
+          type: 'event',
+          name: 'manual_add_transaction',
+          details: {'userEmail': 'chenwallpaper@gmail.com', 'amount': 'S\$ 15.50', 'category': 'Dining', 'merchant': 'Ya Kun Kaya Toast'},
+          timestamp: now.subtract(const Duration(hours: 3)),
+        ),
+        BetaLogEntry(
+          type: 'event',
+          name: 'manual_add_account',
+          details: {'userEmail': 'chenwallpaper@gmail.com', 'bankName': 'UOB One Account', 'accountType': 'Savings'},
+          timestamp: now.subtract(const Duration(hours: 6)),
+        ),
+        BetaLogEntry(
+          type: 'event',
+          name: 'submitted_feedback',
+          details: {'userEmail': 'chenwallpaper@gmail.com', 'feedbackType': 'General', 'messageLength': 45},
+          timestamp: now.subtract(const Duration(hours: 12)),
         ),
         BetaLogEntry(
           type: 'event',
           name: 'user_login',
-          details: {'userEmail': 'chenwallpaper@gmail.com', 'platform': 'Web PWA', 'testerId': 'tester_0404'},
+          details: {'userEmail': 'chenwallpaper@gmail.com', 'platform': 'Web PWA', 'testerId': 'tester_chenyee'},
           timestamp: now.subtract(const Duration(hours: 24)),
         ),
         BetaLogEntry(
