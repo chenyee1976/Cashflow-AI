@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/services/analytics_service.dart';
+import '../notifications/notification_dialog.dart';
 
 class BetaAnalyticsDialog extends ConsumerWidget {
   const BetaAnalyticsDialog({super.key});
@@ -56,6 +57,28 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                     ),
                   ),
                   const Spacer(),
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+                      NotificationDialog.show(context);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.campaign_outlined, size: 14, color: AppColors.primary),
+                          SizedBox(width: 4),
+                          Text('Notifications 📢', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
                   IconButton(
                     icon: const Icon(Icons.close, color: AppColors.textHint),
                     onPressed: () => Navigator.pop(context),

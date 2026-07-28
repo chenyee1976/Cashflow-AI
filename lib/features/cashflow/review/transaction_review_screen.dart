@@ -24,6 +24,7 @@ import '../../rewards/card_rewards_store.dart';
 import '../../../data/services/card_rules_registry.dart';
 import '../../../data/services/user_category_rules_service.dart';
 import '../../../data/services/merchant_category_classifier.dart';
+import '../../../data/services/analytics_service.dart';
 
 class ExtractedAccountItem {
   final TextEditingController bankCtrl;
@@ -661,6 +662,9 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
         ),
       );
     });
+    try {
+      ref.read(analyticsServiceProvider).logEvent('manual_add_account');
+    } catch (_) {}
   }
 
   void _removeAccount(int index) {
@@ -704,6 +708,9 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
         ),
       );
     });
+    try {
+      ref.read(analyticsServiceProvider).logEvent('manual_add_transaction');
+    } catch (_) {}
   }
 
   Future<void> _selectDate(BuildContext context, ExtractedAccountItem acc) async {
@@ -1146,6 +1153,17 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
       // ── Step 6: Delete draft ONLY after everything succeeded ──
       await DraftStatementService.deleteDraft(statementId);
 
+      // Log successful save to analytics
+      try {
+        final analytics = ref.read(analyticsServiceProvider);
+        analytics.logEvent('statement_saved', parameters: {
+          'type': widget.fileType,
+          'fileName': widget.fileName,
+          'institution': bankOrCardName,
+          'transactionCount': insertedCount,
+        });
+      } catch (_) {}
+
       context.showTopSnackBar('Saved $insertedCount transactions successfully!');
 
       ref.invalidate(cashFlowScreenProvider);
@@ -1157,6 +1175,13 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
       context.pop();
     } catch (e) {
       debugPrint('DB Transaction Failed: $e');
+
+      // Log error to analytics
+      try {
+        final analytics = ref.read(analyticsServiceProvider);
+        analytics.logError('statement_save_error', '$e');
+      } catch (_) {}
+
       context.showTopSnackBar('Error saving statement data: $e', isError: true);
     }
   }

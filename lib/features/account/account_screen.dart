@@ -19,7 +19,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
   final _mobileCtrl = TextEditingController();
-  final _geminiApiKeyCtrl = TextEditingController();
+  final _geminiApiKeyCtrl = TextEditingController(text: SecureStorageService.defaultGeminiApiKey);
   String _rewardFocus = 'Both';
   String _currency = 'SGD — Singapore Dollar';
 
@@ -58,6 +58,92 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     }
   }
 
+  void _showGeminiKeyDialog() {
+    final keyCtrl = TextEditingController(text: _geminiApiKeyCtrl.text);
+    final isCustom = _geminiApiKeyCtrl.text.isNotEmpty &&
+        _geminiApiKeyCtrl.text != SecureStorageService.defaultGeminiApiKey;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Row(
+          children: [
+            Icon(Icons.vpn_key_outlined, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('Gemini API Key Settings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your personal Gemini API key or use the shared default key for statement extraction:',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: keyCtrl,
+              decoration: InputDecoration(
+                hintText: 'Enter Gemini API Key',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isCustom ? 'Active Status: Using Personal Custom API Key' : 'Active Status: Using Shared Default API Key (AQ.Ab8RN...)',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: isCustom ? AppColors.primary : AppColors.success,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          if (isCustom) ...[
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final storage = ref.read(secureStorageProvider);
+                await storage.saveGeminiApiKey('');
+                setState(() {
+                  _geminiApiKeyCtrl.text = SecureStorageService.defaultGeminiApiKey;
+                });
+                if (mounted) {
+                  context.showTopSnackBar('Reset to Default Gemini API Key');
+                }
+              },
+              child: const Text('Reset to Default', style: TextStyle(color: AppColors.error)),
+            ),
+          ],
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newKey = keyCtrl.text.trim();
+              Navigator.pop(ctx);
+              final storage = ref.read(secureStorageProvider);
+              await storage.saveGeminiApiKey(newKey);
+              setState(() {
+                _geminiApiKeyCtrl.text = newKey.isNotEmpty ? newKey : SecureStorageService.defaultGeminiApiKey;
+              });
+              if (mounted) {
+                context.showTopSnackBar('Gemini API Key updated successfully');
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Save Key', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _loadBillingCard() async {
     final storage = ref.read(secureStorageProvider);
     final card = await storage.getBillingCard();
@@ -85,6 +171,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     _lastNameCtrl.text = data.lastName;
     _mobileCtrl.text = data.mobileNumber;
     _rewardFocus = data.rewardFocus;
+    if (_geminiApiKeyCtrl.text.isEmpty) {
+      _geminiApiKeyCtrl.text = SecureStorageService.defaultGeminiApiKey;
+    }
     _initialized = true;
   }
 
@@ -475,9 +564,37 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           onChanged: (val) => setState(() => _currency = val!),
                         ),
                         const SizedBox(height: 16),
-                        const Text('Gemini API Key (for real-time statement AI extraction)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Gemini API Key (for statement AI extraction)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('Active', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.success)),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 6),
-                        _buildTextField(_geminiApiKeyCtrl),
+                        Row(
+                          children: [
+                            Expanded(child: _buildTextField(_geminiApiKeyCtrl)),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              onPressed: _showGeminiKeyDialog,
+                              icon: const Icon(Icons.edit, size: 14, color: AppColors.primary),
+                              label: const Text('Amend / Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: AppColors.primary),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

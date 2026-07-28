@@ -69,25 +69,34 @@ class GoogleAuthService {
   }
 
   Future<GoogleAuthResult> _mockSignIn() async {
-    const userId = 'chenyee_user';
+    String? existingUserId = await _storage.getUserId();
+    String? existingEmail = await _storage.getGoogleEmail();
+
+    final userId = (existingUserId != null && existingUserId.isNotEmpty)
+        ? existingUserId
+        : 'tester_${const Uuid().v4().substring(0, 8)}';
+
+    final email = (existingEmail != null && existingEmail.isNotEmpty)
+        ? existingEmail
+        : 'tester_${userId.substring(userId.length > 8 ? userId.length - 8 : 0)}@beta.cashflow.ai';
+
     final user = await _db.getUserById(userId);
     final statements = await _db.getStatementsByUser(userId);
     final bankAccounts = await _db.getBankAccountsByUser(userId);
     final creditCards = await _db.getCreditCardsByUser(userId);
     final onboardingComplete = await _storage.isOnboardingComplete();
     
-    // User is an existing account if DB user record exists, statements/accounts/cards exist, or onboarding was completed
     final isExistingAccount = user != null || statements.isNotEmpty || bankAccounts.isNotEmpty || creditCards.isNotEmpty || onboardingComplete;
     final isNewUser = !isExistingAccount;
 
     if (user == null) {
       final companion = UsersCompanion.insert(
         id: userId,
-        firstName: 'Chen Yee',
-        lastName: 'Tok',
-        email: 'chenwallpaper@gmail.com',
-        googleId: 'google_mock_12345',
-        displayName: const Value('Tok Chen Yee'),
+        firstName: 'Beta',
+        lastName: 'Tester',
+        email: email,
+        googleId: 'google_$userId',
+        displayName: Value('Beta Tester ($email)'),
         photoUrl: const Value(''),
         createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
         lastLoginAt: Value(DateTime.now().millisecondsSinceEpoch ~/ 1000),
@@ -102,25 +111,24 @@ class GoogleAuthService {
     }
     await _storage.saveGoogleUser(
       userId: userId,
-      googleId: 'google_mock_12345',
-      email: 'chenwallpaper@gmail.com',
+      googleId: 'google_$userId',
+      email: email,
     );
     await _storage.saveSessionExpiry(
       DateTime.now().add(const Duration(days: 30)),
     );
 
-    // If existing account, ensure onboarding is marked complete
     if (isExistingAccount) {
       await _storage.setOnboardingComplete();
     }
 
-    _analytics.setUser(userId, 'chenwallpaper@gmail.com');
+    _analytics.setUser(userId, email);
 
     return GoogleAuthResult(
       userId: userId,
       isNewUser: isNewUser,
-      displayName: user?.displayName ?? 'Tok Chen Yee',
-      email: user?.email ?? 'chenwallpaper@gmail.com',
+      displayName: user?.displayName ?? 'Beta Tester ($email)',
+      email: email,
     );
   }
 

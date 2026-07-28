@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/app_header_brand.dart';
+import '../../../data/services/analytics_service.dart';
 import 'upload_provider.dart';
 
 class UploadScreen extends ConsumerStatefulWidget {
@@ -476,6 +477,16 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
       }
 
       if (result != null && result.files.isNotEmpty) {
+        // Log upload activity
+        try {
+          final analytics = ref.read(analyticsServiceProvider);
+          analytics.logEvent('upload_statement', parameters: {
+            'type': type,
+            'fileCount': result.files.length,
+            'fileNames': result.files.map((f) => f.name).join(', '),
+          });
+        } catch (_) {}
+
         setState(() {
           _statusBannerMessage = 'AI extraction in progress, pls wait';
           _isSuccess = false;
@@ -536,6 +547,17 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         }
 
         notifier.setUploading(false);
+
+        // Log successful extraction
+        try {
+          final analytics = ref.read(analyticsServiceProvider);
+          analytics.logEvent('extraction_completed', parameters: {
+            'type': type,
+            'statementId': firstStatementId ?? 'unknown',
+            'fileName': firstFileName ?? 'unknown',
+          });
+        } catch (_) {}
+
         setState(() {
           _statusBannerMessage = 'AI extraction completed, pls review the extraction data';
           _isSuccess = true;

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
 
 final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
   return AnalyticsService();
@@ -48,7 +49,9 @@ class BetaFeedbackEntry {
         userEmail: json['userEmail'] as String? ?? '',
         feedbackType: json['feedbackType'] as String? ?? 'General',
         message: json['message'] as String? ?? '',
-        timestamp: DateTime.parse(json['timestamp'] as String),
+        timestamp: json['timestamp'] != null
+            ? DateTime.parse(json['timestamp'] as String)
+            : DateTime.now(),
         platform: json['platform'] as String? ?? 'Web',
         attachmentName: json['attachmentName'] as String?,
         attachmentBase64: json['attachmentBase64'] as String?,
@@ -79,13 +82,15 @@ class BetaLogEntry {
         type: json['type'] as String? ?? 'event',
         name: json['name'] as String? ?? '',
         details: json['details'] as Map<String, dynamic>?,
-        timestamp: DateTime.parse(json['timestamp'] as String),
+        timestamp: json['timestamp'] != null
+            ? DateTime.parse(json['timestamp'] as String)
+            : DateTime.now(),
       );
 }
 
 class AnalyticsService {
-  static const String _logsKey = 'beta_analytics_logs';
-  static const String _feedbackKey = 'beta_feedback_entries';
+  static const String _feedbackKey = 'beta_user_feedback';
+  static const String _logsKey = 'beta_activity_logs';
 
   String? _currentUserId;
   String? _currentUserEmail;
@@ -97,6 +102,17 @@ class AnalyticsService {
       'userId': userId,
       'email': email,
     });
+  }
+
+  Future<void> _postCentral(String path, Map<String, dynamic> payload) async {
+    try {
+      final dio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 4),
+        receiveTimeout: const Duration(seconds: 4),
+      ));
+      final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
+      await dio.post('$baseUrl$path', data: payload);
+    } catch (_) {}
   }
 
   /// Log user activity or feature action
@@ -116,6 +132,7 @@ class AnalyticsService {
       print('📊 [BETA ANALYTICS EVENT] $eventName: ${entry.details}');
     }
     await _saveLogEntry(entry);
+    _postCentral('/api/logs', entry.toJson());
   }
 
   /// Log error or exception caught during app execution
@@ -137,6 +154,7 @@ class AnalyticsService {
       print('🔴 [BETA ERROR LOG] $errorName: $error');
     }
     await _saveLogEntry(entry);
+    _postCentral('/api/logs', entry.toJson());
   }
 
   /// Save user feedback
@@ -169,6 +187,8 @@ class AnalyticsService {
     rawList.add(jsonEncode(feedback.toJson()));
     await prefs.setStringList(_feedbackKey, rawList);
 
+    _postCentral('/api/feedback', feedback.toJson());
+
     // Also log feedback action to analytics
     await logEvent('submitted_feedback', parameters: {
       'feedbackType': feedbackType,
@@ -180,25 +200,78 @@ class AnalyticsService {
   Future<List<BetaFeedbackEntry>> getSubmittedFeedback() async {
     final prefs = await SharedPreferences.getInstance();
     final rawList = prefs.getStringList(_feedbackKey) ?? [];
-    return rawList.map((str) {
+    final localList = rawList.map((str) {
       return BetaFeedbackEntry.fromJson(jsonDecode(str) as Map<String, dynamic>);
     }).toList();
+
+    try {
+      final dio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 4),
+        receiveTimeout: const Duration(seconds: 4),
+      ));
+      final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
+      final res = await dio.get('$baseUrl/api/feedback');
+      if (res.statusCode == 200 && res.data is List) {
+        final serverList = (res.data as List)
+            .map((e) => BetaFeedbackEntry.fromJson(e as Map<String, dynamic>))
+            .toList();
+        
+        final map = <String, BetaFeedbackEntry>{};
+        for (final item in localList) {
+          map[item.id] = item;
+        }
+        for (final item in serverList) {
+          map[item.id] = item;
+        }
+        final merged = map.values.toList();
+        merged.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        return merged;
+      }
+    } catch (_) {}
+
+    return localList;
   }
 
   /// Get stored event/error logs
   Future<List<BetaLogEntry>> getLogs() async {
     final prefs = await SharedPreferences.getInstance();
     final rawList = prefs.getStringList(_logsKey) ?? [];
-    return rawList.map((str) {
+    final localList = rawList.map((str) {
       return BetaLogEntry.fromJson(jsonDecode(str) as Map<String, dynamic>);
     }).toList();
+
+    try {
+      final dio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 4),
+        receiveTimeout: const Duration(seconds: 4),
+      ));
+      final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
+      final res = await dio.get('$baseUrl/api/logs');
+      if (res.statusCode == 200 && res.data is List) {
+        final serverList = (res.data as List)
+            .map((e) => BetaLogEntry.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+        final map = <String, BetaLogEntry>{};
+        for (final item in localList) {
+          map['${item.name}_${item.timestamp.millisecondsSinceEpoch}'] = item;
+        }
+        for (final item in serverList) {
+          map['${item.name}_${item.timestamp.millisecondsSinceEpoch}'] = item;
+        }
+        final merged = map.values.toList();
+        merged.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        return merged;
+      }
+    } catch (_) {}
+
+    return localList;
   }
 
   Future<void> _saveLogEntry(BetaLogEntry entry) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final rawList = prefs.getStringList(_logsKey) ?? [];
-      // Keep max 200 logs to prevent memory overflow
       if (rawList.length >= 200) {
         rawList.removeAt(0);
       }

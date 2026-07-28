@@ -45,7 +45,7 @@ class _BetaFeedbackDialogState extends ConsumerState<BetaFeedbackDialog> {
 
   void _loadUserEmail() async {
     final storage = ref.read(secureStorageProvider);
-    final savedEmail = await storage.getGoogleId();
+    final savedEmail = await storage.getGoogleEmail();
     if (savedEmail != null && savedEmail.contains('@')) {
       setState(() {
         _emailController.text = savedEmail;

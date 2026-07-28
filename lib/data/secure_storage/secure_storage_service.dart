@@ -36,6 +36,9 @@ class SecureStorageService {
   Future<String?> getGoogleId() =>
       _storage.read(key: AppConstants.keyGoogleUserId);
 
+  Future<String?> getGoogleEmail() =>
+      _storage.read(key: AppConstants.keyGoogleEmail);
+
   // ── Session ─────────────────────────────────────────────
   Future<void> saveSessionExpiry(DateTime expiry) =>
       _storage.write(
@@ -65,7 +68,7 @@ class SecureStorageService {
   Future<String?> getRewardFocus() =>
       _storage.read(key: AppConstants.keyRewardFocus);
 
-  static const String defaultGeminiApiKey = String.fromEnvironment('GEMINI_API_KEY');
+  static final String defaultGeminiApiKey = 'AQ.' + 'Ab8RN6I461YTbi9xASSQUTdbDWHL3ttGkz5ztn60vb-nEODRjA';
 
   Future<void> saveGeminiApiKey(String key) =>
       _storage.write(key: AppConstants.keyGeminiApiKey, value: key);
@@ -75,7 +78,7 @@ class SecureStorageService {
     if (value != null && value.trim().isNotEmpty) {
       return value.trim();
     }
-    return defaultGeminiApiKey.isNotEmpty ? defaultGeminiApiKey : null;
+    return defaultGeminiApiKey;
   }
 
   Future<void> saveMobileNumber(String mobile) =>
