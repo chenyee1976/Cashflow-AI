@@ -240,6 +240,8 @@ class AnalyticsService {
       return BetaLogEntry.fromJson(jsonDecode(str) as Map<String, dynamic>);
     }).toList();
 
+    List<BetaLogEntry> merged = [];
+
     try {
       final dio = Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 4),
