@@ -5,20 +5,131 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:html' as html;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/category_enum.dart';
+import '../../core/utils/snackbar_utils.dart';
 import '../../shared/widgets/app_header_brand.dart';
+import '../../data/services/analytics_service.dart';
 import 'dashboard_provider.dart';
 import '../cashflow/statement/cashflow_provider.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
 import '../../data/database/app_database.dart';
 import '../../data/services/gemini_extraction_service.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkBetaTesterOnboarding();
+    });
+  }
+
+  void _checkBetaTesterOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isRegistered = prefs.getBool('beta_tester_onboarded') ?? false;
+
+    if (!isRegistered && mounted) {
+      final firstNameCtrl = TextEditingController(text: 'Chen Yee');
+      final lastNameCtrl = TextEditingController(text: 'Tok');
+      final emailCtrl = TextEditingController(text: 'chenwallpaper@gmail.com');
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.badge_outlined, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text('Welcome Beta Tester! 🚀', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Please confirm your name and email address so your testing feedback and activity logs are identified correctly.',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: firstNameCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'First Name',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: lastNameCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Last Name',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email Address',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () async {
+                final fName = firstNameCtrl.text.trim();
+                final lName = lastNameCtrl.text.trim();
+                final email = emailCtrl.text.trim();
+
+                if (email.isEmpty) {
+                  context.showTopSnackBar('Please enter your email address', isError: true);
+                  return;
+                }
+
+                Navigator.pop(ctx);
+                await prefs.setBool('beta_tester_onboarded', true);
+
+                final analytics = ref.read(analyticsServiceProvider);
+                final userId = 'tester_${email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+                analytics.setUser(userId, email);
+                analytics.logEvent('beta_tester_registered', parameters: {
+                  'firstName': fName,
+                  'lastName': lName,
+                  'email': email,
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Start Testing 🚀', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final userAsync = ref.watch(userProfileProvider);
     final cashAsync = ref.watch(cashPositionProvider);
     final incomeAsync = ref.watch(monthlyIncomeProvider);

@@ -219,7 +219,7 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                         itemCount: logs.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
-                          final log = logs[logs.length - 1 - index]; // newest first
+                          final log = logs[index]; // newest first
                           final isError = log.type == 'error';
                           return Container(
                             padding: const EdgeInsets.all(12),
@@ -252,8 +252,8 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                                       ),
                                     ),
                                     Text(
-                                      DateFormat('HH:mm:ss').format(log.timestamp),
-                                      style: const TextStyle(fontSize: 10, color: AppColors.textHint),
+                                      DateFormat('dd MMM, HH:mm:ss').format(log.timestamp),
+                                      style: const TextStyle(fontSize: 11, color: AppColors.textHint, fontWeight: FontWeight.w500),
                                     ),
                                   ],
                                 ),
