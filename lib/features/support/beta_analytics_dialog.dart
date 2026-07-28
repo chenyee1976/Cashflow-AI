@@ -198,15 +198,15 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                     },
                   ),
 
-                  // Tab 2: Activity & Error Logs
+                  // Tab 2: Activity & Error Logs (Grouped by User with Collapsible Accordions)
                   FutureBuilder<List<BetaLogEntry>>(
                     future: analytics.getLogs(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
-                      final logs = snapshot.data ?? [];
-                      if (logs.isEmpty) {
+                      final rawLogs = snapshot.data ?? [];
+                      if (rawLogs.isEmpty) {
                         return const Center(
                           child: Text(
                             'No activity logs recorded yet.',
@@ -214,59 +214,122 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                           ),
                         );
                       }
+
+                      // Group logs by User Email
+                      final grouped = <String, List<BetaLogEntry>>{};
+                      for (final log in rawLogs) {
+                        final email = (log.details?['userEmail'] as String?)?.isNotEmpty == true
+                            ? log.details!['userEmail'] as String
+                            : ((log.details?['email'] as String?)?.isNotEmpty == true
+                                ? log.details!['email'] as String
+                                : 'chenwallpaper@gmail.com');
+                        grouped.putIfAbsent(email, () => []).add(log);
+                      }
+
+                      // Sort each user's log list reverse-chronologically (newest first)
+                      for (final list in grouped.values) {
+                        list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+                      }
+
+                      // Sort user keys by their latest active timestamp (most recently active user at top)
+                      final sortedUserEmails = grouped.keys.toList()
+                        ..sort((a, b) {
+                          final latestA = grouped[a]!.first.timestamp;
+                          final latestB = grouped[b]!.first.timestamp;
+                          return latestB.compareTo(latestA);
+                        });
+
                       return ListView.separated(
                         padding: const EdgeInsets.all(16),
-                        itemCount: logs.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final log = logs[index]; // newest first
-                          final isError = log.type == 'error';
-                          return Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isError ? AppColors.error.withOpacity(0.05) : AppColors.background,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isError ? AppColors.error.withOpacity(0.3) : AppColors.divider,
-                              ),
+                        itemCount: sortedUserEmails.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, groupIndex) {
+                          final email = sortedUserEmails[groupIndex];
+                          final userLogs = grouped[email]!;
+                          final latestTime = userLogs.first.timestamp;
+
+                          return Card(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: BorderSide(color: AppColors.primary.withOpacity(0.2)),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      isError ? Icons.error_outline : Icons.check_circle_outline,
-                                      size: 16,
-                                      color: isError ? AppColors.error : AppColors.success,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        log.name,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                          color: isError ? AppColors.error : AppColors.textPrimary,
-                                        ),
+                            color: AppColors.surface,
+                            clipBehavior: Clip.antiAlias,
+                            child: Theme(
+                              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                              child: ExpansionTile(
+                                initiallyExpanded: groupIndex == 0,
+                                leading: CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: AppColors.primary,
+                                  child: Text(
+                                    email.substring(0, 1).toUpperCase(),
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ),
+                                title: Text(
+                                  email,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                ),
+                                subtitle: Text(
+                                  '${userLogs.length} events · Last active ${DateFormat('dd MMM, HH:mm:ss').format(latestTime)}',
+                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                ),
+                                childrenPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                children: userLogs.map((log) {
+                                  final isError = log.type == 'error';
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: isError ? AppColors.error.withOpacity(0.05) : AppColors.background,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: isError ? AppColors.error.withOpacity(0.3) : AppColors.divider,
                                       ),
                                     ),
-                                    Text(
-                                      DateFormat('dd MMM, HH:mm:ss').format(log.timestamp),
-                                      style: const TextStyle(fontSize: 11, color: AppColors.textHint, fontWeight: FontWeight.w500),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              isError ? Icons.error_outline : Icons.check_circle_outline,
+                                              size: 16,
+                                              color: isError ? AppColors.error : AppColors.success,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                log.name,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isError ? AppColors.error : AppColors.textPrimary,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              DateFormat('dd MMM, HH:mm:ss').format(log.timestamp),
+                                              style: const TextStyle(fontSize: 11, color: AppColors.textHint, fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                        if (log.details != null && log.details!.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            log.details.toString(),
+                                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                            maxLines: 3,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ],
                                     ),
-                                  ],
-                                ),
-                                if (log.details != null && log.details!.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    log.details.toString(),
-                                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ],
+                                  );
+                                }).toList(),
+                              ),
                             ),
                           );
                         },
