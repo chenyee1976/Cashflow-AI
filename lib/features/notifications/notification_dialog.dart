@@ -94,7 +94,8 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
               if (pin == '0404') {
                 Navigator.pop(ctx);
                 setState(() => _isAdminUnlocked = true);
-                context.showTopSnackBar('Admin mode unlocked! You can now publish or delete notifications 🔒');
+                context.showTopSnackBar('Admin mode unlocked! 🔒');
+                _showPublishDialog();
               } else {
                 context.showTopSnackBar('Incorrect Admin PIN', isError: true);
               }
@@ -292,43 +293,24 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                   ],
                 ),
                 const Spacer(),
-                if (!_isAdminUnlocked) ...[
-                  InkWell(
-                    onTap: _promptAdminPin,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.lock_outline, size: 13, color: AppColors.primary),
-                          SizedBox(width: 4),
-                          Text(
-                            'Admin 🔒',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
-                          ),
-                        ],
-                      ),
-                    ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    if (!_isAdminUnlocked) {
+                      _promptAdminPin();
+                    } else {
+                      _showPublishDialog();
+                    }
+                  },
+                  icon: const Icon(Icons.add_circle_outline, size: 16, color: Colors.white),
+                  label: const Text('+ Add / Edit Notification', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    elevation: 1,
                   ),
-                  const SizedBox(width: 8),
-                ] else ...[
-                  ElevatedButton.icon(
-                    onPressed: _showPublishDialog,
-                    icon: const Icon(Icons.add, size: 16, color: Colors.white),
-                    label: const Text('+ Publish New', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 0,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
+                ),
+                const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.close, color: AppColors.textHint),
                   onPressed: () => Navigator.pop(context),
