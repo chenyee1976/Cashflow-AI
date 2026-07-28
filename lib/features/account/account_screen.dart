@@ -564,51 +564,33 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           onChanged: (val) => setState(() => _currency = val!),
                         ),
                         const SizedBox(height: 16),
+                        const Text('Gemini API Key (for statement AI extraction)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                        const SizedBox(height: 6),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Gemini API Key (for statement AI extraction)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: AppColors.success.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(6),
+                            Expanded(
+                              child: TextField(
+                                controller: _geminiApiKeyCtrl,
+                                maxLines: 1,
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                decoration: InputDecoration(
+                                  fillColor: AppColors.white,
+                                  filled: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                                ),
                               ),
-                              child: const Text('● Shared Key Active', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.success)),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _geminiApiKeyCtrl,
-                          maxLines: 1,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                          decoration: InputDecoration(
-                            fillColor: AppColors.white,
-                            filled: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
+                            const SizedBox(width: 10),
                             ElevatedButton.icon(
                               onPressed: _showGeminiKeyDialog,
-                              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
-                              label: const Text('Amend / Change API Key', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+                              icon: const Icon(Icons.edit, size: 14, color: Colors.white),
+                              label: const Text('Amend / Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Text(
-                                'Pre-configured key active for all 20 beta testers. Click Amend to use custom key.',
-                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                               ),
                             ),
                           ],
