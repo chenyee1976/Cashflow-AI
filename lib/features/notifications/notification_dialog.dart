@@ -359,12 +359,13 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                   const Spacer(),
                   ElevatedButton.icon(
                     onPressed: _showPublishDialog,
-                    icon: const Icon(Icons.add, size: 16, color: Colors.white),
-                    label: const Text('+ Publish New', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                    icon: const Icon(Icons.add_circle_outline, size: 16, color: Colors.white),
+                    label: const Text('+ Publish / Add Notification', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 2,
                     ),
                   ),
                 ],
