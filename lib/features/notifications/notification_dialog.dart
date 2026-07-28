@@ -40,6 +40,7 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
     setState(() => _isLoading = true);
     final service = ref.read(notificationServiceProvider);
     final list = await service.getNotifications();
+    list.sort((a, b) => b.publishedAt.compareTo(a.publishedAt)); // newest first
     if (mounted) {
       setState(() {
         _notifications = list;

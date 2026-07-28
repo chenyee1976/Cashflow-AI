@@ -199,7 +199,7 @@ class NotificationService {
           id: 'welcome_beta_1',
           title: '🚀 Welcome to SGCashFlowAI Beta!',
           message: 'Thank you for testing CashFlow AI! You can upload your MariBank, DBS, UOB, OCBC, Citi bank and credit card statements to analyze your cashflow, card rewards, and expense tracking.',
-          publishedAt: DateTime.now(),
+          publishedAt: DateTime(2026, 7, 1, 9, 0),
           author: 'SGCashFlowAI Team',
         )
       ];
