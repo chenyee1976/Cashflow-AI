@@ -19,7 +19,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
   final _mobileCtrl = TextEditingController();
-  final _geminiApiKeyCtrl = TextEditingController(text: SecureStorageService.defaultGeminiApiKey);
+  String _currentGeminiKey = SecureStorageService.defaultGeminiApiKey;
   String _rewardFocus = 'Both';
   String _currency = 'SGD — Singapore Dollar';
 
@@ -53,15 +53,15 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final key = await storage.getGeminiApiKey();
     if (key != null && key.trim().isNotEmpty && mounted) {
       setState(() {
-        _geminiApiKeyCtrl.text = key.trim();
+        _currentGeminiKey = key.trim();
       });
     }
   }
 
   void _showGeminiKeyDialog() {
-    final keyCtrl = TextEditingController(text: _geminiApiKeyCtrl.text);
-    final isCustom = _geminiApiKeyCtrl.text.isNotEmpty &&
-        _geminiApiKeyCtrl.text != SecureStorageService.defaultGeminiApiKey;
+    final keyCtrl = TextEditingController(text: _currentGeminiKey);
+    final isCustom = _currentGeminiKey.isNotEmpty &&
+        _currentGeminiKey != SecureStorageService.defaultGeminiApiKey;
 
     showDialog(
       context: context,
@@ -110,7 +110,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 final storage = ref.read(secureStorageProvider);
                 await storage.saveGeminiApiKey('');
                 setState(() {
-                  _geminiApiKeyCtrl.text = SecureStorageService.defaultGeminiApiKey;
+                  _currentGeminiKey = SecureStorageService.defaultGeminiApiKey;
                 });
                 if (mounted) {
                   context.showTopSnackBar('Reset to Default Gemini API Key');
@@ -130,7 +130,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               final storage = ref.read(secureStorageProvider);
               await storage.saveGeminiApiKey(newKey);
               setState(() {
-                _geminiApiKeyCtrl.text = newKey.isNotEmpty ? newKey : SecureStorageService.defaultGeminiApiKey;
+                _currentGeminiKey = newKey.isNotEmpty ? newKey : SecureStorageService.defaultGeminiApiKey;
               });
               if (mounted) {
                 context.showTopSnackBar('Gemini API Key updated successfully');
@@ -171,8 +171,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     _lastNameCtrl.text = data.lastName;
     _mobileCtrl.text = data.mobileNumber;
     _rewardFocus = data.rewardFocus;
-    if (_geminiApiKeyCtrl.text.isEmpty) {
-      _geminiApiKeyCtrl.text = SecureStorageService.defaultGeminiApiKey;
+    if (_currentGeminiKey.isEmpty) {
+      _currentGeminiKey = SecureStorageService.defaultGeminiApiKey;
     }
     _initialized = true;
   }
@@ -247,7 +247,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       rewardFocus: _rewardFocus,
     );
     final storage = ref.read(secureStorageProvider);
-    final keyToSave = _geminiApiKeyCtrl.text.trim();
+    final keyToSave = _currentGeminiKey.trim();
     print('DEBUG Saving key: "$keyToSave"');
     await storage.saveGeminiApiKey(keyToSave);
     final checkKey = await storage.getGeminiApiKey();
@@ -566,34 +566,49 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                         const SizedBox(height: 16),
                         const Text('Gemini API Key (for statement AI extraction)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                         const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _geminiApiKeyCtrl,
-                                enabled: true,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                                decoration: InputDecoration(
-                                  fillColor: AppColors.white,
-                                  filled: true,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.divider)),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.divider)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 1.5),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.key, color: AppColors.primary, size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _currentGeminiKey == SecureStorageService.defaultGeminiApiKey ? 'Shared Beta Key Active' : 'Custom User Key Active',
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _currentGeminiKey == SecureStorageService.defaultGeminiApiKey ? AppColors.primary : AppColors.success),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _currentGeminiKey,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            ElevatedButton.icon(
-                              onPressed: _showGeminiKeyDialog,
-                              icon: const Icon(Icons.edit, size: 14, color: Colors.white),
-                              label: const Text('Amend / Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              const SizedBox(width: 10),
+                              ElevatedButton.icon(
+                                onPressed: _showGeminiKeyDialog,
+                                icon: const Icon(Icons.edit, size: 14, color: Colors.white),
+                                label: const Text('Amend / Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  elevation: 1,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
