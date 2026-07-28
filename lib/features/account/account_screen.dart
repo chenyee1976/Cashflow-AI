@@ -567,45 +567,49 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                         const Text('Gemini API Key (for statement AI extraction)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                         const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: AppColors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 1.5),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.primary, width: 1.5),
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.key, color: AppColors.primary, size: 18),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _currentGeminiKey == SecureStorageService.defaultGeminiApiKey ? 'Shared Beta Key Active' : 'Custom User Key Active',
-                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _currentGeminiKey == SecureStorageService.defaultGeminiApiKey ? AppColors.primary : AppColors.success),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.key, color: AppColors.primary, size: 18),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _currentGeminiKey == SecureStorageService.defaultGeminiApiKey ? 'Shared Beta Key Active' : 'Custom User Key Active',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: _currentGeminiKey == SecureStorageService.defaultGeminiApiKey ? AppColors.primary : AppColors.success,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  ElevatedButton.icon(
+                                    onPressed: _showGeminiKeyDialog,
+                                    icon: const Icon(Icons.edit, size: 14, color: Colors.white),
+                                    label: const Text('Amend / Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      elevation: 1,
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _currentGeminiKey,
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 10),
-                              ElevatedButton.icon(
-                                onPressed: _showGeminiKeyDialog,
-                                icon: const Icon(Icons.edit, size: 14, color: Colors.white),
-                                label: const Text('Amend / Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  elevation: 1,
-                                ),
+                              const SizedBox(height: 8),
+                              SelectableText(
+                                _currentGeminiKey.isNotEmpty ? _currentGeminiKey : SecureStorageService.defaultGeminiApiKey,
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                               ),
                             ],
                           ),
