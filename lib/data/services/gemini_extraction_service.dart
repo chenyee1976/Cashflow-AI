@@ -112,12 +112,29 @@ You MUST return a raw JSON object containing precisely the following format:
       ])
     ];
 
-    // 4. Send request
-    final response = await model.generateContent(prompt);
-    final text = response.text;
-    if (text == null || text.isEmpty) {
-      throw Exception('Gemini API returned empty response');
+    // 4. Send request with multi-model fallback strategy
+    final modelNames = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-1.5-pro'];
+    GenerateContentResponse? response;
+    Object? lastErr;
+
+    for (final mName in modelNames) {
+      try {
+        final model = GenerativeModel(model: mName, apiKey: _apiKey);
+        response = await model.generateContent(prompt);
+        if (response.text != null && response.text!.isNotEmpty) {
+          print('Successfully extracted using Gemini model: $mName');
+          break;
+        }
+      } catch (e) {
+        lastErr = e;
+        print('DEBUG Gemini model $mName failed: $e');
+      }
     }
+
+    if (response == null || response.text == null || response.text!.isEmpty) {
+      throw Exception('Gemini API extraction failed across models. Last error: $lastErr');
+    }
+    final text = response.text!;
 
     // 5. Decode JSON and map to target structures
     String cleanText = text.trim();

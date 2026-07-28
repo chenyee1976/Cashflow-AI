@@ -123,11 +123,15 @@ class UploadNotifier extends StateNotifier<UploadState> {
     final userId = await storage.getUserId() ?? 'chenyee_user';
     final statementId = const Uuid().v4();
 
-    final geminiKey = await storage.getGeminiApiKey();
-    print('DEBUG addStatementDraft: key="${geminiKey != null ? 'PRESENT' : 'NULL'}", keyLength=${geminiKey?.length}, fileBytesLen=${fileBytes?.length}');
+    final rawKey = await storage.getGeminiApiKey();
+    final geminiKey = (rawKey != null && rawKey.trim().isNotEmpty)
+        ? rawKey.trim()
+        : SecureStorageService.defaultGeminiApiKey;
+
+    print('DEBUG addStatementDraft: keyLength=${geminiKey.length}, fileBytesLen=${fileBytes?.length}');
     DraftStatementData? draftData;
 
-    if (geminiKey != null && geminiKey.trim().isNotEmpty && fileBytes != null) {
+    if (fileBytes != null) {
       try {
         String mimeType = 'image/png';
         if (fileName.toLowerCase().endsWith('.pdf')) {
@@ -135,12 +139,12 @@ class UploadNotifier extends StateNotifier<UploadState> {
         } else if (fileName.toLowerCase().endsWith('.jpg') || fileName.toLowerCase().endsWith('.jpeg')) {
           mimeType = 'image/jpeg';
         }
-        final service = GeminiExtractionService(geminiKey.trim());
+        final service = GeminiExtractionService(geminiKey);
         draftData = await service.extractData(fileBytes: fileBytes, mimeType: mimeType);
         print('Real-time Gemini AI extraction succeeded!');
       } catch (e) {
         print('Real-time Gemini extraction failed: $e');
-        throw Exception('Gemini AI extraction failed or is running in offline/mock mode. Please check your Gemini API key in Account preferences.');
+        throw Exception('Gemini AI extraction failed: $e');
       }
     }
 
