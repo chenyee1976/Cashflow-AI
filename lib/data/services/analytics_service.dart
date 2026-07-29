@@ -111,7 +111,19 @@ class AnalyticsService {
     });
   }
 
+  Future<bool> _isAnalyticsAllowed() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('allow_ai_analytics') ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
   Future<void> _postCentral(String path, Map<String, dynamic> payload) async {
+    final allowed = await _isAnalyticsAllowed();
+    if (!allowed) return; // Respect user opt-out
+
     try {
       final dio = Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 4),
@@ -124,6 +136,9 @@ class AnalyticsService {
 
   /// Log user activity or feature action
   Future<void> logEvent(String eventName, {Map<String, dynamic>? parameters}) async {
+    final allowed = await _isAnalyticsAllowed();
+    if (!allowed) return;
+
     final entry = BetaLogEntry(
       type: 'event',
       name: eventName,

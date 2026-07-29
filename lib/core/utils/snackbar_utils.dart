@@ -3,7 +3,6 @@ import '../theme/app_colors.dart';
 
 extension TopSnackBarExtension on BuildContext {
   void showTopSnackBar(String message, {bool isError = false}) {
-    final height = MediaQuery.of(this).size.height;
     ScaffoldMessenger.of(this).hideCurrentSnackBar();
     ScaffoldMessenger.of(this).showSnackBar(
       SnackBar(
@@ -19,5 +18,15 @@ extension TopSnackBarExtension on BuildContext {
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+}
+
+class SnackbarUtils {
+  static void showSuccess(BuildContext context, String message) {
+    context.showTopSnackBar(message, isError: false);
+  }
+
+  static void showError(BuildContext context, String message) {
+    context.showTopSnackBar(message, isError: true);
   }
 }

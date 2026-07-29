@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import 'onboarding_provider.dart';
 
+import '../legal/legal_viewer_dialog.dart';
+
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -295,9 +297,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         // Consent checkboxes
         _buildConsentCheckbox(
           title: 'Accept Terms & Conditions',
-          subtitle: 'Read our platform rules and agreement details.',
+          subtitle: 'Read platform rules and agreement details.',
           value: _termsAccepted,
           onChanged: (v) => setState(() => _termsAccepted = v ?? false),
+          onTapView: () => LegalViewerModal.show(context, initialTabIndex: 0),
         ),
         const SizedBox(height: 16),
         _buildConsentCheckbox(
@@ -305,6 +308,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           subtitle: 'We strictly comply with Singapore\'s PDPA data regulations.',
           value: _privacyAccepted,
           onChanged: (v) => setState(() => _privacyAccepted = v ?? false),
+          onTapView: () => LegalViewerModal.show(context, initialTabIndex: 1),
         ),
         const SizedBox(height: 16),
         _buildConsentCheckbox(
@@ -322,15 +326,34 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     required String subtitle,
     required bool value,
     required ValueChanged<bool?> onChanged,
+    VoidCallback? onTapView,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: CheckboxListTile(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            if (onTapView != null)
+              GestureDetector(
+                onTap: onTapView,
+                child: const Text(
+                  'Read',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+          ],
+        ),
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         value: value,
         activeColor: AppColors.primary,

@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/secure_storage/secure_storage_service.dart';
 import 'beta_feedback_dialog.dart';
 import 'beta_analytics_dialog.dart';
+import '../legal/legal_viewer_dialog.dart';
 
 class SupportScreen extends ConsumerStatefulWidget {
   const SupportScreen({super.key});
@@ -385,15 +386,15 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                     _buildMoreRow(
                       icon: Icons.assignment_outlined,
                       title: 'Terms of Service',
-                      statusTag: 'In progress',
-                      onTap: () {},
+                      statusTag: 'Active',
+                      onTap: () => LegalViewerModal.show(context, initialTabIndex: 0),
                     ),
                     const Divider(height: 1, color: AppColors.divider),
                     _buildMoreRow(
                       icon: Icons.shield_outlined,
-                      title: 'Privacy Policy',
-                      statusTag: 'In progress',
-                      onTap: () {},
+                      title: 'Privacy Policy (PDPA)',
+                      statusTag: 'Active',
+                      onTap: () => LegalViewerModal.show(context, initialTabIndex: 1),
                     ),
                   ],
                 ),

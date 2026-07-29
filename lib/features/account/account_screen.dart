@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../data/secure_storage/secure_storage_service.dart';
 import '../../../shared/widgets/app_header_brand.dart';
 import '../../../shared/widgets/app_footer_brand.dart';
 import 'account_provider.dart';
+import '../legal/legal_viewer_dialog.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
@@ -35,6 +37,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   String _lastPaymentDate = '';
   String _nextPaymentDate = '';
 
+  bool _allowAiAnalytics = true;
   bool _isEditingCard = false;
   final _cardNumCtrl = TextEditingController();
   final _cardNameCtrl = TextEditingController();
@@ -47,6 +50,34 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     super.initState();
     _loadGeminiKey();
     _loadBillingCard();
+    _loadAiAnalyticsPref();
+  }
+
+  void _loadAiAnalyticsPref() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _allowAiAnalytics = prefs.getBool('allow_ai_analytics') ?? true;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _toggleAiAnalytics(bool val) async {
+    setState(() {
+      _allowAiAnalytics = val;
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('allow_ai_analytics', val);
+      if (mounted) {
+        SnackbarUtils.showSuccess(
+          context,
+          val ? 'AI Analytics & Logs enabled' : 'AI Analytics & Logs disabled',
+        );
+      }
+    } catch (_) {}
   }
 
   void _loadGeminiKey() async {
@@ -1146,6 +1177,74 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   const SizedBox(height: 24),
 
                   // 6. Action Buttons
+                  // 6. Legal, Compliance & Privacy Section
+                  Row(
+                    children: const [
+                      Icon(Icons.gavel_outlined, size: 16, color: AppColors.textSecondary),
+                      SizedBox(width: 8),
+                      Text(
+                        'LEGAL, COMPLIANCE & PRIVACY',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.divider),
+                    ),
+                    child: Column(
+                      children: [
+                        SwitchListTile(
+                          title: const Text(
+                            'Allow AI Analytics & Logs',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: const Text(
+                            'Authorize statement extraction log processes for model optimization.',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          value: _allowAiAnalytics,
+                          activeColor: AppColors.primary,
+                          onChanged: _toggleAiAnalytics,
+                        ),
+                        const Divider(height: 1, color: AppColors.divider),
+                        ListTile(
+                          leading: const Icon(Icons.assignment_outlined, color: AppColors.primary, size: 20),
+                          title: const Text('Terms of Service', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                          trailing: const Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary),
+                          onTap: () => LegalViewerModal.show(context, initialTabIndex: 0),
+                        ),
+                        const Divider(height: 1, color: AppColors.divider),
+                        ListTile(
+                          leading: const Icon(Icons.shield_outlined, color: AppColors.primary, size: 20),
+                          title: const Text('Privacy Policy (PDPA Compliant)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                          trailing: const Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary),
+                          onTap: () => LegalViewerModal.show(context, initialTabIndex: 1),
+                        ),
+                        const Divider(height: 1, color: AppColors.divider),
+                        ListTile(
+                          leading: const Icon(Icons.email_outlined, color: AppColors.primary, size: 20),
+                          title: const Text('Data Protection Officer (DPO)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                          subtitle: const Text('sgcashflowai@gmail.com', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          trailing: const Icon(Icons.content_copy, size: 16, color: AppColors.textSecondary),
+                          onTap: () {
+                            Clipboard.setData(const ClipboardData(text: 'sgcashflowai@gmail.com'));
+                            SnackbarUtils.showSuccess(context, 'DPO email copied to clipboard');
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
                   ElevatedButton.icon(
                     onPressed: _signOut,
                     icon: const Icon(Icons.logout, size: 16, color: AppColors.textPrimary),
