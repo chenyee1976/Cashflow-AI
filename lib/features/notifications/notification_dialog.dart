@@ -205,6 +205,85 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
     );
   }
 
+  void _promptEditNotification(AppNotification item) {
+    final titleCtrl = TextEditingController(text: item.title);
+    final messageCtrl = TextEditingController(text: item.message);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.edit_note, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('Edit Announcement', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Title', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: titleCtrl,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text('Message Content', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: messageCtrl,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newTitle = titleCtrl.text.trim();
+              final newMsg = messageCtrl.text.trim();
+              if (newTitle.isEmpty || newMsg.isEmpty) {
+                context.showTopSnackBar('Title and Message cannot be empty', isError: true);
+                return;
+              }
+              Navigator.pop(ctx);
+              final service = ref.read(notificationServiceProvider);
+              await service.updateNotification(
+                id: item.id,
+                title: newTitle,
+                message: newMsg,
+              );
+              if (mounted) {
+                context.showTopSnackBar('Announcement updated successfully');
+                _loadNotifications();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _confirmDelete(AppNotification notif) {
     showDialog(
       context: context,
@@ -396,14 +475,39 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                                           ),
                                         ),
                                       ),
-                                      if (_isAdminUnlocked) ...[
-                                        IconButton(
-                                          icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
-                                          onPressed: () => _confirmDelete(item),
-                                        ),
-                                      ],
+                                       if (_isAdminUnlocked) ...[
+                                         Row(
+                                           mainAxisSize: MainAxisSize.min,
+                                           children: [
+                                             InkWell(
+                                               onTap: () => _promptEditNotification(item),
+                                               borderRadius: BorderRadius.circular(6),
+                                               child: Container(
+                                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                 decoration: BoxDecoration(
+                                                   color: AppColors.primary,
+                                                   borderRadius: BorderRadius.circular(6),
+                                                 ),
+                                                 child: const Row(
+                                                   mainAxisSize: MainAxisSize.min,
+                                                   children: [
+                                                     Icon(Icons.edit, size: 12, color: Colors.white),
+                                                     SizedBox(width: 4),
+                                                     Text('Edit', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                                                   ],
+                                                 ),
+                                               ),
+                                             ),
+                                             const SizedBox(width: 8),
+                                             IconButton(
+                                               icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                                               padding: EdgeInsets.zero,
+                                               constraints: const BoxConstraints(),
+                                               onPressed: () => _confirmDelete(item),
+                                             ),
+                                           ],
+                                         ),
+                                       ],
                                     ],
                                   ),
                                   const SizedBox(height: 6),

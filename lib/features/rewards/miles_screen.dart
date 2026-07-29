@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/database/app_database.dart';
 import '../../../shared/widgets/app_header_brand.dart';
+import '../../../shared/widgets/app_footer_brand.dart';
 import 'miles_provider.dart';
 
 class MilesScreen extends ConsumerWidget {
@@ -166,10 +167,9 @@ class MilesScreen extends ConsumerWidget {
                       )
                     else
                       _buildGoalCard(data.travelGoal!, data.totalMiles, nf),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 40),
+                  const SizedBox(height: 16),
+                  const AppFooterBrand(),
+                  const SizedBox(height: 40),
             ],
           ),
         ),

@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../data/secure_storage/secure_storage_service.dart';
 import '../../../shared/widgets/app_header_brand.dart';
+import '../../../shared/widgets/app_footer_brand.dart';
 import 'account_provider.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
@@ -1135,17 +1136,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           icon: Icons.credit_card_rounded,
                           title: 'Credit cards',
                           count: data.cardCount,
-                          tooltipMessage: data.creditCards.isEmpty
-                              ? 'No active credit cards'
-                              : data.creditCards.map((card) => '• ${card.bankName} · ${card.cardName} · ${card.lastFour ?? ""}').join('\n'),
+),
+                                  ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Re-run onboarding to add or update banks and cards.',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 24),
 
@@ -1176,12 +1171,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   const SizedBox(height: 32),
 
                   // Footer version info
-                  const Center(
-                    child: Text(
-                      'SGCashFlowAI™ v1.0',
-                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                    ),
-                  ),
+                  const AppFooterBrand(),
                   const SizedBox(height: 60),
                 ],
               ),

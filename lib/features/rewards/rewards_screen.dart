@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/app_header_brand.dart';
+import '../../../shared/widgets/app_footer_brand.dart';
 import 'rewards_provider.dart';
 import '../../data/services/card_rules_registry.dart';
 
@@ -252,7 +253,13 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
                             index: index,
                           );
                         }
-                        return _RecentActivitySection();
+                        return Column(
+                          children: [
+                            _RecentActivitySection(),
+                            const SizedBox(height: 16),
+                            const AppFooterBrand(),
+                          ],
+                        );
                       },
                     );
                   },

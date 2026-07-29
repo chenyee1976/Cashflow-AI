@@ -141,6 +141,36 @@ class NotificationService {
     return true;
   }
 
+  /// Update an existing notification (Admin only)
+  Future<bool> updateNotification({
+    required String id,
+    required String title,
+    required String message,
+  }) async {
+    final current = await _getLocalNotifications();
+    final idx = current.indexWhere((n) => n.id == id);
+    if (idx != -1) {
+      final updated = AppNotification(
+        id: id,
+        title: title.trim(),
+        message: message.trim(),
+        publishedAt: current[idx].publishedAt,
+        author: current[idx].author,
+      );
+      current[idx] = updated;
+      await _cacheLocally(current);
+
+      try {
+        await _dio.post(
+          '$_baseUrl/api/notifications',
+          data: updated.toJson(),
+        );
+      } catch (_) {}
+      return true;
+    }
+    return false;
+  }
+
   /// Delete an existing notification (Admin only)
   Future<bool> deleteNotification(String id) async {
     try {

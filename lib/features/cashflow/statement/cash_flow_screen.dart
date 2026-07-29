@@ -10,6 +10,7 @@ import 'dart:html' as html;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/category_enum.dart';
 import '../../../shared/widgets/app_header_brand.dart';
+import '../../../shared/widgets/app_footer_brand.dart';
 import 'cashflow_provider.dart';
 import '../../../data/database/app_database.dart';
 import '../../dashboard/dashboard_provider.dart';
@@ -585,6 +586,8 @@ class CashFlowHomeScreen extends ConsumerWidget {
                             );
                           },
                         ),
+                      const SizedBox(height: 16),
+                      const AppFooterBrand(),
                     ],
                   ),
                 ),
@@ -613,6 +616,8 @@ class CashFlowHomeScreen extends ConsumerWidget {
                             label: const Text('Retry', style: TextStyle(color: AppColors.white)),
                             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                           ),
+                          const SizedBox(height: 16),
+                          const AppFooterBrand(),
                         ],
                       ),
                     ),

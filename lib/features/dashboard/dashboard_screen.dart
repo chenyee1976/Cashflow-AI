@@ -10,6 +10,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/constants/category_enum.dart';
 import '../../core/utils/snackbar_utils.dart';
 import '../../shared/widgets/app_header_brand.dart';
+import '../../shared/widgets/app_footer_brand.dart';
 import '../../data/services/analytics_service.dart';
 import 'dashboard_provider.dart';
 import '../cashflow/statement/cashflow_provider.dart';
@@ -441,6 +442,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              const AppFooterBrand(),
             ],
           ),
         ),
