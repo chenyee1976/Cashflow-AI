@@ -260,9 +260,30 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const SizedBox(height: 16),
         const Icon(Icons.gavel_outlined, size: 48, color: AppColors.primary),
         const SizedBox(height: 24),
-        const Text(
-          'Legal Consent & Privacy',
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Legal Consent & Privacy',
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.error.withOpacity(0.3)),
+              ),
+              child: const Text(
+                'In progress',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.error,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         const Text(
