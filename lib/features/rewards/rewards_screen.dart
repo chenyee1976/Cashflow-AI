@@ -216,6 +216,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
                           ),
                           const SizedBox(height: 12),
                           _RecentActivitySection(),
+                          const SizedBox(height: 16),
+                          const AppFooterBrand(),
                         ],
                       );
                     }
@@ -238,6 +240,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
                           ),
                           const SizedBox(height: 12),
                           _RecentActivitySection(),
+                          const SizedBox(height: 16),
+                          const AppFooterBrand(),
                         ],
                       );
                     }

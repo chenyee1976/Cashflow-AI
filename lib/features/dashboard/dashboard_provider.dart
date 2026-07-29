@@ -351,19 +351,7 @@ final monthlyIncomeProvider = FutureProvider.autoDispose<MonthSummaryModel>((ref
     }
   }
 
-  DateTime refDate = DateTime.now();
-  if (txs.isNotEmpty) {
-    final hasCurrent = txs.any((t) => _isSameMonth(t.date, refDate));
-    if (!hasCurrent) {
-      int maxTs = 0;
-      for (final t in txs) {
-        if (t.date > maxTs) maxTs = t.date;
-      }
-      if (maxTs > 0) {
-        refDate = DateTime.fromMillisecondsSinceEpoch(maxTs * 1000);
-      }
-    }
-  }
+  final refDate = DateTime.now();
 
   final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
   final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
@@ -403,19 +391,7 @@ final monthlyExpensesProvider = FutureProvider.autoDispose<MonthSummaryModel>((r
     }
   }
 
-  DateTime refDate = DateTime.now();
-  if (txs.isNotEmpty) {
-    final hasCurrent = txs.any((t) => _isSameMonth(t.date, refDate));
-    if (!hasCurrent) {
-      int maxTs = 0;
-      for (final t in txs) {
-        if (t.date > maxTs) maxTs = t.date;
-      }
-      if (maxTs > 0) {
-        refDate = DateTime.fromMillisecondsSinceEpoch(maxTs * 1000);
-      }
-    }
-  }
+  final refDate = DateTime.now();
 
   final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
   final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');

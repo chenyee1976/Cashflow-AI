@@ -68,28 +68,9 @@ final cashFlowScreenProvider = FutureProvider.autoDispose<CashFlowMonthData>((re
       }
     }
   }
-  var targetMonth = selectedMonth;
-  if (allTxs.isNotEmpty) {
-    final hasTxsInSelected = allTxs.any((t) {
-      final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
-      return d.year == selectedMonth.year && d.month == selectedMonth.month;
-    });
-    if (!hasTxsInSelected) {
-      // Find latest transaction timestamp
-      int maxTimestamp = 0;
-      for (final tx in allTxs) {
-        if (tx.date > maxTimestamp) maxTimestamp = tx.date;
-      }
-      if (maxTimestamp > 0) {
-        final latestDate = DateTime.fromMillisecondsSinceEpoch(maxTimestamp * 1000);
-        targetMonth = DateTime(latestDate.year, latestDate.month);
-      }
-    }
-  }
-
   final monthTxs = allTxs.where((t) {
     final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
-    return d.year == targetMonth.year && d.month == targetMonth.month;
+    return d.year == selectedMonth.year && d.month == selectedMonth.month;
   }).toList();
 
   double income = 0.0;
