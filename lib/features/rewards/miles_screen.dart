@@ -167,9 +167,12 @@ class MilesScreen extends ConsumerWidget {
                       )
                     else
                       _buildGoalCard(data.travelGoal!, data.totalMiles, nf),
-                  const SizedBox(height: 16),
-                  const AppFooterBrand(),
-                  const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const AppFooterBrand(),
+              const SizedBox(height: 40),
             ],
           ),
         ),
