@@ -1136,8 +1136,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           icon: Icons.credit_card_rounded,
                           title: 'Credit cards',
                           count: data.cardCount,
-),
-                                  ),
+                          tooltipMessage: data.creditCards.isEmpty
+                              ? 'No active credit cards'
+                              : data.creditCards.map((card) => '• ${card.bankName} · ${card.cardName} · ${card.lastFour ?? ""}').join('\n'),
                         ),
                       ],
                     ),
