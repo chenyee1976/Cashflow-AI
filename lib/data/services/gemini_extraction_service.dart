@@ -107,7 +107,7 @@ You MUST return a raw JSON object containing precisely the following format:
     ];
 
     // 4. Send request with multi-model fallback strategy (Direct Key & Vercel Serverless Proxy)
-    final modelNames = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    final modelNames = ['gemini-2.0-flash', 'gemini-2.0-flash-lite'];
     String? jsonResponseText;
     Object? lastErr;
 
@@ -133,49 +133,29 @@ You MUST return a raw JSON object containing precisely the following format:
 {
   "accounts": [
     {
-      "bank": "Bank/Institution Name (e.g. Citi, DBS, MariBank, OCBC, UOB)",
-      "name": "Account Name (e.g. Savings Account)",
-      "num": "Last 4 digits or full account number if visible",
-      "currency": "3-letter currency code (e.g. SGD, USD)",
-      "balance": "Ending balance as a decimal string (e.g. 1250.50)",
-      "balanceAsOfIso": "The date of the statement ending balance in ISO-8601 format (YYYY-MM-DD)"
+      "bankName": "Exact Bank Name (e.g. DBS, OCBC, UOB, MariBank, Citibank)",
+      "accountName": "Account description",
+      "accountNumber": "Masked or full account number",
+      "statementEndingBalance": 1234.56,
+      "currency": "SGD",
+      "statementEndingDate": "2026-06-30"
     }
   ],
   "cardDraft": {
-    "issuer": "Credit Card issuer bank (e.g. Citibank, HSBC, DBS, OCBC, UOB)",
-    "cardType": "One of: Visa, Mastercard, Amex, JCB",
-    "cardName": "Card Product Name (e.g. CITI PREMIERMILES WORLD MASTER)",
-    "cardNumber": "Full or partially masked card number (e.g. 5425-5033-0193-7628)",
-    "hasMiles": true,
-    "milesOpening": "Opening balance of miles/points as string",
-    "milesEarned": "Miles earned this month as string",
-    "milesBonus": "Bonus miles earned this month as string",
-    "milesRedeemed": "Miles redeemed or adjusted as string",
-    "milesEnding": "Ending miles balance as string",
-    "milesRates": [
-      {
-        "category": "Spend Category (e.g. SGD Spend, Foreign Currency Spend)",
-        "rate": "Miles rate (e.g. 1.2 or 2.0) as string",
-        "minSpend": "Minimum spend limit as string, or empty string",
-        "maxSpend": "Maximum spend cap as string, or empty string"
-      }
-    ],
-    "hasCashback": true,
-    "cashbackEarned": "Cashback earned amount as string",
-    "cashbackRates": [
-      {
-        "category": "Spend Category (e.g. Dining, Online Spend)",
-        "rate": "Cashback percent rate (e.g. 6% or 1.5%) as string",
-        "minSpend": "Minimum spend limit as string, or empty string",
-        "maxSpend": "Maximum spend cap as string, or empty string"
-      }
-    ],
-    "totalSpend": "Total spend this month (e.g. 220.57) as string",
-    "paymentDueDateIso": "Payment due date in YYYY-MM-DD format (e.g. 2026-06-02)"
+    "cardIssuer": "Issuer Name",
+    "cardType": "Visa/Mastercard/Amex",
+    "cardName": "Card Name",
+    "cardNumber": "Masked Card Number",
+    "rewardSummary": "Summary",
+    "milesRates": "Rates",
+    "cashbackSummary": "Summary",
+    "cashbackRates": "Rates",
+    "totalSpend": 123.45,
+    "paymentDueDate": "2026-07-15"
   },
-  "transactions": [
+  "extractedTransactions": [
     {
-      "dateStr": "The date of transaction formatted as DD MMM YYYY (e.g. 25 Apr 2026)",
+      "date": "2026-06-15",
       "merchant": "Cleaned merchant/description (e.g. Sheng Siong Supermarket)",
       "amount": "The transaction amount as a double. EXPENSES MUST BE NEGATIVE NUMBERS, INCOME MUST BE POSITIVE NUMBERS (e.g. -42.50 or 150.00)",
       "spendCurrency": "For credit card transactions: IF amount is POSITIVE (> 0), spendCurrency MUST BE 'SGD Receipt'. Otherwise IF negative, select one of: SGD Spend, MYR spend, IDR spend, FCY Spend (based on transaction currency). Default is SGD Spend",
@@ -201,52 +181,68 @@ You MUST return a raw JSON object containing precisely the following format:
         }
       }
 
-      // Try Vercel Serverless Proxy (/api/gemini)
-      try {
-        final proxyRes = await dio.post(
-          '/api/gemini?model=$mName',
-          data: {
-            'contents': [
-              {
-                'parts': [
-                  {
-                    'inlineData': {
-                      'mimeType': mimeType,
-                      'data': base64Data,
+      // Try Vercel Serverless Proxy (/api/gemini) with automatic rate-limit retry
+      int attempts = 0;
+      while (attempts < 2) {
+        attempts++;
+        try {
+          final proxyRes = await dio.post(
+            '/api/gemini?model=$mName',
+            data: {
+              'contents': [
+                {
+                  'parts': [
+                    {
+                      'inlineData': {
+                        'mimeType': mimeType,
+                        'data': base64Data,
+                      }
+                    },
+                    {
+                      'text': promptText,
                     }
-                  },
-                  {
-                    'text': promptText,
-                  }
-                ]
-              }
-            ]
-          },
-          options: Options(headers: {'Content-Type': 'application/json'}),
-        );
+                  ]
+                }
+              ]
+            },
+            options: Options(headers: {'Content-Type': 'application/json'}),
+          );
 
-        if (proxyRes.statusCode == 200 && proxyRes.data != null) {
-          final Map<String, dynamic> body = proxyRes.data is String
-              ? jsonDecode(proxyRes.data as String) as Map<String, dynamic>
-              : proxyRes.data as Map<String, dynamic>;
+          if (proxyRes.statusCode == 200 && proxyRes.data != null) {
+            final Map<String, dynamic> body = proxyRes.data is String
+                ? jsonDecode(proxyRes.data as String) as Map<String, dynamic>
+                : proxyRes.data as Map<String, dynamic>;
 
-          final candidates = body['candidates'] as List<dynamic>?;
-          if (candidates != null && candidates.isNotEmpty) {
-            final content = candidates[0]['content'] as Map<String, dynamic>?;
-            final parts = content?['parts'] as List<dynamic>?;
-            if (parts != null && parts.isNotEmpty) {
-              final text = parts[0]['text'] as String?;
-              if (text != null && text.isNotEmpty) {
-                jsonResponseText = text;
-                print('Successfully extracted using Vercel Serverless Proxy model: $mName');
-                break;
+            final candidates = body['candidates'] as List<dynamic>?;
+            if (candidates != null && candidates.isNotEmpty) {
+              final content = candidates[0]['content'] as Map<String, dynamic>?;
+              final parts = content?['parts'] as List<dynamic>?;
+              if (parts != null && parts.isNotEmpty) {
+                final text = parts[0]['text'] as String?;
+                if (text != null && text.isNotEmpty) {
+                  jsonResponseText = text;
+                  print('Successfully extracted using Vercel Serverless Proxy model: $mName');
+                  break;
+                }
               }
             }
           }
+        } catch (e) {
+          lastErr = e is DioException && e.response?.data != null ? e.response?.data : e;
+          print('DEBUG Proxy Gemini model $mName failed (attempt $attempts): $lastErr');
+          
+          // If 429 Too Many Requests rate limit occurred, wait 4 seconds and retry once
+          if (e is DioException && e.response?.statusCode == 429 && attempts < 2) {
+            print('Rate limit (429) encountered. Waiting 4 seconds before retry...');
+            await Future.delayed(const Duration(seconds: 4));
+            continue;
+          }
         }
-      } catch (e) {
-        lastErr = e is DioException && e.response?.data != null ? e.response?.data : e;
-        print('DEBUG Proxy Gemini model $mName failed: $lastErr');
+        break; // Exit while loop if no retry needed
+      }
+
+      if (jsonResponseText != null && jsonResponseText.isNotEmpty) {
+        break;
       }
     }
 
