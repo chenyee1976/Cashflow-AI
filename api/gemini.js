@@ -1,5 +1,13 @@
 // Vercel Serverless Function Proxy for Google Gemini API
-const https = require('https');
+
+// Increase body size limit to 50MB for base64-encoded bank statement PDFs/images
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+  },
+};
 
 module.exports = async (req, res) => {
   // CORS Headers for Flutter Web
@@ -27,40 +35,25 @@ module.exports = async (req, res) => {
   try {
     const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
     const model = req.query.model || 'gemini-1.5-flash';
-    
+
     // Target Google Gemini REST Endpoint
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-    const urlObj = new URL(url);
-    const options = {
-      hostname: urlObj.hostname,
-      path: urlObj.pathname + urlObj.search,
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body)
-      }
-    };
-
-    const proxyReq = https.request(options, (proxyRes) => {
-      let responseData = '';
-      proxyRes.on('data', (chunk) => {
-        responseData += chunk;
-      });
-      proxyRes.on('end', () => {
-        res.status(proxyRes.statusCode).setHeader('Content-Type', 'application/json');
-        return res.send(responseData);
-      });
+      },
+      body: body,
     });
 
-    proxyReq.on('error', (err) => {
-      return res.status(500).json({ error: 'Proxy Request Failed', details: err.message });
-    });
+    const responseData = await response.text();
 
-    proxyReq.write(body);
-    proxyReq.end();
+    res.status(response.status).setHeader('Content-Type', 'application/json');
+    return res.send(responseData);
 
   } catch (e) {
-    return res.status(500).json({ error: e.toString() });
+    console.error('Proxy error:', e);
+    return res.status(500).json({ error: 'Proxy Request Failed', details: e.message || e.toString() });
   }
 };

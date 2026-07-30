@@ -16,13 +16,7 @@ class GeminiExtractionService {
     required Uint8List fileBytes,
     required String mimeType,
   }) async {
-    try {
-      final dio = Dio();
-      final res = await dio.get('https://generativelanguage.googleapis.com/v1beta/models?key=$_apiKey');
-      print('DEBUG LIST MODELS RESULT: ${res.data}');
-    } catch (e) {
-      print('DEBUG LIST MODELS FAILED: $e');
-    }
+    // Proxy mode: skip direct API calls when using PROXY_VIA_VERCEL default key
 
     // 1. Initialize GenerativeModel
     final model = GenerativeModel(

@@ -1,6 +1,11 @@
 {
   "buildCommand": "bash build.sh",
   "outputDirectory": "build/web",
+  "functions": {
+    "api/gemini.js": {
+      "maxDuration": 60
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",

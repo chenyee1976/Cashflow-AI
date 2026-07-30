@@ -68,7 +68,7 @@ class SecureStorageService {
   Future<String?> getRewardFocus() =>
       _storage.read(key: AppConstants.keyRewardFocus);
 
-  static final String defaultGeminiApiKey = 'AQ.' + 'Ab8RN6I461YTbi9xASSQUTdbDWHL3ttGkz5ztn60vb-nEODRjA';
+  static final String defaultGeminiApiKey = 'PROXY_VIA_VERCEL';
 
   Future<void> saveGeminiApiKey(String key) =>
       _storage.write(key: AppConstants.keyGeminiApiKey, value: key);
