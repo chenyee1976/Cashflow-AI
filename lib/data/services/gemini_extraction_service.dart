@@ -210,8 +210,8 @@ You MUST return a raw JSON object containing precisely the following format:
               {
                 'parts': [
                   {
-                    'inline_data': {
-                      'mime_type': mimeType,
+                    'inlineData': {
+                      'mimeType': mimeType,
                       'data': base64Data,
                     }
                   },
@@ -245,8 +245,8 @@ You MUST return a raw JSON object containing precisely the following format:
           }
         }
       } catch (e) {
-        lastErr = e;
-        print('DEBUG Proxy Gemini model $mName failed: $e');
+        lastErr = e is DioException && e.response?.data != null ? e.response?.data : e;
+        print('DEBUG Proxy Gemini model $mName failed: $lastErr');
       }
     }
 
