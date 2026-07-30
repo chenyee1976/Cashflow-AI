@@ -596,7 +596,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           onChanged: (val) => setState(() => _currency = val!),
                         ),
                         const SizedBox(height: 16),
-                        const Text('Gemini API Key (for statement AI extraction)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                        const Text('AI Statement Extraction Engine', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.all(14),
@@ -610,17 +610,22 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.key, color: AppColors.primary, size: 18),
+                                  const Icon(Icons.cloud_done_rounded, color: AppColors.success, size: 18),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    _currentGeminiKey == SecureStorageService.defaultGeminiApiKey ? 'Shared Beta Key Active' : 'Custom User Key Active',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: _currentGeminiKey == SecureStorageService.defaultGeminiApiKey ? AppColors.primary : AppColors.success,
+                                  Expanded(
+                                    child: Text(
+                                      _currentGeminiKey.isNotEmpty && _currentGeminiKey != SecureStorageService.defaultGeminiApiKey
+                                          ? 'Custom Personal Key Active'
+                                          : 'Vercel Cloud AI Proxy Active',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: _currentGeminiKey.isNotEmpty && _currentGeminiKey != SecureStorageService.defaultGeminiApiKey
+                                            ? AppColors.primary
+                                            : AppColors.success,
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
                                   InkWell(
                                     onTap: _showGeminiKeyDialog,
                                     borderRadius: BorderRadius.circular(6),
@@ -633,19 +638,21 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                                       child: const Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.edit, size: 12, color: Colors.white),
+                                          Icon(Icons.tune_rounded, size: 12, color: Colors.white),
                                           SizedBox(width: 4),
-                                          Text('Amend / Edit', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                                          Text('Key Options', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
                                         ],
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
-                              SelectableText(
-                                _currentGeminiKey.isNotEmpty ? _currentGeminiKey : SecureStorageService.defaultGeminiApiKey,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                              const SizedBox(height: 6),
+                              Text(
+                                _currentGeminiKey.isNotEmpty && _currentGeminiKey != SecureStorageService.defaultGeminiApiKey
+                                    ? 'Using custom user-provided Gemini API Key.'
+                                    : 'Connected securely to Google Gemini 1.5 Flash AI via Vercel serverless backend.',
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                               ),
                             ],
                           ),
