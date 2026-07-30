@@ -174,25 +174,15 @@ You MUST return a raw JSON object containing precisely the following format:
 ''';
 
     for (final mName in modelNames) {
-      if (_apiKey.isNotEmpty && !_apiKey.startsWith('PROXY')) {
-        try {
-          final model = GenerativeModel(model: mName, apiKey: _apiKey);
-          final response = await model.generateContent(prompt);
-          if (response.text != null && response.text!.isNotEmpty) {
-            jsonResponseText = response.text;
-            print('Successfully extracted using direct Gemini API key: $mName');
-            break;
-          }
-        } catch (e) {
-          print('DEBUG Direct Gemini model $mName failed, trying serverless proxy: $e');
-        }
-      }
-
-      // Try Vercel Serverless Proxy (/api/gemini) with automatic rate-limit retry
       int attempts = 0;
       while (attempts < 2) {
         attempts++;
         try {
+          final headers = <String, String>{'Content-Type': 'application/json'};
+          if (_apiKey.isNotEmpty && !_apiKey.startsWith('PROXY')) {
+            headers['x-gemini-key'] = _apiKey;
+          }
+
           final proxyRes = await dio.post(
             '/api/gemini?model=$mName',
             data: {
@@ -212,7 +202,11 @@ You MUST return a raw JSON object containing precisely the following format:
                 }
               ]
             },
-            options: Options(headers: {'Content-Type': 'application/json'}),
+            options: Options(
+              headers: headers,
+              sendTimeout: const Duration(seconds: 30),
+              receiveTimeout: const Duration(seconds: 30),
+            ),
           );
 
           if (proxyRes.statusCode == 200 && proxyRes.data != null) {
