@@ -269,19 +269,36 @@ You MUST return a raw JSON object containing precisely the following format:
     }
     final Map<String, dynamic> parsed = jsonDecode(cleanText) as Map<String, dynamic>;
 
-    final List<dynamic> rawAccounts = parsed['accounts'] as List<dynamic>? ?? [];
-    final List<dynamic> rawTransactions = parsed['transactions'] as List<dynamic>? ?? [];
+    final List<dynamic> rawAccounts = (parsed['accounts'] as List<dynamic>?) ?? [];
+    final List<dynamic> rawTransactions = (parsed['extractedTransactions'] as List<dynamic>?) ?? (parsed['transactions'] as List<dynamic>?) ?? [];
 
     final accounts = rawAccounts.map((acc) {
+      final bankVal = acc['bankName'] as String? ?? acc['bank'] as String? ?? 'Bank';
+      final nameVal = acc['accountName'] as String? ?? acc['name'] as String? ?? 'Savings Account';
+      final numVal = acc['accountNumber'] as String? ?? acc['num'] as String? ?? '';
+      final curVal = acc['currency'] as String? ?? 'SGD';
+      
+      dynamic balObj = acc['statementEndingBalance'] ?? acc['balance'];
+      String balVal = '0.00';
+      if (balObj != null) {
+        balVal = balObj.toString();
+      }
+
+      final dateStr = acc['statementEndingDate'] as String? ?? acc['balanceAsOfIso'] as String?;
+      DateTime dateVal = DateTime.now();
+      if (dateStr != null && dateStr.isNotEmpty) {
+        try {
+          dateVal = DateTime.parse(dateStr);
+        } catch (_) {}
+      }
+
       return ExtractedAccountDraft(
-        bank: acc['bank'] as String? ?? 'Unknown Bank',
-        name: acc['name'] as String? ?? 'Savings Account',
-        num: acc['num'] as String? ?? '',
-        currency: acc['currency'] as String? ?? 'SGD',
-        balance: acc['balance'] as String? ?? '0.00',
-        balanceAsOf: acc['balanceAsOfIso'] != null
-            ? DateTime.parse(acc['balanceAsOfIso'] as String)
-            : DateTime.now(),
+        bank: bankVal,
+        name: nameVal,
+        num: numVal,
+        currency: curVal,
+        balance: balVal,
+        balanceAsOf: dateVal,
       );
     }).toList();
 
@@ -294,8 +311,22 @@ You MUST return a raw JSON object containing precisely the following format:
       final lowerName = cardNameStr.toLowerCase();
       final isMilesCard = (cardMap['hasMiles'] as bool? ?? false) || lowerName.contains('90') || lowerName.contains('miles') || lowerName.contains('points') || lowerName.contains('voyage') || lowerName.contains('altitude') || lowerName.contains('prvi');
 
+      dynamic spendObj = cardMap['totalSpend'];
+      String spendStr = '0.00';
+      if (spendObj != null) {
+        spendStr = spendObj.toString();
+      }
+
+      final dueStr = cardMap['paymentDueDate'] as String? ?? cardMap['paymentDueDateIso'] as String?;
+      DateTime dueVal = DateTime.now().add(const Duration(days: 20));
+      if (dueStr != null && dueStr.isNotEmpty) {
+        try {
+          dueVal = DateTime.parse(dueStr);
+        } catch (_) {}
+      }
+
       cardDraft = ExtractedCreditCardDraft(
-        issuer: cardMap['issuer'] as String? ?? '',
+        issuer: cardMap['cardIssuer'] as String? ?? cardMap['issuer'] as String? ?? '',
         cardType: cardMap['cardType'] as String? ?? 'Mastercard',
         cardName: cardNameStr,
         cardNumber: cardMap['cardNumber'] as String? ?? '',
@@ -319,10 +350,8 @@ You MUST return a raw JSON object containing precisely the following format:
           minSpend: r['minSpend'] as String? ?? '',
           maxSpend: r['maxSpend'] as String? ?? '',
         )).toList(),
-        totalSpend: cardMap['totalSpend'] as String? ?? '0.00',
-        paymentDueDate: cardMap['paymentDueDateIso'] != null
-            ? DateTime.parse(cardMap['paymentDueDateIso'] as String)
-            : DateTime.now().add(const Duration(days: 20)),
+        totalSpend: spendStr,
+        paymentDueDate: dueVal,
       );
     }
 
@@ -331,10 +360,18 @@ You MUST return a raw JSON object containing precisely the following format:
     final transactions = <ExtractedTransactionDraft>[];
     for (final tx in rawTransactions) {
       final merchantStr = tx['merchant'] as String? ?? 'Transaction';
-      final rawAmount = (tx['amount'] as num? ?? 0.0).toDouble();
+      dynamic amtObj = tx['amount'];
+      double rawAmount = 0.0;
+      if (amtObj is num) {
+        rawAmount = amtObj.toDouble();
+      } else if (amtObj is String) {
+        rawAmount = double.tryParse(amtObj) ?? 0.0;
+      }
+
       final geminiCat = tx['categoryValue'] as String? ?? 'expense_other';
       final geminiMilesCat = tx['milesCashbackCategoryValue'] as String? ?? 'Others';
       final spendCur = tx['spendCurrency'] as String? ?? 'SGD Spend';
+      final dateValueStr = tx['date'] as String? ?? tx['dateStr'] as String? ?? '';
 
       // Pass through Intelligent Classifier + User Learned Rules Engine
       final classified = await MerchantCategoryClassifier.classify(
@@ -346,7 +383,7 @@ You MUST return a raw JSON object containing precisely the following format:
       );
 
       transactions.add(ExtractedTransactionDraft(
-        dateStr: tx['dateStr'] as String? ?? '',
+        dateStr: dateValueStr,
         merchant: merchantStr,
         amount: rawAmount,
         categoryValue: classified.expenseCategory,
