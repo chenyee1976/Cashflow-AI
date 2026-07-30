@@ -53686,7 +53686,7 @@ s=p}while(true)switch(s){case 0:e7=n.a
 A.b2p(e7,"gemini-flash-latest")
 a4=A.O(A.a([new A.UE(f1,f0),new A.lN(u.x)],t.Uz),t.z2)
 m=A.a([new A.p0("user",a4)],t.kQ)
-a5=["gemini-1.5-flash","gemini-2.0-flash","gemini-flash-latest","gemini-1.5-pro"]
+a5=["gemini-2.0-flash","gemini-2.5-flash","gemini-1.5-flash","gemini-1.5-pro"]
 l=null
 k=null
 j=A.V1(null)

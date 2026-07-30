@@ -107,7 +107,7 @@ You MUST return a raw JSON object containing precisely the following format:
     ];
 
     // 4. Send request with multi-model fallback strategy (Direct Key & Vercel Serverless Proxy)
-    final modelNames = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-1.5-pro'];
+    final modelNames = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
     String? jsonResponseText;
     Object? lastErr;
 

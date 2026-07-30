@@ -1,6 +1,5 @@
-// Vercel Serverless Function Proxy for Google Gemini API
+// Vercel Serverless Function Proxy for Google Gemini API (Supports new AQ.Ab8... Auth Keys)
 
-// Increase body size limit to 50MB for base64-encoded bank statement PDFs/images
 export const config = {
   api: {
     bodyParser: {
@@ -34,15 +33,16 @@ module.exports = async (req, res) => {
 
   try {
     const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
-    const model = req.query.model || 'gemini-1.5-flash';
+    const model = req.query.model || 'gemini-2.0-flash';
 
-    // Target Google Gemini REST Endpoint
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    // Target Google Gemini REST Endpoint using x-goog-api-key header (required for new AQ... Auth Keys)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
       },
       body: body,
     });
