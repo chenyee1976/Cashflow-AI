@@ -112,29 +112,154 @@ You MUST return a raw JSON object containing precisely the following format:
       ])
     ];
 
-    // 4. Send request with multi-model fallback strategy
+    // 4. Send request with multi-model fallback strategy (Direct Key & Vercel Serverless Proxy)
     final modelNames = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-1.5-pro'];
-    GenerateContentResponse? response;
+    String? jsonResponseText;
     Object? lastErr;
 
+    final dio = Dio();
+    final String base64Data = base64Encode(fileBytes);
+    final String promptText = '''
+You are an expert financial AI specializing in Singapore bank and credit card statements. Analyze the uploaded statement and extract:
+1. If this is a Bank Statement, extract Account Details into "accounts" (Bank Name, Account Name, Account Number, Statement Ending Balance, Currency, and Statement Ending Date).
+2. If this is a Credit Card Statement, extract Credit Card Details into "cardDraft" (Issuer, Card Type, Card Name, Card Number, Reward/Miles summary, Miles rates, Cashback summary, Cashback rates, Total Spend, Payment Due Date).
+3. All Transactions listed in the statement (Date, Merchant/Description, Amount, and Category).
+
+STRICT CATEGORIZATION RULES FOR SINGAPORE TRANSACTIONS:
+- ATM Cash Withdrawals ("ATM", "CASH WITHDRAWAL", "CASH W/DRAWAL"): categoryValue MUST BE 'expense_transfer_to_cash'.
+- Taxes & Government Fees ("IRAS", "ETAX", "INLAND REVEN", "MINISTRY OF MANPOWER", "MOM", "TAX", "CUSTOMS"): categoryValue MUST BE 'expense_tax'.
+- Interest & Bonus Interest ("BONUS INTEREST", "SAVINGS INT", "INTEREST", "CO SPEND BONUS"): categoryValue MUST BE 'income_other' for positive amounts.
+- Transfers ("PAYNOW", "FAST PAYMENT", "PAYMENT W/TRANSFER", "TRF", "GIRO"): Use 'income_transfer' if amount > 0, else 'expense_transfer' (or 'expense_education' if tuition/course).
+- Groceries ("NTUC", "FAIRPRICE", "SHENG SIONG", "COLD STORAGE", "GIANT", "DON DON DONKI"): categoryValue 'expense_groceries', milesCashbackCategoryValue 'Groceries'.
+- Transport & SimplyGo ("GRAB", "GOJEK", "SIMPLYGO", "SMRT", "TRANSIT", "TADA"): categoryValue 'expense_transport', milesCashbackCategoryValue 'SimplyGo' or 'Commute'.
+- Dining ("FOODPANDA", "DELIVEROO", "GRABFOOD", "MCDONALD", "KFC", "RESTAURANT", "CAFE", "STARBUCKS"): categoryValue 'expense_dining', milesCashbackCategoryValue 'Dining & Food Delivery'.
+- Utilities & Telco ("SINGTEL", "STARHUB", "M1", "SP SERVICES", "PUB"): categoryValue 'expense_utilities'.
+
+You MUST return a raw JSON object containing precisely the following format:
+{
+  "accounts": [
+    {
+      "bank": "Bank/Institution Name (e.g. Citi, DBS, MariBank, OCBC, UOB)",
+      "name": "Account Name (e.g. Savings Account)",
+      "num": "Last 4 digits or full account number if visible",
+      "currency": "3-letter currency code (e.g. SGD, USD)",
+      "balance": "Ending balance as a decimal string (e.g. 1250.50)",
+      "balanceAsOfIso": "The date of the statement ending balance in ISO-8601 format (YYYY-MM-DD)"
+    }
+  ],
+  "cardDraft": {
+    "issuer": "Credit Card issuer bank (e.g. Citibank, HSBC, DBS, OCBC, UOB)",
+    "cardType": "One of: Visa, Mastercard, Amex, JCB",
+    "cardName": "Card Product Name (e.g. CITI PREMIERMILES WORLD MASTER)",
+    "cardNumber": "Full or partially masked card number (e.g. 5425-5033-0193-7628)",
+    "hasMiles": true,
+    "milesOpening": "Opening balance of miles/points as string",
+    "milesEarned": "Miles earned this month as string",
+    "milesBonus": "Bonus miles earned this month as string",
+    "milesRedeemed": "Miles redeemed or adjusted as string",
+    "milesEnding": "Ending miles balance as string",
+    "milesRates": [
+      {
+        "category": "Spend Category (e.g. SGD Spend, Foreign Currency Spend)",
+        "rate": "Miles rate (e.g. 1.2 or 2.0) as string",
+        "minSpend": "Minimum spend limit as string, or empty string",
+        "maxSpend": "Maximum spend cap as string, or empty string"
+      }
+    ],
+    "hasCashback": true,
+    "cashbackEarned": "Cashback earned amount as string",
+    "cashbackRates": [
+      {
+        "category": "Spend Category (e.g. Dining, Online Spend)",
+        "rate": "Cashback percent rate (e.g. 6% or 1.5%) as string",
+        "minSpend": "Minimum spend limit as string, or empty string",
+        "maxSpend": "Maximum spend cap as string, or empty string"
+      }
+    ],
+    "totalSpend": "Total spend this month (e.g. 220.57) as string",
+    "paymentDueDateIso": "Payment due date in YYYY-MM-DD format (e.g. 2026-06-02)"
+  },
+  "transactions": [
+    {
+      "dateStr": "The date of transaction formatted as DD MMM YYYY (e.g. 25 Apr 2026)",
+      "merchant": "Cleaned merchant/description (e.g. Sheng Siong Supermarket)",
+      "amount": "The transaction amount as a double. EXPENSES MUST BE NEGATIVE NUMBERS, INCOME MUST BE POSITIVE NUMBERS (e.g. -42.50 or 150.00)",
+      "spendCurrency": "For credit card transactions: IF amount is POSITIVE (> 0), spendCurrency MUST BE 'SGD Receipt'. Otherwise IF negative, select one of: SGD Spend, MYR spend, IDR spend, FCY Spend (based on transaction currency). Default is SGD Spend",
+      "categoryValue": "Map the transaction to one of exact string values: 'expense_transfer_to_cash', 'expense_tax', 'expense_dining', 'expense_groceries', 'expense_transport', 'expense_shopping', 'expense_entertainment', 'expense_travel', 'expense_utilities', 'expense_investments', 'expense_education', 'expense_transfer', 'expense_other', 'income_salary', 'income_transfer', 'income_investments', 'income_dividends', 'income_other'",
+      "milesCashbackCategoryValue": "For credit card transactions, map to one of exact string values: 'Automobile', 'Beauty & Wellness', 'Commute', 'Dining & Food Delivery', 'Entertainment', 'Groceries', 'Kids & Pets', 'Online', 'SimplyGo', 'Shopping', 'Fuel', 'Others'"
+    }
+  ]
+}
+''';
+
     for (final mName in modelNames) {
+      if (_apiKey.isNotEmpty && !_apiKey.startsWith('PROXY')) {
+        try {
+          final model = GenerativeModel(model: mName, apiKey: _apiKey);
+          final response = await model.generateContent(prompt);
+          if (response.text != null && response.text!.isNotEmpty) {
+            jsonResponseText = response.text;
+            print('Successfully extracted using direct Gemini API key: $mName');
+            break;
+          }
+        } catch (e) {
+          print('DEBUG Direct Gemini model $mName failed, trying serverless proxy: $e');
+        }
+      }
+
+      // Try Vercel Serverless Proxy (/api/gemini)
       try {
-        final model = GenerativeModel(model: mName, apiKey: _apiKey);
-        response = await model.generateContent(prompt);
-        if (response.text != null && response.text!.isNotEmpty) {
-          print('Successfully extracted using Gemini model: $mName');
-          break;
+        final proxyRes = await dio.post(
+          '/api/gemini?model=$mName',
+          data: {
+            'contents': [
+              {
+                'parts': [
+                  {
+                    'inline_data': {
+                      'mime_type': mimeType,
+                      'data': base64Data,
+                    }
+                  },
+                  {
+                    'text': promptText,
+                  }
+                ]
+              }
+            ]
+          },
+          options: Options(headers: {'Content-Type': 'application/json'}),
+        );
+
+        if (proxyRes.statusCode == 200 && proxyRes.data != null) {
+          final Map<String, dynamic> body = proxyRes.data is String
+              ? jsonDecode(proxyRes.data as String) as Map<String, dynamic>
+              : proxyRes.data as Map<String, dynamic>;
+
+          final candidates = body['candidates'] as List<dynamic>?;
+          if (candidates != null && candidates.isNotEmpty) {
+            final content = candidates[0]['content'] as Map<String, dynamic>?;
+            final parts = content?['parts'] as List<dynamic>?;
+            if (parts != null && parts.isNotEmpty) {
+              final text = parts[0]['text'] as String?;
+              if (text != null && text.isNotEmpty) {
+                jsonResponseText = text;
+                print('Successfully extracted using Vercel Serverless Proxy model: $mName');
+                break;
+              }
+            }
+          }
         }
       } catch (e) {
         lastErr = e;
-        print('DEBUG Gemini model $mName failed: $e');
+        print('DEBUG Proxy Gemini model $mName failed: $e');
       }
     }
 
-    if (response == null || response.text == null || response.text!.isEmpty) {
+    if (jsonResponseText == null || jsonResponseText.isEmpty) {
       throw Exception('Gemini API extraction failed across models. Last error: $lastErr');
     }
-    final text = response.text!;
+    final text = jsonResponseText;
 
     // 5. Decode JSON and map to target structures
     String cleanText = text.trim();
