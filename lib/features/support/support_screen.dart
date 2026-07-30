@@ -358,50 +358,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
               ),
               const SizedBox(height: 32),
 
-              // 4. More Section
-              Row(
-                children: const [
-                  Icon(Icons.settings_outlined, size: 16, color: AppColors.textSecondary),
-                  SizedBox(width: 8),
-                  Text(
-                    'MORE',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.divider),
-                ),
-                child: Column(
-                  children: [
-                    _buildMoreRow(
-                      icon: Icons.assignment_outlined,
-                      title: 'Terms of Service',
-                      statusTag: 'Active',
-                      onTap: () => LegalViewerModal.show(context, initialTabIndex: 0),
-                    ),
-                    const Divider(height: 1, color: AppColors.divider),
-                    _buildMoreRow(
-                      icon: Icons.shield_outlined,
-                      title: 'Privacy Policy (PDPA)',
-                      statusTag: 'Active',
-                      onTap: () => LegalViewerModal.show(context, initialTabIndex: 1),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // 5. Version Footer
+              // 4. Version Footer
               const AppFooterBrand(),
               const SizedBox(height: 60),
             ],
@@ -475,45 +432,6 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMoreRow({
-    required IconData icon,
-    required String title,
-    required String statusTag,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, size: 20, color: AppColors.textSecondary),
-      title: Text(
-        title,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppColors.error.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: AppColors.error.withOpacity(0.3)),
-            ),
-            child: Text(
-              statusTag,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: AppColors.error,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textHint),
-        ],
-      ),
-      onTap: onTap,
     );
   }
 }
