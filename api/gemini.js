@@ -1,4 +1,4 @@
-// Vercel Serverless Function Proxy for Google Gemini API (Supports new AQ.Ab8... Auth Keys)
+// Vercel Serverless Function Proxy for Google Gemini API (Supports new AQ.Ab8... Auth Keys & Sanitizes Header BOM)
 
 export const config = {
   api: {
@@ -23,11 +23,14 @@ module.exports = async (req, res) => {
   }
 
   // 1. Get Gemini API key from backend environment variable or custom header fallback
-  const apiKey = process.env.GEMINI_API_KEY || req.headers['x-gemini-key'];
+  let rawKey = (process.env.GEMINI_API_KEY || req.headers['x-gemini-key'] || '').trim();
+
+  // Clean UTF-8 Byte Order Mark (BOM \uFEFF - char code 65279) and non-ASCII characters
+  const apiKey = rawKey.replace(/^\uFEFF/, '').replace(/[^\x00-\x7F]/g, '').trim();
 
   if (!apiKey) {
     return res.status(500).json({
-      error: 'GEMINI_API_KEY environment variable is missing on Vercel backend.'
+      error: 'GEMINI_API_KEY environment variable is missing or invalid on Vercel backend.'
     });
   }
 
@@ -35,7 +38,7 @@ module.exports = async (req, res) => {
     const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
     const model = req.query.model || 'gemini-2.0-flash';
 
-    // Target Google Gemini REST Endpoint using x-goog-api-key header (required for new AQ... Auth Keys)
+    // Target Google Gemini REST Endpoint using sanitized x-goog-api-key header
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const response = await fetch(url, {
