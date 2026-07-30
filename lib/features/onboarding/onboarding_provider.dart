@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/database/app_database.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
 import 'package:drift/drift.dart';
@@ -161,13 +162,19 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
         id: Value(userId),
         firstName: Value(state.firstName),
         lastName: Value(state.lastName),
-        email: const Value('chenwallpaper@gmail.com'),
+        email: const Value('beta.tester@example.com'),
         googleId: const Value('google_mock_123'),
         rewardFocus: Value(state.rewardFocus),
         currencyPref: Value(state.currencyPref),
         createdAt: Value(DateTime.now().millisecondsSinceEpoch ~/ 1000),
       );
       await _db.upsertUser(companion);
+
+      // Save onboarding profile details to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      if (state.firstName.isNotEmpty) await prefs.setString('tester_first_name', state.firstName);
+      if (state.lastName.isNotEmpty) await prefs.setString('tester_last_name', state.lastName);
+      if (state.mobileNumber.isNotEmpty) await prefs.setString('tester_mobile', state.mobileNumber);
 
       // Save onboarding preferences
       await _storage.saveMobileNumber(state.mobileNumber);

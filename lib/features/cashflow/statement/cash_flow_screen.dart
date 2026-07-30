@@ -271,16 +271,19 @@ class CashFlowHomeScreen extends ConsumerWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: Row(
-                              children: [
-                                Expanded(child: _buildFilterTab(ref, 'All', 'all', currentFilter)),
-                                const SizedBox(width: 4),
-                                Expanded(child: _buildFilterTab(ref, 'Income', 'income', currentFilter)),
-                                const SizedBox(width: 4),
-                                Expanded(child: _buildFilterTab(ref, 'Expenses', 'expense', currentFilter)),
-                                const SizedBox(width: 4),
-                                Expanded(child: _buildFilterTab(ref, 'Transfers', 'transfer', currentFilter)),
-                              ],
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _buildFilterTab(ref, 'All', 'all', currentFilter),
+                                  const SizedBox(width: 6),
+                                  _buildFilterTab(ref, 'Income', 'income', currentFilter),
+                                  const SizedBox(width: 6),
+                                  _buildFilterTab(ref, 'Expenses', 'expense', currentFilter),
+                                  const SizedBox(width: 6),
+                                  _buildFilterTab(ref, 'Transfers', 'transfer', currentFilter),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -691,8 +694,10 @@ class CashFlowHomeScreen extends ConsumerWidget {
       onTap: () {
         ref.read(cashFlowFilterProvider.notifier).state = value;
       },
+      borderRadius: BorderRadius.circular(10),
       child: Container(
         height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary.withOpacity(0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),

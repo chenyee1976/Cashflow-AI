@@ -520,15 +520,21 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                                         style: const TextStyle(fontSize: 11, color: AppColors.textHint),
                                       ),
                                       const SizedBox(width: 10),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withOpacity(0.08),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          item.author,
-                                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
+                                      Expanded(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withOpacity(0.08),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              item.author,
+                                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],

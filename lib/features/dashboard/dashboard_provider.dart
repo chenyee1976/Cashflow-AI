@@ -236,22 +236,19 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
 
   final currentCashOnHand = currentBase + cashAdjustmentsTotal; // Net after cash expenses & ATM withdrawals
 
-  if (currentBase > 0 || cashAdjustmentsTotal != 0.0) {
-    final cashOnHandAcc = BankAccount(
-      id: 'manual_cash_account',
-      userId: userId,
-      bankName: 'Cash on hand',
-      accountType: 'Physical Cash',
-      accountNumber: 'Cash',
-      currentBalance: currentCashOnHand,
-      openingBalance: currentBase,
-      currency: 'SGD',
-      sourceStatementId: null,
-      createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-    );
-
-    consolidatedAccounts.insert(0, cashOnHandAcc);
-  }
+  final cashOnHandAcc = BankAccount(
+    id: 'manual_cash_account',
+    userId: userId,
+    bankName: 'Cash on hand',
+    accountType: 'Physical Cash Pool',
+    accountNumber: 'Wallet',
+    currentBalance: currentCashOnHand,
+    openingBalance: currentBase,
+    currency: 'SGD',
+    sourceStatementId: null,
+    createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+  );
+  consolidatedAccounts.add(cashOnHandAcc);
 
   double current = 0.0;
   for (final item in consolidatedAccounts) {

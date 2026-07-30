@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/database/app_database.dart';
 import '../../../data/secure_storage/secure_storage_service.dart';
 import 'package:drift/drift.dart';
@@ -57,7 +58,12 @@ final accountProfileProvider = FutureProvider.autoDispose<AccountProfileData>((r
     }
   }
 
-  final mobile = await storage.getMobileNumber() ?? '+6593690602';
+  final prefs = await SharedPreferences.getInstance();
+  final prefFName = prefs.getString('tester_first_name');
+  final prefLName = prefs.getString('tester_last_name');
+  final prefEmail = prefs.getString('tester_email');
+
+  final mobile = await storage.getMobileNumber() ?? '';
   final rawRewardFocus = await storage.getRewardFocus() ?? 'both';
   // Capitalize first letter to match dropdown options ('Miles', 'Cashback', 'Both')
   final rewardFocus = rawRewardFocus.toLowerCase() == 'both' 
@@ -79,11 +85,15 @@ final accountProfileProvider = FutureProvider.autoDispose<AccountProfileData>((r
   }
   final consolidatedCards = uniqueCards.values.toList();
 
+  String fName = prefFName?.isNotEmpty == true ? prefFName! : (user?.firstName.isNotEmpty == true && user?.firstName != 'SG' ? user!.firstName : 'Beta');
+  String lName = prefLName?.isNotEmpty == true ? prefLName! : (user?.lastName.isNotEmpty == true && user?.lastName != 'Individual' ? user!.lastName : 'Tester');
+  String email = prefEmail?.isNotEmpty == true ? prefEmail! : (user?.email.isNotEmpty == true && user?.email != 'user@cashflowai.sg' ? user!.email : 'beta.tester@example.com');
+
   return AccountProfileData(
-    firstName: (user?.firstName.isNotEmpty == true && user?.firstName != 'SG') ? user!.firstName : 'Chen Yee',
-    lastName: (user?.lastName.isNotEmpty == true && user?.lastName != 'Individual') ? user!.lastName : 'Tok',
+    firstName: fName,
+    lastName: lName,
     mobileNumber: mobile,
-    email: (user?.email.isNotEmpty == true && user?.email != 'user@cashflowai.sg') ? user!.email : 'chenwallpaper@gmail.com',
+    email: email,
     rewardFocus: rewardFocus,
     currency: 'SGD',
     bankCount: consolidatedAccounts.length,

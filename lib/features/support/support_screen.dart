@@ -294,38 +294,41 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
               const SizedBox(height: 24),
 
               // 2. Triple Contact Cards (Email, WhatsApp, Telegram)
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildContactCard(
-                      icon: Icons.email_outlined,
-                      iconColor: const Color(0xFF2563EB),
-                      title: 'Email us',
-                      subtitle: 'sgcashflowai@gmail.com',
-                      onTap: _openEmail,
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _buildContactCard(
+                        icon: Icons.email_outlined,
+                        iconColor: const Color(0xFF2563EB),
+                        title: 'Email us',
+                        subtitle: 'Official Help\nsgcashflowai@gmail.com',
+                        onTap: _openEmail,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildContactCard(
-                      icon: Icons.chat_bubble_outline_rounded,
-                      iconColor: const Color(0xFF16A34A),
-                      title: 'WhatsApp',
-                      subtitle: 'Chat with us\n+65 8719 4254',
-                      onTap: () => _openLink('https://wa.me/6587194254'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildContactCard(
+                        icon: Icons.chat_bubble_outline_rounded,
+                        iconColor: const Color(0xFF16A34A),
+                        title: 'WhatsApp',
+                        subtitle: 'Chat with us\n+65 8719 4254',
+                        onTap: () => _openLink('https://wa.me/6587194254'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildContactCard(
-                      icon: Icons.send_rounded,
-                      iconColor: const Color(0xFF0284C7),
-                      title: 'Telegram',
-                      subtitle: 'Join SGCashFlowAI group',
-                      onTap: () => _openLink('https://t.me/SGCashFlowAI'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildContactCard(
+                        icon: Icons.send_rounded,
+                        iconColor: const Color(0xFF0284C7),
+                        title: 'Telegram',
+                        subtitle: 'Join Group\n@SGCashFlowAI',
+                        onTap: () => _openLink('https://t.me/SGCashFlowAI'),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(height: 32),
 
@@ -353,7 +356,22 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                   border: Border.all(color: AppColors.divider),
                 ),
                 child: Column(
-                  children: _faqs.map((faq) => _buildFaqItem(faq['q']!, faq['a']!)).toList(),
+                  children: [
+                    _buildFaqItem(
+                      'Is my financial data kept private?',
+                      'Yes, 100%! All your uploaded bank & credit card statements are parsed and stored locally inside your browser/device database. We never sell your data.',
+                    ),
+                    const Divider(height: 1),
+                    _buildFaqItem(
+                      'Which banks & credit cards are supported?',
+                      'We support DBS/POSB, OCBC, UOB, MariBank, Citibank, SingFinance, Chocolate Finance, and major credit cards in Singapore.',
+                    ),
+                    const Divider(height: 1),
+                    _buildFaqItem(
+                      'How do miles and cashback rewards get calculated?',
+                      'SGCashFlowAI automatically maps your credit card transactions against standard card reward categories (e.g. SimplyGo, Dining, Groceries) to estimate earned miles or cashback.',
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 32),
@@ -377,36 +395,49 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.divider),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
                 color: iconColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 20, color: iconColor),
+              child: Icon(icon, size: 18, color: iconColor),
             ),
-            const SizedBox(height: 14),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            const SizedBox(height: 10),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3),
-              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+                height: 1.25,
+              ),
               maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

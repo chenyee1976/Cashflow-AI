@@ -39,9 +39,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isRegistered = prefs.getBool('beta_tester_onboarded') ?? false;
 
     if (!isRegistered && mounted) {
-      final firstNameCtrl = TextEditingController(text: 'Chen Yee');
-      final lastNameCtrl = TextEditingController(text: 'Tok');
-      final emailCtrl = TextEditingController(text: 'chenwallpaper@gmail.com');
+      final savedFName = prefs.getString('tester_first_name') ?? '';
+      final savedLName = prefs.getString('tester_last_name') ?? '';
+      final savedEmail = prefs.getString('tester_email') ?? '';
+
+      final firstNameCtrl = TextEditingController(text: savedFName);
+      final lastNameCtrl = TextEditingController(text: savedLName);
+      final emailCtrl = TextEditingController(text: savedEmail);
 
       showDialog(
         context: context,
@@ -61,7 +65,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Please confirm your name and email address so your testing feedback and activity logs are identified correctly.',
+                  'Please enter your name and email address so your profile & activity logs are identified correctly.',
                   style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 16),
@@ -69,6 +73,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   controller: firstNameCtrl,
                   decoration: InputDecoration(
                     labelText: 'First Name',
+                    hintText: 'e.g. Alex',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
@@ -77,6 +82,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   controller: lastNameCtrl,
                   decoration: InputDecoration(
                     labelText: 'Last Name',
+                    hintText: 'e.g. Tan',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
@@ -86,6 +92,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Email Address',
+                    hintText: 'e.g. alex.tan@gmail.com',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
@@ -106,6 +113,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                 Navigator.pop(ctx);
                 await prefs.setBool('beta_tester_onboarded', true);
+                await prefs.setString('tester_first_name', fName);
+                await prefs.setString('tester_last_name', lName);
+                await prefs.setString('tester_email', email);
 
                 final analytics = ref.read(analyticsServiceProvider);
                 final userId = 'tester_${email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
@@ -121,7 +131,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              child: const Text('Start Testing 🚀', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('Save & Continue 🚀', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -709,138 +719,154 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   child: Column(
                     children: data.accounts.map((acc) {
                       final balanceVal = balancesMap[acc.id] ?? 0.0;
-                final currencyStr = acc.currency.trim().toUpperCase();
-                
-                final isCashOnHand = acc.bankName == 'Cash on hand';
+                      final currencyStr = acc.currency.trim().toUpperCase();
+                      final isCashOnHand = acc.bankName == 'Cash on hand';
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.divider.withOpacity(0.5)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.divider.withOpacity(0.5)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '${acc.bankName} ${acc.accountType}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                      if (isCashOnHand) ...[
+                                        const SizedBox(width: 8),
+                                        InkWell(
+                                          onTap: () async {
+                                            final ctrl = TextEditingController(text: balanceVal.toStringAsFixed(2));
+                                            final newBase = await showDialog<double>(
+                                              context: context,
+                                              builder: (ctx) => AlertDialog(
+                                                title: Text('Update Base Cash on Hand ($nowStr)'),
+                                                content: TextField(
+                                                  controller: ctrl,
+                                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                  decoration: const InputDecoration(
+                                                    labelText: 'Base Cash Pool Amount (S\$)',
+                                                    border: OutlineInputBorder(),
+                                                  ),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(ctx),
+                                                    child: const Text('Cancel'),
+                                                  ),
+                                                  ElevatedButton(
+                                                    onPressed: () {
+                                                      final val = double.tryParse(ctrl.text);
+                                                      Navigator.pop(ctx, val);
+                                                    },
+                                                    child: const Text('Save'),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+
+                                            if (newBase != null) {
+                                              final targetDate = title == 'Current balance'
+                                                  ? DateTime.now()
+                                                  : (title == 'Previous month balance'
+                                                      ? DateTime(DateTime.now().year, DateTime.now().month, 0)
+                                                      : DateTime(DateTime.now().year - 1, 12, 31));
+
+                                              await ref.read(secureStorageProvider).saveCashOnHandBaseForMonth(
+                                                    year: targetDate.year,
+                                                    month: targetDate.month,
+                                                    amount: newBase,
+                                                  );
+                                              ref.invalidate(cashPositionProvider);
+                                              if (context.mounted) {
+                                                Navigator.pop(context);
+                                              }
+                                            }
+                                          },
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primary.withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.edit, size: 12, color: AppColors.primary),
+                                                SizedBox(width: 3),
+                                                Text('Edit Cash', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    isCashOnHand ? 'Physical wallet pool' : '${acc.bankName} · as of 30/06/2026',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  '${acc.bankName} ${acc.accountType}',
+                                  '$currencyStr ${NumberFormat('#,##0.00').format(balanceVal)}',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
-                                if (isCashOnHand) ...[
-                                  const SizedBox(width: 8),
-                                  InkWell(
-                                    onTap: () async {
-                                      final ctrl = TextEditingController(text: balanceVal.toStringAsFixed(2));
-                                      final newBase = await showDialog<double>(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          title: Text('Update Base Cash on Hand ($nowStr)'),
-                                          content: TextField(
-                                            controller: ctrl,
-                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                            decoration: const InputDecoration(
-                                              labelText: 'Base Cash Pool Amount (S\$)',
-                                              border: OutlineInputBorder(),
-                                            ),
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(ctx),
-                                              child: const Text('Cancel'),
-                                            ),
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                final val = double.tryParse(ctrl.text);
-                                                Navigator.pop(ctx, val);
-                                              },
-                                              child: const Text('Save'),
-                                            ),
-                                          ],
+                                if (currencyStr != 'SGD') ...[
+                                  const SizedBox(height: 2),
+                                  FutureBuilder<String?>(
+                                    future: ref.read(secureStorageProvider).getFxRate(currencyStr),
+                                    builder: (context, snapshot) {
+                                      final savedRate = snapshot.data;
+                                      final rate = double.tryParse(savedRate ?? '') ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+                                      return Text(
+                                        '(S\$ ${NumberFormat('#,##0.00').format(balanceVal * rate)})',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       );
-
-                                      if (newBase != null) {
-                                        final targetDate = title == 'Current balance'
-                                            ? DateTime.now()
-                                            : (title == 'Previous month balance'
-                                                ? DateTime(DateTime.now().year, DateTime.now().month, 0)
-                                                : DateTime(DateTime.now().year - 1, 12, 31));
-
-                                        await ref.read(secureStorageProvider).saveCashOnHandBaseForMonth(
-                                              year: targetDate.year,
-                                              month: targetDate.month,
-                                              amount: newBase,
-                                            );
-                                        ref.invalidate(cashPositionProvider);
-                                        Navigator.pop(context);
-                                      }
                                     },
-                                    child: const Icon(Icons.edit_outlined, size: 14, color: AppColors.primary),
                                   ),
                                 ],
                               ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              isCashOnHand ? 'Physical wallet pool' : '${acc.bankName} · as of 30/06/2026',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
                           ],
                         ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '$currencyStr ${NumberFormat('#,##0.00').format(balanceVal)}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          if (currencyStr != 'SGD') ...[
-                            const SizedBox(height: 2),
-                            FutureBuilder<String?>(
-                              future: ref.read(secureStorageProvider).getFxRate(currencyStr),
-                              builder: (context, snapshot) {
-                                final savedRate = snapshot.data;
-                                final rate = double.tryParse(savedRate ?? '') ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
-                                return Text(
-                                  '(S\$ ${NumberFormat('#,##0.00').format(balanceVal * rate)})',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
+                      );
+                    }).toList(),
                   ),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
+                ),
+              ),
 
               const SizedBox(height: 8),
               const Divider(color: AppColors.divider),
