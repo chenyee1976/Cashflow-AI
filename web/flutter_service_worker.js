@@ -3,12 +3,7 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {".vercel/project.json": "9914e5ee6f3e5bb045e34c1b7b758953",
-".vercel/README.txt": "2b13c79d37d6ed82a3255b83b6815034",
-"api/feedback.js": "ec41cc8f59db31acd9f6cfd382baa486",
-"api/logs.js": "cf9e5a49f559a87cc61830aa313627d4",
-"api/notifications.js": "e69086f68c0053e5969afbba7eb2d821",
-"assets/AssetManifest.bin": "0b0a3415aad49b6e9bf965ff578614f9",
+const RESOURCES = {"assets/AssetManifest.bin": "0b0a3415aad49b6e9bf965ff578614f9",
 "assets/AssetManifest.bin.json": "a1fee2517bf598633e2f67fcf3e26c94",
 "assets/AssetManifest.json": "99914b932bd37a50b983c5e7c90ae93b",
 "assets/FontManifest.json": "7b2a36307916a9721811788013e65289",
@@ -39,7 +34,6 @@ const RESOURCES = {".vercel/project.json": "9914e5ee6f3e5bb045e34c1b7b758953",
 "main.dart.js": "e80317d5a56953538b843d07e461df5a",
 "manifest.json": "bddcf0e9e1e7f225fd7224f49ec22f7c",
 "sqlite3.wasm": "f08450f1d5a088a01cec0eb541c3aeca",
-"vercel.json": "acd48dbbc1ef8825c8e38b38f781f99d",
 "version.json": "6c1dc4cc269984b03e30f68db318f703",
 "worker_entrypoint.dart": "eb8219d0cb3e6396dee4f89b6f833ecc"};
 // The application shell files that are downloaded before a service worker can
