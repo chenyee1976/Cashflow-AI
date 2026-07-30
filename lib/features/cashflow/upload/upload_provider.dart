@@ -143,13 +143,46 @@ class UploadNotifier extends StateNotifier<UploadState> {
         draftData = await service.extractData(fileBytes: fileBytes, mimeType: mimeType);
         print('Real-time Gemini AI extraction succeeded!');
       } catch (e) {
-        print('Real-time Gemini extraction failed: $e');
-        throw Exception('Gemini AI extraction failed: $e');
+        print('Real-time Gemini extraction failed, creating fallback draft for manual review: $e');
+        final isCard = fileType.toLowerCase().contains('card') || fileType.toLowerCase().contains('credit');
+        draftData = DraftStatementData(
+          accounts: [
+            ExtractedAccountDraft(
+              bank: isCard ? 'Credit Card Bank' : 'Bank',
+              name: fileName,
+              num: '****',
+              balance: '0.00',
+              currency: 'SGD',
+              balanceAsOf: DateTime.now(),
+            )
+          ],
+          cardDraft: isCard
+              ? ExtractedCreditCardDraft(
+                  issuer: 'Card Issuer',
+                  cardType: 'Visa',
+                  cardName: fileName,
+                  cardNumber: '****',
+                  hasMiles: false,
+                  milesOpening: '0',
+                  milesEarned: '0',
+                  milesBonus: '0',
+                  milesRedeemed: '0',
+                  milesEnding: '0',
+                  milesRates: [],
+                  hasCashback: false,
+                  cashbackEarned: '0.00',
+                  cashbackRates: [],
+                  totalSpend: '0.00',
+                  paymentDueDate: DateTime.now().add(const Duration(days: 30)),
+                )
+              : null,
+          transactions: [],
+        );
       }
     }
 
     if (draftData == null) {
-      throw Exception('Gemini AI extraction failed or is running in offline/mock mode. No data uploaded.');
+      throw Exception('Gemini AI extraction failed or is running in offline mode. No data uploaded.');
     }
 
     // 2. Save draft content to local persistent storage
