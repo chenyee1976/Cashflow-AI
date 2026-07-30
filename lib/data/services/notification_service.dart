@@ -228,10 +228,24 @@ class NotificationService {
         AppNotification(
           id: 'welcome_beta_1',
           title: '🚀 Welcome to SGCashFlowAI Beta!',
-          message: 'Thank you for testing CashFlow AI! You can upload your MariBank, DBS, UOB, OCBC, Citi bank and credit card statements to analyze your cashflow, card rewards, and expense tracking.',
-          publishedAt: DateTime(2026, 7, 1, 9, 0),
+          message: 'Thank you for testing SGCashFlowAI! You can upload your MariBank, DBS, UOB, OCBC, Citi bank and credit card statements to analyze your cashflow, card rewards, and expense tracking.',
+          publishedAt: DateTime(2026, 7, 29, 9, 0),
           author: 'SGCashFlowAI Team',
-        )
+        ),
+        AppNotification(
+          id: 'system_update_2',
+          title: '📢 System Update: Multi-Bank Statement OCR & PDF Parsing',
+          message: 'We have updated our AI statement parser with higher accuracy for DBS, MariBank, UOB, OCBC, and Citibank statements.',
+          publishedAt: DateTime(2026, 7, 28, 14, 30),
+          author: 'SGCashFlowAI Admin',
+        ),
+        AppNotification(
+          id: 'pdpa_privacy_3',
+          title: '🛡️ PDPA & Privacy Policy Update',
+          message: 'Our Terms of Service, PDPA Privacy Policy, and AI Analytics controls are now available in Account Settings and Support.',
+          publishedAt: DateTime(2026, 7, 28, 18, 0),
+          author: 'SGCashFlowAI Legal & Compliance',
+        ),
       ];
     }
     return raw.map((str) {
