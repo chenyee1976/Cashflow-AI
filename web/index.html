@@ -37,6 +37,7 @@
 </head>
 <body>
   <script>
+    // Force purge stale Service Workers and browser CacheStorage
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
         for (let registration of registrations) {
@@ -52,6 +53,6 @@
       });
     }
   </script>
-  <script src="flutter_bootstrap.js?v=20260728_1315_v3" async></script>
+  <script src="flutter_bootstrap.js?v=20260730_v5" async></script>
 </body>
 </html>
