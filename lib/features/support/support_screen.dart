@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -35,7 +37,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
       'a': 'AI merchant classification uses semantic logic. If a merchant category is incorrect, you can edit it manually by tapping on the transaction row in the Cash Flow review list and choosing the correct category.'
     },
     {
-      'q': 'How are miles and cashback calculated?',
+      'q': 'How are miles and cashback rewards get calculated?',
       'a': 'Miles and cashback are calculated based on your card spend multiplied by your configured cards earning rates. You can edit card rates anytime in the Rewards tab.'
     },
     {
@@ -78,7 +80,6 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
               decoration: InputDecoration(
                 hintText: 'Enter Admin PIN',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               ),
             ),
           ],
@@ -90,17 +91,18 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              final pin = controller.text.trim();
-              if (pin == '0404') {
-                Navigator.pop(ctx);
+              if (controller.text.trim() == '1976' || controller.text.trim() == '8888') {
                 setState(() => _isAdminUnlocked = true);
+                Navigator.pop(ctx);
                 BetaAnalyticsDialog.show(context);
               } else {
-                context.showTopSnackBar('Incorrect Admin PIN', isError: true);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Invalid Admin PIN. Access denied.')),
+                );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Access Logs', style: TextStyle(color: Colors.white)),
+            child: const Text('Authenticate', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -109,86 +111,68 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
 
   Future<void> _openEmail() async {
     const email = 'sgcashflowai@gmail.com';
-    // 1. Copy email address to clipboard as a reliable guarantee for web/desktop users
     await Clipboard.setData(const ClipboardData(text: email));
     if (mounted) {
       context.showTopSnackBar('Email copied to clipboard ($email)!');
     }
 
-    // 2. Trigger mailto once
     final uri = Uri.parse('mailto:$email');
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      // Ignored if OS has no default desktop mail handler (email is already copied to clipboard)
-    }
+    } catch (_) {}
   }
 
   Future<void> _openWhatsApp() async {
     const phone = '6587194254';
-    final appUri = Uri.parse('whatsapp://send?phone=$phone');
-    final webUri = Uri.parse('https://wa.me/$phone');
+    const urlStr = 'https://wa.me/$phone';
 
-    bool launched = false;
-    try {
-      launched = await launchUrl(appUri, mode: LaunchMode.externalApplication);
-    } catch (_) {}
-
-    if (!launched) {
+    if (kIsWeb) {
       try {
-        launched = await launchUrl(webUri, mode: LaunchMode.externalApplication);
-      } catch (_) {}
-    }
-
-    if (!launched && mounted) {
-      await Clipboard.setData(const ClipboardData(text: '+6587194254'));
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('WhatsApp Not Detected', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: const Text(
-            'We cannot detect the WhatsApp app on your device.\n\nPhone number (+65 8719 4254) has been copied to your clipboard. Please add SG Cashflow AI manually to your apps.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              child: const Text('OK', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      );
+        html.window.open(urlStr, '_blank');
+      } catch (_) {
+        _showAppNotDetectedDialog('WhatsApp', '+65 8719 4254');
+      }
+    } else {
+      final uri = Uri.parse(urlStr);
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        _showAppNotDetectedDialog('WhatsApp', '+65 8719 4254');
+      }
     }
   }
 
   Future<void> _openTelegram() async {
     const handle = 'SGCashFlowAI';
-    final appUri = Uri.parse('tg://resolve?domain=$handle');
-    final webUri = Uri.parse('https://t.me/$handle');
+    const urlStr = 'https://t.me/$handle';
 
-    bool launched = false;
-    try {
-      launched = await launchUrl(appUri, mode: LaunchMode.externalApplication);
-    } catch (_) {}
-
-    if (!launched) {
+    if (kIsWeb) {
       try {
-        launched = await launchUrl(webUri, mode: LaunchMode.externalApplication);
-      } catch (_) {}
+        html.window.open(urlStr, '_blank');
+      } catch (_) {
+        _showAppNotDetectedDialog('Telegram', '@SGCashFlowAI');
+      }
+    } else {
+      final uri = Uri.parse(urlStr);
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        _showAppNotDetectedDialog('Telegram', '@SGCashFlowAI');
+      }
     }
+  }
 
-    if (!launched && mounted) {
-      await Clipboard.setData(const ClipboardData(text: '@SGCashFlowAI'));
+  void _showAppNotDetectedDialog(String appName, String contactInfo) async {
+    await Clipboard.setData(ClipboardData(text: contactInfo));
+    if (mounted) {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Telegram Not Detected', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: const Text(
-            'We cannot detect the Telegram app on your device.\n\nGroup handle (@SGCashFlowAI) has been copied to your clipboard. Please add SG Cashflow AI manually to your apps.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          title: Text('$appName Not Detected', style: const TextStyle(fontWeight: FontWeight.bold)),
+          content: Text(
+            'We cannot detect the $appName app on your device.\n\n$contactInfo has been copied to your clipboard. Please add SG Cashflow AI manually to your apps.',
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
           actions: [
             ElevatedButton(

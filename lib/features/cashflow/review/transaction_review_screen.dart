@@ -1489,89 +1489,130 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
 
                           return Container(
                             key: ValueKey(tx),
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(8),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: AppColors.surface,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: AppColors.divider),
                             ),
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: InkWell(
-                                        onTap: () async {
-                                          DateTime parsedDate = DateTime.now();
-                                          try {
-                                            parsedDate = DateFormat('dd MMM yyyy').parse(tx.dateStr.trim());
-                                          } catch (_) {
+                                if (isCreditCard) ...[
+                                  // CREDIT CARD TRANSACTION: 3-ROW LAYOUT
+                                  // ROW 1: Date | Merchant | Amount | Delete
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: InkWell(
+                                          onTap: () async {
+                                            DateTime parsedDate = DateTime.now();
                                             try {
-                                              parsedDate = DateFormat('dd/MM/yyyy').parse(tx.dateStr.trim());
-                                            } catch (_) {}
-                                          }
-                                          final picked = await showDatePicker(
-                                            context: context,
-                                            initialDate: parsedDate,
-                                            firstDate: DateTime(2000),
-                                            lastDate: DateTime(2100),
-                                          );
-                                          if (picked != null) {
-                                            setState(() {
-                                              tx.dateStr = DateFormat('dd MMM yyyy').format(picked);
-                                            });
-                                          }
-                                        },
-                                        child: InputDecorator(
-                                          decoration: const InputDecoration(
-                                            labelText: 'Date',
-                                            labelStyle: TextStyle(fontSize: 9, color: AppColors.textSecondary),
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                tx.dateStr,
-                                                style: const TextStyle(fontSize: 12),
-                                              ),
-                                              const Icon(Icons.calendar_today, size: 12, color: AppColors.textSecondary),
-                                            ],
+                                              parsedDate = DateFormat('dd MMM yyyy').parse(tx.dateStr.trim());
+                                            } catch (_) {
+                                              try {
+                                                parsedDate = DateFormat('dd/MM/yyyy').parse(tx.dateStr.trim());
+                                              } catch (_) {}
+                                            }
+                                            final picked = await showDatePicker(
+                                              context: context,
+                                              initialDate: parsedDate,
+                                              firstDate: DateTime(2000),
+                                              lastDate: DateTime(2100),
+                                            );
+                                            if (picked != null) {
+                                              setState(() {
+                                                tx.dateStr = DateFormat('dd MMM yyyy').format(picked);
+                                              });
+                                            }
+                                          },
+                                          child: InputDecorator(
+                                            decoration: const InputDecoration(
+                                              labelText: 'Date',
+                                              labelStyle: TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                              border: OutlineInputBorder(),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    tx.dateStr,
+                                                    style: const TextStyle(fontSize: 10),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const Icon(Icons.calendar_today, size: 10, color: AppColors.textSecondary),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      flex: isCreditCard ? 3 : 4,
-                                      child: _buildTransactionField(
-                                        value: tx.merchant,
-                                        label: 'Merchant',
-                                        onChanged: (val) => tx.merchant = val,
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        flex: 4,
+                                        child: _buildTransactionField(
+                                          value: tx.merchant,
+                                          label: 'Merchant',
+                                          onChanged: (val) => tx.merchant = val,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      flex: 2,
-                                      child: _buildTransactionField(
-                                        value: tx.amount.toString(),
-                                        label: 'Amount',
-                                        onChanged: (val) => tx.amount = double.tryParse(val) ?? 0.0,
-                                        keyboardType: TextInputType.number,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    if (isCreditCard) ...[
-                                      // Credit Card Dropdowns
+                                      const SizedBox(width: 6),
                                       Expanded(
                                         flex: 3,
+                                        child: _buildTransactionField(
+                                          value: tx.amount.toString(),
+                                          label: 'Amount',
+                                          onChanged: (val) => tx.amount = double.tryParse(val) ?? 0.0,
+                                          keyboardType: TextInputType.number,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      IconButton(
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                        onPressed: () async {
+                                          final confirm = await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text('Delete Transaction'),
+                                              content: const Text('Are you sure you want to delete this transaction draft?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.of(ctx).pop(false),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                                  child: const Text('Delete'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirm == true) {
+                                            setState(() {
+                                              _transactions.removeAt(index);
+                                            });
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // ROW 2: Category for Expenses | Category for Miles/Cashback
+                                  Row(
+                                    children: [
+                                      Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             const Text('Category for expenses', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
-                                            const SizedBox(height: 4),
+                                            const SizedBox(height: 2),
                                             DropdownButtonFormField<TransactionCategory>(
                                               value: () {
                                                 final cat = TransactionCategory.fromValue(tx.expenseCategoryStr);
@@ -1609,12 +1650,11 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        flex: 3,
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             const Text('Category for miles/cashback', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
-                                            const SizedBox(height: 4),
+                                            const SizedBox(height: 2),
                                             DropdownButtonFormField<String>(
                                               value: _ccTransactionCategoryOptions.contains(tx.categoryStr) ? tx.categoryStr : 'Others',
                                               isExpanded: true,
@@ -1639,14 +1679,19 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                           ],
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // ROW 3: Currency | Custom Category Name
+                                  Row(
+                                    children: [
                                       Expanded(
-                                        flex: 3,
+                                        flex: 5,
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             const Text('Currency', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
-                                            const SizedBox(height: 4),
+                                            const SizedBox(height: 2),
                                             DropdownButtonFormField<String>(
                                               value: tx.spendCurrency,
                                               isExpanded: true,
@@ -1671,29 +1716,162 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                           ],
                                         ),
                                       ),
-                                    ] else ...[
-                                      // Bank Account Dropdown
-                                      Builder(
-                                        builder: (context) {
-                                          final isIncomeTx = tx.amount > 0;
-                                          final catEnum = TransactionCategory.fromValue(tx.categoryStr);
-                                          // Auto-correct category value if sign doesn't match
-                                          TransactionCategory finalCat = catEnum;
-                                          if (isIncomeTx && !catEnum.isIncome) {
-                                            finalCat = TransactionCategory.incomeOther;
-                                            tx.categoryStr = finalCat.value;
-                                          } else if (!isIncomeTx && catEnum.isIncome) {
-                                            finalCat = TransactionCategory.expenseOther;
-                                            tx.categoryStr = finalCat.value;
+                                      if (tx.categoryStr == 'Others') ...[
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          flex: 5,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text('Custom Category Name', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+                                              const SizedBox(height: 2),
+                                              SizedBox(
+                                                height: 36,
+                                                child: TextField(
+                                                  controller: tx.customCategoryCtrl,
+                                                  style: const TextStyle(fontSize: 11),
+                                                  decoration: const InputDecoration(
+                                                    hintText: 'Custom Category Name',
+                                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    border: OutlineInputBorder(),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ] else ...[
+                                  // BANK STATEMENT TRANSACTION: 2-ROW LAYOUT
+                                  // ROW 1: Date | Merchant | Delete
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 4,
+                                        child: InkWell(
+                                          onTap: () async {
+                                            DateTime parsedDate = DateTime.now();
+                                            try {
+                                              parsedDate = DateFormat('dd MMM yyyy').parse(tx.dateStr.trim());
+                                            } catch (_) {
+                                              try {
+                                                parsedDate = DateFormat('dd/MM/yyyy').parse(tx.dateStr.trim());
+                                              } catch (_) {}
+                                            }
+                                            final picked = await showDatePicker(
+                                              context: context,
+                                              initialDate: parsedDate,
+                                              firstDate: DateTime(2000),
+                                              lastDate: DateTime(2100),
+                                            );
+                                            if (picked != null) {
+                                              setState(() {
+                                                tx.dateStr = DateFormat('dd MMM yyyy').format(picked);
+                                              });
+                                            }
+                                          },
+                                          child: InputDecorator(
+                                            decoration: const InputDecoration(
+                                              labelText: 'Date',
+                                              labelStyle: TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              border: OutlineInputBorder(),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    tx.dateStr,
+                                                    style: const TextStyle(fontSize: 11),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const Icon(Icons.calendar_today, size: 12, color: AppColors.textSecondary),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        flex: 6,
+                                        child: _buildTransactionField(
+                                          value: tx.merchant,
+                                          label: 'Merchant',
+                                          onChanged: (val) => tx.merchant = val,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      IconButton(
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                        onPressed: () async {
+                                          final confirm = await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text('Delete Transaction'),
+                                              content: const Text('Are you sure you want to delete this transaction draft?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.of(ctx).pop(false),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                                  child: const Text('Delete'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirm == true) {
+                                            setState(() {
+                                              _transactions.removeAt(index);
+                                            });
                                           }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // ROW 2: Amount | Category
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 4,
+                                        child: _buildTransactionField(
+                                          value: tx.amount.toString(),
+                                          label: 'Amount',
+                                          onChanged: (val) => tx.amount = double.tryParse(val) ?? 0.0,
+                                          keyboardType: TextInputType.number,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        flex: 6,
+                                        child: Builder(
+                                          builder: (context) {
+                                            final isIncomeTx = tx.amount > 0;
+                                            final catEnum = TransactionCategory.fromValue(tx.categoryStr);
+                                            // Auto-correct category value if sign doesn't match
+                                            TransactionCategory finalCat = catEnum;
+                                            if (isIncomeTx && !catEnum.isIncome) {
+                                              finalCat = TransactionCategory.incomeOther;
+                                              tx.categoryStr = finalCat.value;
+                                            } else if (!isIncomeTx && catEnum.isIncome) {
+                                              finalCat = TransactionCategory.expenseOther;
+                                              tx.categoryStr = finalCat.value;
+                                            }
 
-                                          final itemsToShow = TransactionCategory.values.where((cat) {
-                                            return isIncomeTx ? cat.isIncome : cat.isExpense;
-                                          }).toList();
+                                            final itemsToShow = TransactionCategory.values.where((cat) {
+                                              return isIncomeTx ? cat.isIncome : cat.isExpense;
+                                            }).toList();
 
-                                          return Expanded(
-                                            flex: 3,
-                                            child: DropdownButtonFormField<TransactionCategory>(
+                                            return DropdownButtonFormField<TransactionCategory>(
                                               value: finalCat,
                                               isExpanded: true,
                                               decoration: const InputDecoration(
@@ -1722,52 +1900,11 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                                   });
                                                 }
                                               },
-                                            ),
-                                          );
-                                        },
+                                            );
+                                          },
+                                        ),
                                       ),
                                     ],
-                                    const SizedBox(width: 4),
-                                    IconButton(
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                                      onPressed: () async {
-                                        final confirm = await showDialog<bool>(
-                                          context: context,
-                                          builder: (ctx) => AlertDialog(
-                                            title: const Text('Delete Transaction'),
-                                            content: const Text('Are you sure you want to delete this transaction draft?'),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.of(ctx).pop(false),
-                                                child: const Text('Cancel'),
-                                              ),
-                                              TextButton(
-                                                onPressed: () => Navigator.of(ctx).pop(true),
-                                                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                                child: const Text('Delete'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                        if (confirm == true) {
-                                          setState(() {
-                                            _transactions.removeAt(index);
-                                          });
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                if (isCreditCard && tx.categoryStr == 'Others') ...[
-                                  const SizedBox(height: 8),
-                                  _buildTransactionField(
-                                    value: tx.customCategoryCtrl.text,
-                                    label: 'Custom Category Name',
-                                    onChanged: (val) {
-                                      tx.customCategoryCtrl.text = val;
-                                    },
                                   ),
                                 ],
                               ],

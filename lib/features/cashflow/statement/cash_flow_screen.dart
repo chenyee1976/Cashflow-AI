@@ -267,104 +267,100 @@ class CashFlowHomeScreen extends ConsumerWidget {
                         const SizedBox(height: 20),
                       ],
 
-                      // 7. Pill segmented selector filters (Full Width Row)
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.divider),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(child: _buildFilterTab(ref, 'All', 'all', currentFilter)),
-                            const SizedBox(width: 4),
-                            Expanded(child: _buildFilterTab(ref, 'Income', 'income', currentFilter)),
-                            const SizedBox(width: 4),
-                            Expanded(child: _buildFilterTab(ref, 'Expenses', 'expense', currentFilter)),
-                            const SizedBox(width: 4),
-                            Expanded(child: _buildFilterTab(ref, 'Transfers', 'transfer', currentFilter)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // 7b. Action Buttons Row (+ Add Manual & Download CSV)
+                      // 7. Pill segmented selector filters with (+) and (📥) icon buttons
                       Row(
                         children: [
                           Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => _showAddTransactionBottomSheet(context, ref),
-                              icon: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
-                              label: const Text(
-                                '+ Add Manual',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.divider),
                               ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                elevation: 0,
+                              child: Row(
+                                children: [
+                                  Expanded(child: _buildFilterTab(ref, 'All', 'all', currentFilter)),
+                                  const SizedBox(width: 2),
+                                  Expanded(child: _buildFilterTab(ref, 'Income', 'income', currentFilter)),
+                                  const SizedBox(width: 2),
+                                  Expanded(child: _buildFilterTab(ref, 'Expenses', 'expense', currentFilter)),
+                                  const SizedBox(width: 2),
+                                  Expanded(child: _buildFilterTab(ref, 'Transfers', 'transfer', currentFilter)),
+                                ],
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () async {
-                              final buffer = StringBuffer();
-                              // Excel-compatible CSV headers:
-                              buffer.writeln('Date,Merchant,Amount,Category,Transaction Type');
-                              for (final tx in data.transactions) {
-                                final isInc = tx.amount > 0;
-                                final dateStr = DateFormat('dd/MM/yyyy').format(DateTime.fromMillisecondsSinceEpoch(tx.date * 1000));
-                                final merchantEscaped = tx.merchant.replaceAll('"', '""');
-                                final cat = TransactionCategory.fromValue(tx.category).displayName;
-                                final typeStr = isInc ? 'Income' : 'Expense';
-                                buffer.writeln('"$dateStr","$merchantEscaped",${tx.amount},"$cat","$typeStr"');
-                              }
+                          // 7b. Inline Circular Action Icons: (+) Add Manual & (📥) Export CSV
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.divider),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () => _showAddTransactionBottomSheet(context, ref),
+                                  icon: const Icon(Icons.add_circle_outline_rounded, size: 22, color: AppColors.primary),
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(),
+                                  tooltip: 'Add Manual Transaction',
+                                ),
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  onPressed: () async {
+                                    final buffer = StringBuffer();
+                                    buffer.writeln('Date,Merchant,Amount,Category,Transaction Type');
+                                    for (final tx in data.transactions) {
+                                      final isInc = tx.amount > 0;
+                                      final dateStr = DateFormat('dd/MM/yyyy').format(DateTime.fromMillisecondsSinceEpoch(tx.date * 1000));
+                                      final merchantEscaped = tx.merchant.replaceAll('"', '""');
+                                      final cat = TransactionCategory.fromValue(tx.category).displayName;
+                                      final typeStr = isInc ? 'Income' : 'Expense';
+                                      buffer.writeln('"$dateStr","$merchantEscaped",${tx.amount},"$cat","$typeStr"');
+                                    }
 
-                              final bytes = const Utf8Encoder().convert(buffer.toString());
-                              final fileName = 'CashFlow_${currentFilter.toUpperCase()}_${selectedMonth.year}_${selectedMonth.month}.csv';
+                                    final bytes = const Utf8Encoder().convert(buffer.toString());
+                                    final fileName = 'CashFlow_${currentFilter.toUpperCase()}_${selectedMonth.year}_${selectedMonth.month}.csv';
 
-                              try {
-                                if (kIsWeb) {
-                                  // HTML Anchor element download trigger for Web browser context
-                                  final blob = html.Blob([bytes], 'text/csv');
-                                  final url = html.Url.createObjectUrlFromBlob(blob);
-                                  final anchor = html.AnchorElement(href: url)
-                                    ..setAttribute('download', fileName)
-                                    ..click();
-                                  html.Url.revokeObjectUrl(url);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Downloaded: $fileName')),
-                                  );
-                                } else {
-                                  // Local files system download path trigger for Desktop & Mobile
-                                  final dir = await getApplicationDocumentsDirectory();
-                                  final file = File('${dir.path}/$fileName');
-                                  await file.writeAsBytes(bytes);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Saved to: ${file.path}')),
-                                  );
-                                }
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Download failed: $e')),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.download_rounded, size: 18, color: AppColors.primary),
-                            label: const Text('Export CSV', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              side: const BorderSide(color: AppColors.primary, width: 1.2),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    try {
+                                      if (kIsWeb) {
+                                        final blob = html.Blob([bytes], 'text/csv');
+                                        final url = html.Url.createObjectUrlFromBlob(blob);
+                                        final anchor = html.AnchorElement(href: url)
+                                          ..setAttribute('download', fileName)
+                                          ..click();
+                                        html.Url.revokeObjectUrl(url);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Downloaded: $fileName')),
+                                        );
+                                      } else {
+                                        final dir = await getApplicationDocumentsDirectory();
+                                        final file = File('${dir.path}/$fileName');
+                                        await file.writeAsBytes(bytes);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Saved to: ${file.path}')),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Download failed: $e')),
+                                      );
+                                    }
+                                  },
+                                  icon: const Icon(Icons.download_for_offline_outlined, size: 22, color: AppColors.primary),
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(),
+                                  tooltip: 'Export CSV Data',
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                       const SizedBox(height: 16),
 
                       // 7b. Transfer net-off check warning message inside Transfers tab view
