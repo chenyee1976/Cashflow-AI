@@ -62,8 +62,10 @@ final accountProfileProvider = FutureProvider.autoDispose<AccountProfileData>((r
   final prefFName = prefs.getString('tester_first_name');
   final prefLName = prefs.getString('tester_last_name');
   final prefEmail = prefs.getString('tester_email');
+  final prefMobile = prefs.getString('tester_mobile');
 
-  final mobile = await storage.getMobileNumber() ?? '';
+  final savedMobile = await storage.getMobileNumber();
+  final mobile = (savedMobile != null && savedMobile.isNotEmpty) ? savedMobile : (prefMobile ?? '');
   final rawRewardFocus = await storage.getRewardFocus() ?? 'both';
   // Capitalize first letter to match dropdown options ('Miles', 'Cashback', 'Both')
   final rewardFocus = rawRewardFocus.toLowerCase() == 'both' 

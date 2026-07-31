@@ -267,36 +267,43 @@ class CashFlowHomeScreen extends ConsumerWidget {
                         const SizedBox(height: 20),
                       ],
 
-                      // 7. Pill segmented selector filters
+                      // 7. Pill segmented selector filters (Full Width Row)
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.divider),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(child: _buildFilterTab(ref, 'All', 'all', currentFilter)),
+                            const SizedBox(width: 4),
+                            Expanded(child: _buildFilterTab(ref, 'Income', 'income', currentFilter)),
+                            const SizedBox(width: 4),
+                            Expanded(child: _buildFilterTab(ref, 'Expenses', 'expense', currentFilter)),
+                            const SizedBox(width: 4),
+                            Expanded(child: _buildFilterTab(ref, 'Transfers', 'transfer', currentFilter)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // 7b. Action Buttons Row (+ Add Manual & Export CSV)
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: [
-                                  _buildFilterTab(ref, 'All', 'all', currentFilter),
-                                  const SizedBox(width: 6),
-                                  _buildFilterTab(ref, 'Income', 'income', currentFilter),
-                                  const SizedBox(width: 6),
-                                  _buildFilterTab(ref, 'Expenses', 'expense', currentFilter),
-                                  const SizedBox(width: 6),
-                                  _buildFilterTab(ref, 'Transfers', 'transfer', currentFilter),
-                                ],
-                              ),
+                          OutlinedButton.icon(
+                            onPressed: () => _showAddTransactionBottomSheet(context, ref),
+                            icon: const Icon(Icons.add_circle_outline, size: 18, color: AppColors.primary),
+                            label: const Text('Add Manual', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          // + Add manual transaction icon button
-                          IconButton(
-                            icon: const Icon(Icons.add_circle_outline, color: AppColors.primary, size: 28),
-                            tooltip: 'Add Manual Transaction',
-                            onPressed: () => _showAddTransactionBottomSheet(context, ref),
-                          ),
-                          // Download Button on the right
-                          IconButton(
-                            icon: const Icon(Icons.download_for_offline_outlined, color: AppColors.primary, size: 28),
-                            tooltip: 'Download Spreadsheet',
+                          OutlinedButton.icon(
                             onPressed: () async {
                               final buffer = StringBuffer();
                               // Excel-compatible CSV headers:
@@ -340,6 +347,13 @@ class CashFlowHomeScreen extends ConsumerWidget {
                                 );
                               }
                             },
+                            icon: const Icon(Icons.download_for_offline_outlined, size: 18, color: AppColors.primary),
+                            label: const Text('Export CSV', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
                           ),
                         ],
                       ),

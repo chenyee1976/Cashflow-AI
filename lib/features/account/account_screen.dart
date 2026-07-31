@@ -391,7 +391,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           ),
                           child: Center(
                             child: Text(
-                              initials.isNotEmpty ? initials : 'CT',
+                              initials.isNotEmpty ? initials : 'BT',
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
