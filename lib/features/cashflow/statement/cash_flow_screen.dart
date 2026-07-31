@@ -710,20 +710,24 @@ class CashFlowHomeScreen extends ConsumerWidget {
       },
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        height: 38,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary.withOpacity(0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: isSelected ? Border.all(color: AppColors.primary.withOpacity(0.35), width: 1) : null,
         ),
         child: Center(
-          child: Text(
-            title,
-            style: TextStyle(
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? AppColors.primary : AppColors.textSecondary,
-              fontSize: 13,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              maxLines: 1,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                fontSize: 12,
+              ),
             ),
           ),
         ),

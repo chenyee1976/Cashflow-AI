@@ -13,6 +13,7 @@ import '../../shared/widgets/app_header_brand.dart';
 import '../../shared/widgets/app_footer_brand.dart';
 import '../../data/services/analytics_service.dart';
 import 'dashboard_provider.dart';
+import '../account/account_provider.dart';
 import '../cashflow/statement/cashflow_provider.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
 import '../../data/database/app_database.dart';
@@ -141,7 +142,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userAsync = ref.watch(userProfileProvider);
+    final accountProfileAsync = ref.watch(accountProfileProvider);
     final cashAsync = ref.watch(cashPositionProvider);
     final incomeAsync = ref.watch(monthlyIncomeProvider);
     final expensesAsync = ref.watch(monthlyExpensesProvider);
@@ -160,52 +161,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const AppHeaderBrand(),
               const SizedBox(height: 16),
 
-              // 2. Greeting Section
-              userAsync.when(
-                data: (user) {
-                  final dbName = user?.firstName;
-                  final hasValidDbName = dbName != null && dbName.isNotEmpty && dbName != 'SG' && dbName != 'Chen Yee';
-                  if (hasValidDbName) {
-                    return Text(
-                      '${_getGreeting()}, $dbName',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    );
-                  }
-                  return FutureBuilder<SharedPreferences>(
-                    future: SharedPreferences.getInstance(),
-                    builder: (context, snapshot) {
-                      final savedName = snapshot.data?.getString('tester_first_name');
-                      final displayName = (savedName != null && savedName.trim().isNotEmpty) ? savedName.trim() : 'Beta Tester';
-                      return Text(
-                        '${_getGreeting()}, $displayName',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      );
-                    },
+              // 2. Greeting Section (100% Synced with Account Profile Tab)
+              accountProfileAsync.when(
+                data: (profile) {
+                  final fName = profile.firstName.trim();
+                  final displayName = fName.isNotEmpty ? fName : 'Beta Tester';
+                  return Text(
+                    '${_getGreeting()}, $displayName',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   );
                 },
-                loading: () => FutureBuilder<SharedPreferences>(
-                  future: SharedPreferences.getInstance(),
-                  builder: (context, snapshot) {
-                    final savedName = snapshot.data?.getString('tester_first_name');
-                    final displayName = (savedName != null && savedName.trim().isNotEmpty) ? savedName.trim() : 'Beta Tester';
-                    return Text('${_getGreeting()}, $displayName', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary));
-                  },
+                loading: () => Text(
+                  '${_getGreeting()}...',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-                error: (_, __) => FutureBuilder<SharedPreferences>(
-                  future: SharedPreferences.getInstance(),
-                  builder: (context, snapshot) {
-                    final savedName = snapshot.data?.getString('tester_first_name');
-                    final displayName = (savedName != null && savedName.trim().isNotEmpty) ? savedName.trim() : 'Beta Tester';
-                    return Text('${_getGreeting()}, $displayName', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary));
-                  },
+                error: (_, __) => Text(
+                  '${_getGreeting()}, Beta Tester',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
               const SizedBox(height: 4),

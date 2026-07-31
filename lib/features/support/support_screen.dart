@@ -159,7 +159,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'We\'re here to help — usually reply within 24 hours.',
+                'We\'re here to help.',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -364,12 +364,32 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                     const Divider(height: 1),
                     _buildFaqItem(
                       'Which banks & credit cards are supported?',
-                      'We support DBS/POSB, OCBC, UOB, MariBank, Citibank, SingFinance, Chocolate Finance, and major credit cards in Singapore.',
+                      'We support DBS/POSB, OCBC, UOB, MariBank, Citibank, SingFinance, Chocolate Finance, HSBC, Maybank, Standard Chartered, and major credit cards in Singapore.',
                     ),
                     const Divider(height: 1),
                     _buildFaqItem(
                       'How do miles and cashback rewards get calculated?',
-                      'SGCashFlowAI automatically maps your credit card transactions against standard card reward categories (e.g. SimplyGo, Dining, Groceries) to estimate earned miles or cashback.',
+                      'SGCashFlowAI automatically maps your credit card transactions against standard card reward categories (e.g. SimplyGo, Dining, Groceries, Travel) to estimate earned miles or cashback.',
+                    ),
+                    const Divider(height: 1),
+                    _buildFaqItem(
+                      'How do I upload a statement?',
+                      'Go to the Cash Flow tab or Home screen, tap "Upload a statement". Select Bank or Credit Card statement, choose your PDF statement file, and our AI will automatically extract and parse the transactions.',
+                    ),
+                    const Divider(height: 1),
+                    _buildFaqItem(
+                      'Why are some transactions miscategorised?',
+                      'AI merchant classification uses semantic logic. If a merchant category is incorrect, you can edit it manually by tapping on the transaction row in the Cash Flow list and choosing the correct category.',
+                    ),
+                    const Divider(height: 1),
+                    _buildFaqItem(
+                      'Can I add a bank or card that\'s not listed?',
+                      'Yes. When you upload a statement, the AI will extract the bank name and create the account. You can also manually add transactions of any bank or card in the Cash Flow tab.',
+                    ),
+                    const Divider(height: 1),
+                    _buildFaqItem(
+                      'How do I delete my account or clear data?',
+                      'You can delete your account and clear all locally cached statement data by going to the Account tab, scrolling to the bottom, and tapping "Delete Account".',
                     ),
                   ],
                 ),
