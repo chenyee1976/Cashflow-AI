@@ -91,7 +91,8 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              if (controller.text.trim() == '1976' || controller.text.trim() == '8888') {
+              final pin = controller.text.trim();
+              if (pin == '0404' || pin == '1976' || pin == '8888') {
                 setState(() => _isAdminUnlocked = true);
                 Navigator.pop(ctx);
                 BetaAnalyticsDialog.show(context);
@@ -128,7 +129,12 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
 
     if (kIsWeb) {
       try {
-        html.window.open(urlStr, '_blank');
+        final anchor = html.AnchorElement(href: urlStr)
+          ..target = '_blank'
+          ..rel = 'noopener noreferrer';
+        html.document.body?.children.add(anchor);
+        anchor.click();
+        anchor.remove();
       } catch (_) {
         _showAppNotDetectedDialog('WhatsApp', '+65 8719 4254');
       }
@@ -148,7 +154,12 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
 
     if (kIsWeb) {
       try {
-        html.window.open(urlStr, '_blank');
+        final anchor = html.AnchorElement(href: urlStr)
+          ..target = '_blank'
+          ..rel = 'noopener noreferrer';
+        html.document.body?.children.add(anchor);
+        anchor.click();
+        anchor.remove();
       } catch (_) {
         _showAppNotDetectedDialog('Telegram', '@SGCashFlowAI');
       }

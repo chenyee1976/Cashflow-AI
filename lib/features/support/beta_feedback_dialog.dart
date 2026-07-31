@@ -7,6 +7,9 @@ import '../../core/utils/snackbar_utils.dart';
 import '../../data/services/analytics_service.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+import '../account/account_provider.dart';
+
 class BetaFeedbackDialog extends ConsumerStatefulWidget {
   const BetaFeedbackDialog({super.key});
 
@@ -44,13 +47,32 @@ class _BetaFeedbackDialogState extends ConsumerState<BetaFeedbackDialog> {
   }
 
   void _loadUserEmail() async {
-    final storage = ref.read(secureStorageProvider);
-    final savedEmail = await storage.getGoogleEmail();
-    if (savedEmail != null && savedEmail.contains('@')) {
-      setState(() {
-        _emailController.text = savedEmail;
-      });
-    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final testerEmail = prefs.getString('tester_email');
+      final accountEmail = ref.read(accountProfileProvider).valueOrNull?.email ?? '';
+      final storage = ref.read(secureStorageProvider);
+      final googleEmail = await storage.getGoogleEmail();
+
+      String bestEmail = '';
+      if (testerEmail != null && testerEmail.contains('@') && !testerEmail.contains('beta.cashflow.ai')) {
+        bestEmail = testerEmail;
+      } else if (accountEmail.contains('@') && !accountEmail.contains('beta.cashflow.ai')) {
+        bestEmail = accountEmail;
+      } else if (googleEmail != null && googleEmail.contains('@') && !googleEmail.contains('beta.cashflow.ai')) {
+        bestEmail = googleEmail;
+      } else if (testerEmail != null && testerEmail.contains('@')) {
+        bestEmail = testerEmail;
+      } else if (accountEmail.contains('@')) {
+        bestEmail = accountEmail;
+      }
+
+      if (bestEmail.isNotEmpty && mounted) {
+        setState(() {
+          _emailController.text = bestEmail;
+        });
+      }
+    } catch (_) {}
   }
 
   @override

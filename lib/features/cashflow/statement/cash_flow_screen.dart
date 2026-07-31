@@ -269,10 +269,13 @@ class CashFlowHomeScreen extends ConsumerWidget {
 
                       // 7. Pill segmented selector filters with (+) and (📥) icon buttons
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
+                            flex: 4,
                             child: Container(
-                              padding: const EdgeInsets.all(4),
+                              height: 42,
+                              padding: const EdgeInsets.all(3),
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(12),
@@ -291,25 +294,26 @@ class CashFlowHomeScreen extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           // 7b. Inline Circular Action Icons: (+) Add Manual & (📥) Export CSV
                           Container(
+                            height: 42,
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
                             decoration: BoxDecoration(
                               color: AppColors.surface,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: AppColors.divider),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
                                   onPressed: () => _showAddTransactionBottomSheet(context, ref),
-                                  icon: const Icon(Icons.add_circle_outline_rounded, size: 22, color: AppColors.primary),
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(),
+                                  icon: const Icon(Icons.add_circle_outline_rounded, size: 20, color: AppColors.primary),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                   tooltip: 'Add Manual Transaction',
                                 ),
-                                const SizedBox(width: 4),
                                 IconButton(
                                   onPressed: () async {
                                     final buffer = StringBuffer();
@@ -351,9 +355,9 @@ class CashFlowHomeScreen extends ConsumerWidget {
                                       );
                                     }
                                   },
-                                  icon: const Icon(Icons.download_for_offline_outlined, size: 22, color: AppColors.primary),
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(),
+                                  icon: const Icon(Icons.download_for_offline_outlined, size: 20, color: AppColors.primary),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                   tooltip: 'Export CSV Data',
                                 ),
                               ],

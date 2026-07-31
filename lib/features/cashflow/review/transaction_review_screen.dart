@@ -1500,12 +1500,12 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (isCreditCard) ...[
-                                  // CREDIT CARD TRANSACTION: 3-ROW LAYOUT
-                                  // ROW 1: Date | Merchant | Amount | Delete
+                                  // CREDIT CARD TRANSACTION: 4-ROW LAYOUT
+                                  // ROW 1: Date | Amount | Delete Button
                                   Row(
                                     children: [
                                       Expanded(
-                                        flex: 3,
+                                        flex: 5,
                                         child: InkWell(
                                           onTap: () async {
                                             DateTime parsedDate = DateTime.now();
@@ -1532,7 +1532,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                             decoration: const InputDecoration(
                                               labelText: 'Date',
                                               labelStyle: TextStyle(fontSize: 9, color: AppColors.textSecondary),
-                                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                               border: OutlineInputBorder(),
                                             ),
                                             child: Row(
@@ -1541,28 +1541,19 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                                 Expanded(
                                                   child: Text(
                                                     tx.dateStr,
-                                                    style: const TextStyle(fontSize: 10),
+                                                    style: const TextStyle(fontSize: 11),
                                                     overflow: TextOverflow.ellipsis,
                                                   ),
                                                 ),
-                                                const Icon(Icons.calendar_today, size: 10, color: AppColors.textSecondary),
+                                                const Icon(Icons.calendar_today, size: 11, color: AppColors.textSecondary),
                                               ],
                                             ),
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 6),
+                                      const SizedBox(width: 8),
                                       Expanded(
-                                        flex: 4,
-                                        child: _buildTransactionField(
-                                          value: tx.merchant,
-                                          label: 'Merchant',
-                                          onChanged: (val) => tx.merchant = val,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        flex: 3,
+                                        flex: 5,
                                         child: _buildTransactionField(
                                           value: tx.amount.toString(),
                                           label: 'Amount',
@@ -1604,7 +1595,14 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-                                  // ROW 2: Category for Expenses | Category for Miles/Cashback
+                                  // ROW 2: Merchant (Full Width)
+                                  _buildTransactionField(
+                                    value: tx.merchant,
+                                    label: 'Merchant',
+                                    onChanged: (val) => tx.merchant = val,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // ROW 3: Category for Expenses | Category for Miles/Cashback
                                   Row(
                                     children: [
                                       Expanded(
@@ -1682,7 +1680,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-                                  // ROW 3: Currency | Custom Category Name
+                                  // ROW 4: Currency | Custom Category Name
                                   Row(
                                     children: [
                                       Expanded(
@@ -1744,12 +1742,12 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                     ],
                                   ),
                                 ] else ...[
-                                  // BANK STATEMENT TRANSACTION: 2-ROW LAYOUT
-                                  // ROW 1: Date | Merchant | Delete
+                                  // BANK STATEMENT TRANSACTION: 3-ROW LAYOUT
+                                  // ROW 1: Date | Amount | Delete Button
                                   Row(
                                     children: [
                                       Expanded(
-                                        flex: 4,
+                                        flex: 5,
                                         child: InkWell(
                                           onTap: () async {
                                             DateTime parsedDate = DateTime.now();
@@ -1797,11 +1795,12 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        flex: 6,
+                                        flex: 5,
                                         child: _buildTransactionField(
-                                          value: tx.merchant,
-                                          label: 'Merchant',
-                                          onChanged: (val) => tx.merchant = val,
+                                          value: tx.amount.toString(),
+                                          label: 'Amount',
+                                          onChanged: (val) => tx.amount = double.tryParse(val) ?? 0.0,
+                                          keyboardType: TextInputType.number,
                                         ),
                                       ),
                                       const SizedBox(width: 4),
@@ -1838,73 +1837,63 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-                                  // ROW 2: Amount | Category
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 4,
-                                        child: _buildTransactionField(
-                                          value: tx.amount.toString(),
-                                          label: 'Amount',
-                                          onChanged: (val) => tx.amount = double.tryParse(val) ?? 0.0,
-                                          keyboardType: TextInputType.number,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        flex: 6,
-                                        child: Builder(
-                                          builder: (context) {
-                                            final isIncomeTx = tx.amount > 0;
-                                            final catEnum = TransactionCategory.fromValue(tx.categoryStr);
-                                            // Auto-correct category value if sign doesn't match
-                                            TransactionCategory finalCat = catEnum;
-                                            if (isIncomeTx && !catEnum.isIncome) {
-                                              finalCat = TransactionCategory.incomeOther;
-                                              tx.categoryStr = finalCat.value;
-                                            } else if (!isIncomeTx && catEnum.isIncome) {
-                                              finalCat = TransactionCategory.expenseOther;
-                                              tx.categoryStr = finalCat.value;
-                                            }
+                                  // ROW 2: Merchant (Full Width)
+                                  _buildTransactionField(
+                                    value: tx.merchant,
+                                    label: 'Merchant',
+                                    onChanged: (val) => tx.merchant = val,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // ROW 3: Category (Full Width)
+                                  Builder(
+                                    builder: (context) {
+                                      final isIncomeTx = tx.amount > 0;
+                                      final catEnum = TransactionCategory.fromValue(tx.categoryStr);
+                                      // Auto-correct category value if sign doesn't match
+                                      TransactionCategory finalCat = catEnum;
+                                      if (isIncomeTx && !catEnum.isIncome) {
+                                        finalCat = TransactionCategory.incomeOther;
+                                        tx.categoryStr = finalCat.value;
+                                      } else if (!isIncomeTx && catEnum.isIncome) {
+                                        finalCat = TransactionCategory.expenseOther;
+                                        tx.categoryStr = finalCat.value;
+                                      }
 
-                                            final itemsToShow = TransactionCategory.values.where((cat) {
-                                              return isIncomeTx ? cat.isIncome : cat.isExpense;
-                                            }).toList();
+                                      final itemsToShow = TransactionCategory.values.where((cat) {
+                                        return isIncomeTx ? cat.isIncome : cat.isExpense;
+                                      }).toList();
 
-                                            return DropdownButtonFormField<TransactionCategory>(
-                                              value: finalCat,
-                                              isExpanded: true,
-                                              decoration: const InputDecoration(
-                                                labelText: 'Category',
-                                                labelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
-                                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                border: OutlineInputBorder(),
-                                              ),
-                                              items: itemsToShow
-                                                  .map((cat) => DropdownMenuItem(
-                                                        value: cat,
-                                                        child: Text(
-                                                          cat.displayName,
-                                                          style: TextStyle(
-                                                            fontSize: 11,
-                                                            color: cat.isIncome ? AppColors.primary : Colors.red,
-                                                            fontWeight: FontWeight.w500,
-                                                          ),
-                                                        ),
-                                                      ))
-                                                  .toList(),
-                                              onChanged: (newCat) {
-                                                if (newCat != null) {
-                                                  setState(() {
-                                                    tx.categoryStr = newCat.value;
-                                                  });
-                                                }
-                                              },
-                                            );
-                                          },
+                                      return DropdownButtonFormField<TransactionCategory>(
+                                        value: finalCat,
+                                        isExpanded: true,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Category',
+                                          labelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          border: OutlineInputBorder(),
                                         ),
-                                      ),
-                                    ],
+                                        items: itemsToShow
+                                            .map((cat) => DropdownMenuItem(
+                                                  value: cat,
+                                                  child: Text(
+                                                    cat.displayName,
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: cat.isIncome ? AppColors.primary : Colors.red,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ))
+                                            .toList(),
+                                        onChanged: (newCat) {
+                                          if (newCat != null) {
+                                            setState(() {
+                                              tx.categoryStr = newCat.value;
+                                            });
+                                          }
+                                        },
+                                      );
+                                    },
                                   ),
                                 ],
                               ],
