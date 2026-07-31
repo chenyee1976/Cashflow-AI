@@ -29,17 +29,7 @@ final milesScreenProvider = FutureProvider.autoDispose<MilesScreenData>((ref) as
   try {
     final db = ref.watch(appDatabaseProvider);
     final storage = ref.watch(secureStorageProvider);
-    final userId = await storage.getUserId();
-
-    if (userId == null) {
-      return const MilesScreenData(
-        totalMiles: 0,
-        programCount: 0,
-        airlinePrograms: [],
-        bankPrograms: [],
-        otherPrograms: [],
-      );
-    }
+    final userId = await storage.getUserId() ?? 'chenyee_user';
 
     final statements = await db.getStatementsByUser(userId);
     final ccStatements = statements.where((s) => s.accountType == 'credit_card').toList();
@@ -47,13 +37,10 @@ final milesScreenProvider = FutureProvider.autoDispose<MilesScreenData>((ref) as
     // Clean up legacy hardcoded 'kf_wallet' entry
     await (db.delete(db.milesWallet)..where((t) => t.id.equals('kf_wallet'))).go();
 
-    if (ccStatements.isEmpty) {
-      await db.transaction(() async {
-        await db.delete(db.milesWallet).go();
-      });
-    } else {
-      // Delete stale bank miles wallets before syncing canonical wallets
-      await (db.delete(db.milesWallet)..where((t) => t.programType.equals('bank'))).go();
+    // Only delete derived bank program wallets, preserving manually added airline and other programs
+    await (db.delete(db.milesWallet)..where((t) => t.programType.equals('bank'))).go();
+
+    if (ccStatements.isNotEmpty) {
 
       // Automatically derive and sync miles wallets from credit cards with miles statements
       final rawCards = await db.getCreditCardsByUser(userId);
@@ -150,7 +137,7 @@ class MilesOperations {
     required int balance,
   }) async {
     final storage = _ref.read(secureStorageProvider);
-    final userId = await storage.getUserId() ?? 'unknown_user';
+    final userId = await storage.getUserId() ?? 'chenyee_user';
 
     await _db.upsertMilesWallet(
       MilesWalletCompanion.insert(

@@ -501,6 +501,7 @@ class CashFlowHomeScreen extends ConsumerWidget {
                                           border: Border.all(color: AppColors.divider),
                                         ),
                                         child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Container(
                                               padding: const EdgeInsets.all(10),
@@ -524,6 +525,7 @@ class CashFlowHomeScreen extends ConsumerWidget {
                                                     style: const TextStyle(
                                                       fontWeight: FontWeight.bold,
                                                       fontSize: 14,
+                                                      height: 1.2,
                                                     ),
                                                     maxLines: 1,
                                                     overflow: TextOverflow.ellipsis,
@@ -549,6 +551,7 @@ class CashFlowHomeScreen extends ConsumerWidget {
                                                     fontWeight: FontWeight.bold,
                                                     color: amountColor,
                                                     fontSize: 14,
+                                                    height: 1.2,
                                                   ),
                                                 ),
                                                 const SizedBox(height: 4),

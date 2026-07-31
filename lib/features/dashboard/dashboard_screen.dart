@@ -424,8 +424,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   border: Border.all(color: AppColors.primary.withOpacity(0.2)),
                 ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.stars, color: AppColors.primary, size: 24),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 1.0),
+                      child: Icon(Icons.stars, color: AppColors.primary, size: 22),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -437,6 +441,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                               color: AppColors.textPrimary,
+                              height: 1.2,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -470,7 +475,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 32),
               const AppFooterBrand(),
             ],
           ),
@@ -493,7 +498,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
-        height: 120,
+        height: 124,
         decoration: BoxDecoration(
           color: AppColors.primary,
           borderRadius: BorderRadius.circular(16),
@@ -519,18 +524,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.white,
+                SizedBox(
+                  height: 36,
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Text(
+                      title,
+                      maxLines: 2,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.white,
+                        height: 1.15,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.white.withOpacity(0.8),

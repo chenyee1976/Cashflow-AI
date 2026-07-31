@@ -124,14 +124,85 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
     }
   }
 
-  Future<void> _openLink(String urlStr) async {
-    final uri = Uri.parse(urlStr);
+  Future<void> _openWhatsApp() async {
+    const phone = '6587194254';
+    final appUri = Uri.parse('whatsapp://send?phone=$phone');
+    final webUri = Uri.parse('https://api.whatsapp.com/send?phone=$phone');
+
+    bool launched = false;
     try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      if (mounted) {
-        context.showTopSnackBar('Could not open link: $urlStr', isError: true);
+      if (await canLaunchUrl(appUri)) {
+        launched = await launchUrl(appUri, mode: LaunchMode.externalApplication);
       }
+    } catch (_) {}
+
+    if (!launched) {
+      try {
+        launched = await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+    }
+
+    if (!launched && mounted) {
+      await Clipboard.setData(const ClipboardData(text: '+6587194254'));
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('WhatsApp Not Detected', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            'We cannot detect the WhatsApp app on your device.\n\nPhone number (+65 8719 4254) has been copied to your clipboard. Please add SG Cashflow AI manually to your apps.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('OK', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _openTelegram() async {
+    const handle = 'SGCashFlowAI';
+    final appUri = Uri.parse('tg://resolve?domain=$handle');
+    final webUri = Uri.parse('https://t.me/$handle');
+
+    bool launched = false;
+    try {
+      if (await canLaunchUrl(appUri)) {
+        launched = await launchUrl(appUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+
+    if (!launched) {
+      try {
+        launched = await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+    }
+
+    if (!launched && mounted) {
+      await Clipboard.setData(const ClipboardData(text: '@SGCashFlowAI'));
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Telegram Not Detected', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            'We cannot detect the Telegram app on your device.\n\nGroup handle (@SGCashFlowAI) has been copied to your clipboard. Please add SG Cashflow AI manually to your apps.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('OK', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -314,7 +385,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                         iconColor: const Color(0xFF16A34A),
                         title: 'WhatsApp',
                         subtitle: 'Chat with us\n+65 8719 4254',
-                        onTap: () => _openLink('https://wa.me/6587194254'),
+                        onTap: _openWhatsApp,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -324,7 +395,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                         iconColor: const Color(0xFF0284C7),
                         title: 'Telegram',
                         subtitle: 'Join Group\n@SGCashFlowAI',
-                        onTap: () => _openLink('https://t.me/SGCashFlowAI'),
+                        onTap: _openTelegram,
                       ),
                     ),
                   ],
