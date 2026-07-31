@@ -5,6 +5,11 @@ import '../../core/theme/app_colors.dart';
 import '../../data/services/analytics_service.dart';
 import '../notifications/notification_dialog.dart';
 
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+
 class BetaAnalyticsDialog extends ConsumerWidget {
   const BetaAnalyticsDialog({super.key});
 
@@ -15,6 +20,53 @@ class BetaAnalyticsDialog extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       builder: (ctx) => const BetaAnalyticsDialog(),
     );
+  }
+
+  void _exportAllLogsToCSV(BuildContext context, AnalyticsService analytics) async {
+    final feedbackList = await analytics.getSubmittedFeedback();
+    final logList = await analytics.getLogs();
+
+    final buffer = StringBuffer();
+    buffer.writeln('Type,Timestamp,User Email,User ID,Name/Category,Details');
+
+    for (final fb in feedbackList) {
+      final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(fb.timestamp);
+      final emailEsc = (fb.userEmail.isNotEmpty ? fb.userEmail : 'Unknown').replaceAll('"', '""');
+      final catEsc = fb.feedbackType.replaceAll('"', '""');
+      final msgEsc = fb.message.replaceAll('"', '""').replaceAll('\n', ' ');
+      buffer.writeln('"FEEDBACK","$dateStr","$emailEsc","${fb.userId}","$catEsc","$msgEsc"');
+    }
+
+    for (final log in logList) {
+      final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(log.timestamp);
+      final userEmail = log.details?['userEmail'] as String? ?? log.details?['email'] as String? ?? 'Unknown';
+      final userId = log.details?['userId'] as String? ?? 'Unknown';
+      final emailEsc = userEmail.replaceAll('"', '""');
+      final nameEsc = log.name.replaceAll('"', '""');
+      final detailEsc = (log.details != null ? log.details.toString() : '').replaceAll('"', '""').replaceAll('\n', ' ');
+      buffer.writeln('"LOG","$dateStr","$emailEsc","$userId","$nameEsc","$detailEsc"');
+    }
+
+    final bytes = const Utf8Encoder().convert(buffer.toString());
+    final fileName = 'Beta_Analytics_Logs_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv';
+
+    try {
+      if (kIsWeb) {
+        final blob = html.Blob([bytes], 'text/csv');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', fileName)
+          ..click();
+        html.Url.revokeObjectUrl(url);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Exported: $fileName')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Export failed: $e')),
+      );
+    }
   }
 
   @override
@@ -43,27 +95,46 @@ class BetaAnalyticsDialog extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  const Icon(Icons.analytics_outlined, color: AppColors.primary, size: 24),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.analytics_outlined, color: AppColors.primary, size: 22),
+                  const SizedBox(width: 6),
                   const Text(
                     'Beta Admin Dashboard',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
                   ),
                   const Spacer(),
                   InkWell(
+                    onTap: () => _exportAllLogsToCSV(context, analytics),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.withOpacity(0.4)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.download_rounded, size: 14, color: Colors.green),
+                          SizedBox(width: 3),
+                          Text('Export CSV', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  InkWell(
                     onTap: () {
                       Navigator.pop(context);
                       NotificationDialog.show(context);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -72,15 +143,15 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                       child: const Row(
                         children: [
                           Icon(Icons.campaign_outlined, size: 14, color: AppColors.primary),
-                          SizedBox(width: 4),
-                          Text('Notifications 📢', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                          SizedBox(width: 3),
+                          Text('Notify 📢', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(width: 4),
                   IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.textHint),
+                    icon: const Icon(Icons.close, color: AppColors.textHint, size: 20),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
