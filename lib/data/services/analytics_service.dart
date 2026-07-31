@@ -96,18 +96,41 @@ class AnalyticsService {
   String _currentUserEmail = 'chenwallpaper@gmail.com';
 
   AnalyticsService() {
+    _initUser();
+  }
+
+  Future<void> _initUser() async {
+    await _ensureUserIdentity();
     logEvent('user_login', parameters: {
       'platform': 'Web PWA',
-      'testerId': 'chenyee_beta_tester_1',
+      'email': _currentUserEmail,
     });
   }
 
+  Future<void> _ensureUserIdentity() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedEmail = prefs.getString('tester_email');
+      if (savedEmail != null && savedEmail.contains('@')) {
+        _currentUserEmail = savedEmail.trim();
+      }
+      final savedUserId = prefs.getString('user_id');
+      if (savedUserId != null && savedUserId.isNotEmpty) {
+        _currentUserId = savedUserId.trim();
+      }
+    } catch (_) {}
+  }
+
   void setUser(String userId, String email) {
-    _currentUserId = userId;
-    _currentUserEmail = email;
+    if (userId.isNotEmpty) _currentUserId = userId;
+    if (email.contains('@')) _currentUserEmail = email.trim();
+    SharedPreferences.getInstance().then((prefs) {
+      if (email.contains('@')) prefs.setString('tester_email', email.trim());
+      if (userId.isNotEmpty) prefs.setString('user_id', userId.trim());
+    });
     logEvent('user_login', parameters: {
-      'userId': userId,
-      'email': email,
+      'userId': _currentUserId,
+      'email': _currentUserEmail,
     });
   }
 
@@ -139,6 +162,8 @@ class AnalyticsService {
     final allowed = await _isAnalyticsAllowed();
     if (!allowed) return;
 
+    await _ensureUserIdentity();
+
     final entry = BetaLogEntry(
       type: 'event',
       name: eventName,
@@ -159,6 +184,7 @@ class AnalyticsService {
 
   /// Log error or exception caught during app execution
   Future<void> logError(String errorName, Object error, {StackTrace? stackTrace, Map<String, dynamic>? extra}) async {
+    await _ensureUserIdentity();
     final entry = BetaLogEntry(
       type: 'error',
       name: errorName,
@@ -187,12 +213,13 @@ class AnalyticsService {
     String? attachmentName,
     String? attachmentBase64,
   }) async {
+    await _ensureUserIdentity();
     final prefs = await SharedPreferences.getInstance();
     final rawList = prefs.getStringList(_feedbackKey) ?? [];
 
-    final resolvedEmail = (userEmail != null && userEmail.trim().isNotEmpty)
+    final resolvedEmail = (userEmail != null && userEmail.trim().isNotEmpty && userEmail.contains('@'))
         ? userEmail.trim()
-        : (_currentUserEmail ?? 'Anonymous Tester');
+        : _currentUserEmail;
 
     final feedback = BetaFeedbackEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),

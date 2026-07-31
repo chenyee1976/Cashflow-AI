@@ -529,7 +529,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 SizedBox(
                   height: 36,
                   child: Align(
-                    alignment: Alignment.bottomLeft,
+                    alignment: Alignment.topLeft,
                     child: Text(
                       title,
                       maxLines: 2,

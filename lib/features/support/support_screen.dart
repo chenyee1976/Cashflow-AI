@@ -127,13 +127,11 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
   Future<void> _openWhatsApp() async {
     const phone = '6587194254';
     final appUri = Uri.parse('whatsapp://send?phone=$phone');
-    final webUri = Uri.parse('https://api.whatsapp.com/send?phone=$phone');
+    final webUri = Uri.parse('https://wa.me/$phone');
 
     bool launched = false;
     try {
-      if (await canLaunchUrl(appUri)) {
-        launched = await launchUrl(appUri, mode: LaunchMode.externalApplication);
-      }
+      launched = await launchUrl(appUri, mode: LaunchMode.externalApplication);
     } catch (_) {}
 
     if (!launched) {
@@ -172,9 +170,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
 
     bool launched = false;
     try {
-      if (await canLaunchUrl(appUri)) {
-        launched = await launchUrl(appUri, mode: LaunchMode.externalApplication);
-      }
+      launched = await launchUrl(appUri, mode: LaunchMode.externalApplication);
     } catch (_) {}
 
     if (!launched) {

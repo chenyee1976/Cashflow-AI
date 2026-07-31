@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../data/secure_storage/secure_storage_service.dart';
 import '../../../../data/database/app_database.dart';
+import '../../../../data/services/analytics_service.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -43,7 +45,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       final sessionValid = await storage.isSessionValid();
       final onboardingComplete = await storage.isOnboardingComplete();
       
+      final prefs = await SharedPreferences.getInstance();
       final savedUserId = await storage.getUserId() ?? 'chenyee_user';
+      final savedEmail = prefs.getString('tester_email') ?? await storage.getGoogleEmail() ?? 'chenwallpaper@gmail.com';
+      
+      final analytics = ref.read(analyticsServiceProvider);
+      analytics.setUser(savedUserId, savedEmail);
+
       final existingUser = await db.getUserById(savedUserId);
       final statements = await db.getStatementsByUser(savedUserId);
       final bankAccounts = await db.getBankAccountsByUser(savedUserId);

@@ -289,22 +289,29 @@ class CashFlowHomeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 10),
 
-                      // 7b. Action Buttons Row (+ Add Manual & Export CSV)
+                      // 7b. Action Buttons Row (+ Add Manual & Download CSV)
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          OutlinedButton.icon(
-                            onPressed: () => _showAddTransactionBottomSheet(context, ref),
-                            icon: const Icon(Icons.add_circle_outline, size: 18, color: AppColors.primary),
-                            label: const Text('Add Manual', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _showAddTransactionBottomSheet(context, ref),
+                              icon: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
+                              label: const Text(
+                                '+ Add Manual',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                elevation: 0,
+                              ),
                             ),
                           ),
-                          OutlinedButton.icon(
-                            onPressed: () async {
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
                               final buffer = StringBuffer();
                               // Excel-compatible CSV headers:
                               buffer.writeln('Date,Merchant,Amount,Category,Transaction Type');
@@ -347,16 +354,17 @@ class CashFlowHomeScreen extends ConsumerWidget {
                                 );
                               }
                             },
-                            icon: const Icon(Icons.download_for_offline_outlined, size: 18, color: AppColors.primary),
+                            icon: const Icon(Icons.download_rounded, size: 18, color: AppColors.primary),
                             label: const Text('Export CSV', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
                             style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              side: const BorderSide(color: AppColors.primary, width: 1.2),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
                       const SizedBox(height: 16),
 
                       // 7b. Transfer net-off check warning message inside Transfers tab view
