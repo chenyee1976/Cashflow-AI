@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../../features/cashflow/upload/draft_statement_service.dart';
 
+import 'card_rules_registry.dart';
 import 'merchant_category_classifier.dart';
 import 'user_category_rules_service.dart';
 
@@ -16,162 +17,106 @@ class GeminiExtractionService {
     required Uint8List fileBytes,
     required String mimeType,
   }) async {
-    // Proxy mode: skip direct API calls when using PROXY_VIA_VERCEL default key
-
-    // 1. Initialize GenerativeModel
-    final model = GenerativeModel(
-      model: 'gemini-flash-latest',
-      apiKey: _apiKey,
-    );
-
-    // 2. Prepare file binary part
-    final filePart = DataPart(mimeType, fileBytes);
-
-    // 3. Build Prompt requesting strict JSON schema matching our Dart model fields
-    final prompt = [
-      Content.multi([
-        filePart,
-        TextPart('''
-You are an expert financial AI specializing in Singapore bank and credit card statements. Analyze the uploaded statement and extract:
-1. If this is a Bank Statement, extract Account Details into "accounts" (Bank Name, Account Name, Account Number, Statement Ending Balance, Currency, and Statement Ending Date).
-2. If this is a Credit Card Statement, extract Credit Card Details into "cardDraft" (Issuer, Card Type, Card Name, Card Number, Reward/Miles summary, Miles rates, Cashback summary, Cashback rates, Total Spend, Payment Due Date).
-3. All Transactions listed in the statement (Date, Merchant/Description, Amount, and Category).
-
-STRICT CATEGORIZATION RULES FOR SINGAPORE TRANSACTIONS:
-- ATM Cash Withdrawals ("ATM", "CASH WITHDRAWAL", "CASH W/DRAWAL"): categoryValue MUST BE 'expense_transfer_to_cash'.
-- Taxes & Government Fees ("IRAS", "ETAX", "INLAND REVEN", "MINISTRY OF MANPOWER", "MOM", "TAX", "CUSTOMS"): categoryValue MUST BE 'expense_tax'.
-- Interest & Bonus Interest ("BONUS INTEREST", "SAVINGS INT", "INTEREST", "CO SPEND BONUS"): categoryValue MUST BE 'income_other' for positive amounts.
-- Transfers ("PAYNOW", "FAST PAYMENT", "PAYMENT W/TRANSFER", "TRF", "GIRO"): Use 'income_transfer' if amount > 0, else 'expense_transfer' (or 'expense_education' if tuition/course).
-- Groceries ("NTUC", "FAIRPRICE", "SHENG SIONG", "COLD STORAGE", "GIANT", "DON DON DONKI"): categoryValue 'expense_groceries', milesCashbackCategoryValue 'Groceries'.
-- Transport & SimplyGo ("GRAB", "GOJEK", "SIMPLYGO", "SMRT", "TRANSIT", "TADA"): categoryValue 'expense_transport', milesCashbackCategoryValue 'SimplyGo' or 'Commute'.
-- Dining ("FOODPANDA", "DELIVEROO", "GRABFOOD", "MCDONALD", "KFC", "RESTAURANT", "CAFE", "STARBUCKS"): categoryValue 'expense_dining', milesCashbackCategoryValue 'Dining & Food Delivery'.
-- Utilities & Telco ("SINGTEL", "STARHUB", "M1", "SP SERVICES", "PUB"): categoryValue 'expense_utilities'.
-
-You MUST return a raw JSON object containing precisely the following format:
-{
-  "accounts": [
-    {
-      "bank": "Bank/Institution Name (e.g. Citi, DBS, MariBank, OCBC, UOB)",
-      "name": "Account Name (e.g. Savings Account)",
-      "num": "Last 4 digits or full account number if visible",
-      "currency": "3-letter currency code (e.g. SGD, USD)",
-      "balance": "Ending balance as a decimal string (e.g. 1250.50)",
-      "balanceAsOfIso": "The date of the statement ending balance in ISO-8601 format (YYYY-MM-DD)"
-    }
-  ],
-  "cardDraft": {
-    "issuer": "Credit Card issuer bank (e.g. Citibank, HSBC, DBS, OCBC, UOB)",
-    "cardType": "One of: Visa, Mastercard, Amex, JCB",
-    "cardName": "Card Product Name (e.g. CITI PREMIERMILES WORLD MASTER)",
-    "cardNumber": "Full or partially masked card number (e.g. 5425-5033-0193-7628)",
-    "hasMiles": true,
-    "milesOpening": "Opening balance of miles/points as string",
-    "milesEarned": "Miles earned this month as string",
-    "milesBonus": "Bonus miles earned this month as string",
-    "milesRedeemed": "Miles redeemed or adjusted as string",
-    "milesEnding": "Ending miles balance as string",
-    "milesRates": [
-      {
-        "category": "Spend Category (e.g. SGD Spend, Foreign Currency Spend)",
-        "rate": "Miles rate (e.g. 1.2 or 2.0) as string",
-        "minSpend": "Minimum spend limit as string, or empty string",
-        "maxSpend": "Maximum spend cap as string, or empty string"
-      }
-    ],
-    "hasCashback": true,
-    "cashbackEarned": "Cashback earned amount as string",
-    "cashbackRates": [
-      {
-        "category": "Spend Category (e.g. Dining, Online Spend)",
-        "rate": "Cashback percent rate (e.g. 6% or 1.5%) as string",
-        "minSpend": "Minimum spend limit as string, or empty string",
-        "maxSpend": "Maximum spend cap as string, or empty string"
-      }
-    ],
-    "totalSpend": "Total spend this month (e.g. 220.57) as string",
-    "paymentDueDateIso": "Payment due date in YYYY-MM-DD format (e.g. 2026-06-02)"
-  },
-  "transactions": [
-    {
-      "dateStr": "The date of transaction formatted as DD MMM YYYY (e.g. 25 Apr 2026)",
-      "merchant": "Cleaned merchant/description (e.g. Sheng Siong Supermarket)",
-      "amount": "The transaction amount as a double. EXPENSES MUST BE NEGATIVE NUMBERS, INCOME MUST BE POSITIVE NUMBERS (e.g. -42.50 or 150.00)",
-      "spendCurrency": "For credit card transactions: IF amount is POSITIVE (> 0), spendCurrency MUST BE 'SGD Receipt'. Otherwise IF negative, select one of: SGD Spend, MYR spend, IDR spend, FCY Spend (based on transaction currency). Default is SGD Spend",
-      "categoryValue": "Map the transaction to one of exact string values: 'expense_transfer_to_cash', 'expense_tax', 'expense_dining', 'expense_groceries', 'expense_transport', 'expense_shopping', 'expense_entertainment', 'expense_travel', 'expense_utilities', 'expense_investments', 'expense_education', 'expense_transfer', 'expense_other', 'income_salary', 'income_transfer', 'income_investments', 'income_dividends', 'income_other'",
-      "milesCashbackCategoryValue": "For credit card transactions, map to one of exact string values: 'Automobile', 'Beauty & Wellness', 'Commute', 'Dining & Food Delivery', 'Entertainment', 'Groceries', 'Kids & Pets', 'Online', 'SimplyGo', 'Shopping', 'Fuel', 'Others'"
-    }
-  ]
-}
-''')
-      ])
-    ];
-
-    // 4. Send request with multi-model fallback strategy (Direct Key & Vercel Serverless Proxy)
-    final modelNames = [
-      'gemini-3.5-flash-lite',
-      'gemini-3.1-flash-lite',
-      'gemini-flash-lite-latest',
-      'gemini-flash-latest',
-      'gemini-2.0-flash-lite',
-      'gemini-2.0-flash',
-    ];
-    String? jsonResponseText;
-    Object? lastErr;
-
     final dio = Dio();
     final String base64Data = base64Encode(fileBytes);
+
+    // Primary AI Models List (gemini-2.0-flash is flagship for document intelligence & OCR)
+    final modelNames = [
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-2.0-flash-lite',
+      'gemini-flash-latest',
+    ];
+
     final String promptText = '''
-You are an expert financial AI specializing in Singapore bank and credit card statements. Analyze the uploaded statement and extract:
-1. If this is a Bank Statement, extract Account Details into "accounts" (Bank Name, Account Name, Account Number, Statement Ending Balance, Currency, and Statement Ending Date).
-2. If this is a Credit Card Statement, extract Credit Card Details into "cardDraft" (Issuer, Card Type, Card Name, Card Number, Reward/Miles summary, Miles rates, Cashback summary, Cashback rates, Total Spend, Payment Due Date).
-3. All Transactions listed in the statement (Date, Merchant/Description, Amount, and Category).
+You are an expert financial AI specializing in Singapore bank and credit card statements (DBS, POSB, OCBC, UOB, MariBank, Citibank, HSBC, Maybank, Standard Chartered).
+Analyze the uploaded statement document/image and extract:
 
-STRICT CATEGORIZATION RULES FOR SINGAPORE TRANSACTIONS:
-- ATM Cash Withdrawals ("ATM", "CASH WITHDRAWAL", "CASH W/DRAWAL"): categoryValue MUST BE 'expense_transfer_to_cash'.
-- Taxes & Government Fees ("IRAS", "ETAX", "INLAND REVEN", "MINISTRY OF MANPOWER", "MOM", "TAX", "CUSTOMS"): categoryValue MUST BE 'expense_tax'.
-- Interest & Bonus Interest ("BONUS INTEREST", "SAVINGS INT", "INTEREST", "CO SPEND BONUS"): categoryValue MUST BE 'income_other' for positive amounts.
-- Transfers ("PAYNOW", "FAST PAYMENT", "PAYMENT W/TRANSFER", "TRF", "GIRO"): Use 'income_transfer' if amount > 0, else 'expense_transfer' (or 'expense_education' if tuition/course).
-- Groceries ("NTUC", "FAIRPRICE", "SHENG SIONG", "COLD STORAGE", "GIANT", "DON DON DONKI"): categoryValue 'expense_groceries', milesCashbackCategoryValue 'Groceries'.
-- Transport & SimplyGo ("GRAB", "GOJEK", "SIMPLYGO", "SMRT", "TRANSIT", "TADA"): categoryValue 'expense_transport', milesCashbackCategoryValue 'SimplyGo' or 'Commute'.
-- Dining ("FOODPANDA", "DELIVEROO", "GRABFOOD", "MCDONALD", "KFC", "RESTAURANT", "CAFE", "STARBUCKS"): categoryValue 'expense_dining', milesCashbackCategoryValue 'Dining & Food Delivery'.
-- Utilities & Telco ("SINGTEL", "STARHUB", "M1", "SP SERVICES", "PUB"): categoryValue 'expense_utilities'.
+1. STATEMENT TYPE:
+   - If this is a Bank Account Statement (e.g. POSB eSavings, DBS Multi-Currency, OCBC 360, UOB One), extract details into "accounts".
+   - If this is a Credit Card Statement (e.g. Citi PremierMiles, DBS Altitude, UOB PRVI, HSBC Revolution), extract details into "cardDraft".
 
-You MUST return a raw JSON object containing precisely the following format:
+2. BANK STATEMENT DETAILS ("accounts"):
+   - bankName: Exact Bank Name (e.g. POSB, DBS Bank, OCBC Bank, UOB, MariBank, Citibank). If POSB statement, MUST return "POSB".
+   - accountName: Exact account description (e.g. "POSB eSavings Account", "DBS Multi-Currency Account", "Savings Account"). DO NOT use file names.
+   - accountNumber: Account number (e.g. "123-45678-9" or masked "123-****-9").
+   - statementEndingBalance: Ending balance as a double (e.g. 1250.50).
+   - currency: 3-letter currency code (e.g. "SGD").
+   - statementEndingDate: Ending date of statement in YYYY-MM-DD format (e.g. "2026-06-30").
+
+3. CREDIT CARD STATEMENT DETAILS ("cardDraft"):
+   - cardIssuer: Bank Issuer (e.g. Citibank, DBS Bank, OCBC Bank, UOB, HSBC).
+   - cardType: Card Brand (Visa, Mastercard, Amex).
+   - cardName: Full Card Product Name (e.g. "CITI PREMIERMILES WORLD MASTER", "DBS ALTITUDE VISA", "UOB PRVI MILES").
+   - cardNumber: Card number (full or masked e.g. "5425-XXXX-7628").
+   - hasMiles: true if statement shows miles/points, false if cashback.
+   - milesOpening: Opening miles balance as string.
+   - milesEarned: Miles earned this month as string.
+   - milesBonus: Bonus miles earned this month as string.
+   - milesRedeemed: Miles redeemed as string.
+   - milesEnding: Ending miles balance as string.
+   - milesRates: Array of earn rates [{ "category": "SGD Spend", "rate": "1.2", "minSpend": "", "maxSpend": "" }].
+   - hasCashback: true if cashback card.
+   - cashbackEarned: Cashback amount earned as string.
+   - cashbackRates: Array of cashback rates [{ "category": "Dining", "rate": "6%", "minSpend": "800", "maxSpend": "" }].
+   - totalSpend: Total card spend this statement period as a decimal string (e.g. "450.80").
+   - paymentDueDate: Payment due date in YYYY-MM-DD format (e.g. "2026-07-15").
+
+4. TRANSACTIONS LIST ("extractedTransactions"):
+   Extract EVERY transaction row listed on the statement:
+   - dateStr: Date formatted as DD MMM YYYY (e.g. "15 Jun 2026", "28 Jul 2026").
+   - merchant: Cleaned merchant or description (e.g. "NTUC FairPrice", "Sheng Siong Supermarket", "PayNow to John", "ATM Cash Withdrawal", "IRAS Tax Payment", "Singtel Bill").
+   - amount: Double value. EXPENSES MUST BE NEGATIVE (e.g. -42.50), INCOME/DEPOSITS MUST BE POSITIVE (e.g. 150.00).
+   - spendCurrency: For credit cards, IF amount > 0 select "SGD Receipt", else select one of: "SGD Spend", "MYR spend", "IDR spend", "FCY Spend".
+   - categoryValue: Select exact value: 'expense_transfer_to_cash', 'expense_tax', 'expense_dining', 'expense_groceries', 'expense_transport', 'expense_shopping', 'expense_entertainment', 'expense_travel', 'expense_utilities', 'expense_investments', 'expense_education', 'expense_transfer', 'expense_other', 'income_salary', 'income_transfer', 'income_investments', 'income_dividends', 'income_other'.
+   - milesCashbackCategoryValue: Select exact value: 'Automobile', 'Beauty & Wellness', 'Commute', 'Dining & Food Delivery', 'Entertainment', 'Groceries', 'Kids & Pets', 'Online', 'SimplyGo', 'Shopping', 'Fuel', 'Others'.
+
+STRICT SINGAPORE CATEGORIZATION RULES:
+- ATM Cash Withdrawals -> categoryValue 'expense_transfer_to_cash'.
+- Taxes & IRAS -> categoryValue 'expense_tax'.
+- PayNow / FAST / Giro Transfers -> categoryValue 'income_transfer' (if > 0) or 'expense_transfer' (if < 0).
+- NTUC / FairPrice / Sheng Siong / Cold Storage -> 'expense_groceries', milesCategory 'Groceries'.
+- Grab / Gojek / SimplyGo / SMRT -> 'expense_transport', milesCategory 'SimplyGo' or 'Commute'.
+- Foodpanda / Deliveroo / GrabFood / McDonald's / Starbucks -> 'expense_dining', milesCategory 'Dining & Food Delivery'.
+- Singtel / StarHub / M1 / SP Services -> 'expense_utilities'.
+
+You MUST return a raw JSON object formatted precisely as follows:
 {
   "accounts": [
     {
-      "bankName": "Exact Bank Name (e.g. DBS, OCBC, UOB, MariBank, Citibank)",
-      "accountName": "Account description",
-      "accountNumber": "Masked or full account number",
-      "statementEndingBalance": 1234.56,
+      "bankName": "POSB",
+      "accountName": "POSB eSavings Account",
+      "accountNumber": "123-45678-9",
+      "statementEndingBalance": 1250.50,
       "currency": "SGD",
       "statementEndingDate": "2026-06-30"
     }
   ],
   "cardDraft": {
-    "cardIssuer": "Issuer Name",
-    "cardType": "Visa/Mastercard/Amex",
-    "cardName": "Card Name",
-    "cardNumber": "Masked Card Number",
-    "rewardSummary": "Summary",
-    "milesRates": "Rates",
-    "cashbackSummary": "Summary",
-    "cashbackRates": "Rates",
-    "totalSpend": 123.45,
+    "cardIssuer": "Citibank",
+    "cardType": "Mastercard",
+    "cardName": "CITI PREMIERMILES WORLD MASTER",
+    "cardNumber": "5425-XXXX-7628",
+    "hasMiles": true,
+    "milesEnding": "12500",
+    "totalSpend": 450.80,
     "paymentDueDate": "2026-07-15"
   },
   "extractedTransactions": [
     {
-      "date": "2026-06-15",
-      "merchant": "Cleaned merchant/description (e.g. Sheng Siong Supermarket)",
-      "amount": "The transaction amount as a double. EXPENSES MUST BE NEGATIVE NUMBERS, INCOME MUST BE POSITIVE NUMBERS (e.g. -42.50 or 150.00)",
-      "spendCurrency": "For credit card transactions: IF amount is POSITIVE (> 0), spendCurrency MUST BE 'SGD Receipt'. Otherwise IF negative, select one of: SGD Spend, MYR spend, IDR spend, FCY Spend (based on transaction currency). Default is SGD Spend",
-      "categoryValue": "Map the transaction to one of exact string values: 'expense_transfer_to_cash', 'expense_tax', 'expense_dining', 'expense_groceries', 'expense_transport', 'expense_shopping', 'expense_entertainment', 'expense_travel', 'expense_utilities', 'expense_investments', 'expense_education', 'expense_transfer', 'expense_other', 'income_salary', 'income_transfer', 'income_investments', 'income_dividends', 'income_other'",
-      "milesCashbackCategoryValue": "For credit card transactions, map to one of exact string values: 'Automobile', 'Beauty & Wellness', 'Commute', 'Dining & Food Delivery', 'Entertainment', 'Groceries', 'Kids & Pets', 'Online', 'SimplyGo', 'Shopping', 'Fuel', 'Others'"
+      "dateStr": "15 Jun 2026",
+      "merchant": "NTUC FairPrice",
+      "amount": -42.50,
+      "spendCurrency": "SGD Spend",
+      "categoryValue": "expense_groceries",
+      "milesCashbackCategoryValue": "Groceries"
     }
   ]
 }
 ''';
+
+    String? jsonResponseText;
+    Object? lastErr;
 
     for (final mName in modelNames) {
       int attempts = 0;
@@ -204,8 +149,8 @@ You MUST return a raw JSON object containing precisely the following format:
             },
             options: Options(
               headers: headers,
-              sendTimeout: const Duration(seconds: 30),
-              receiveTimeout: const Duration(seconds: 30),
+              sendTimeout: const Duration(seconds: 60),
+              receiveTimeout: const Duration(seconds: 60),
             ),
           );
 
@@ -232,14 +177,12 @@ You MUST return a raw JSON object containing precisely the following format:
           lastErr = e is DioException && e.response?.data != null ? e.response?.data : e;
           print('DEBUG Proxy Gemini model $mName failed (attempt $attempts): $lastErr');
           
-          // If 429 Too Many Requests rate limit occurred, wait 4 seconds and retry once
           if (e is DioException && e.response?.statusCode == 429 && attempts < 2) {
-            print('Rate limit (429) encountered. Waiting 4 seconds before retry...');
             await Future.delayed(const Duration(seconds: 4));
             continue;
           }
         }
-        break; // Exit while loop if no retry needed
+        break;
       }
 
       if (jsonResponseText != null && jsonResponseText.isNotEmpty) {
@@ -365,10 +308,60 @@ You MUST return a raw JSON object containing precisely the following format:
         } catch (_) {}
       }
 
+      // Auto-lookup card rules from CardRulesRegistry for exact earn rates
+      CardCalculationRule? registryRule;
+      for (final entry in CardRulesRegistry.registry.entries) {
+        final keyClean = entry.key.replaceAll('_', ' ').toLowerCase();
+        if (lowerName.isNotEmpty && (lowerName.contains(keyClean) || keyClean.contains(lowerName))) {
+          registryRule = entry.value;
+          break;
+        }
+      }
+
+      final List<ExtractedRewardRate> milesRates = [];
+      final List<ExtractedRewardRate> cashbackRates = [];
+
+      if (rawMilesRates.isNotEmpty) {
+        milesRates.addAll(rawMilesRates.map((r) => ExtractedRewardRate(
+          category: r['category'] as String? ?? 'SGD Spend',
+          rate: r['rate'] as String? ?? '1.2',
+          minSpend: r['minSpend'] as String? ?? '',
+          maxSpend: r['maxSpend'] as String? ?? '',
+        )));
+      } else if (registryRule != null && isMilesCard) {
+        milesRates.addAll(registryRule.defaultRatesList.map((r) => ExtractedRewardRate(
+          category: r['category'] as String? ?? 'SGD Spend',
+          rate: r['rate'] as String? ?? '1.2',
+          minSpend: r['minSpend'] as String? ?? '',
+          maxSpend: r['maxSpend'] as String? ?? '',
+        )));
+      } else if (isMilesCard) {
+        milesRates.addAll([
+          ExtractedRewardRate(category: 'SGD Spend', rate: '1.2', minSpend: '', maxSpend: ''),
+          ExtractedRewardRate(category: 'FCY spend', rate: '2.0', minSpend: '', maxSpend: ''),
+        ]);
+      }
+
+      if (rawCashbackRates.isNotEmpty) {
+        cashbackRates.addAll(rawCashbackRates.map((r) => ExtractedRewardRate(
+          category: r['category'] as String? ?? 'Dining',
+          rate: r['rate'] as String? ?? '1.5',
+          minSpend: r['minSpend'] as String? ?? '',
+          maxSpend: r['maxSpend'] as String? ?? '',
+        )));
+      } else if (registryRule != null && !isMilesCard) {
+        cashbackRates.addAll(registryRule.defaultRatesList.map((r) => ExtractedRewardRate(
+          category: r['category'] as String? ?? 'Dining',
+          rate: r['rate'] as String? ?? '1.5',
+          minSpend: r['minSpend'] as String? ?? '',
+          maxSpend: r['maxSpend'] as String? ?? '',
+        )));
+      }
+
       cardDraft = ExtractedCreditCardDraft(
         issuer: cardMap['cardIssuer'] as String? ?? cardMap['issuer'] as String? ?? '',
         cardType: cardMap['cardType'] as String? ?? 'Mastercard',
-        cardName: cardNameStr,
+        cardName: cardNameStr.isNotEmpty ? cardNameStr : 'Credit Card',
         cardNumber: cardMap['cardNumber'] as String? ?? '',
         hasMiles: isMilesCard,
         milesOpening: cardMap['milesOpening'] as String? ?? '',
@@ -376,20 +369,10 @@ You MUST return a raw JSON object containing precisely the following format:
         milesBonus: cardMap['milesBonus'] as String? ?? '',
         milesRedeemed: cardMap['milesRedeemed'] as String? ?? '',
         milesEnding: cardMap['milesEnding'] as String? ?? '',
-        milesRates: rawMilesRates.map((r) => ExtractedRewardRate(
-          category: r['category'] as String? ?? 'SGD Spend',
-          rate: r['rate'] as String? ?? '1.2',
-          minSpend: r['minSpend'] as String? ?? '',
-          maxSpend: r['maxSpend'] as String? ?? '',
-        )).toList(),
-        hasCashback: cardMap['hasCashback'] as bool? ?? false,
+        milesRates: milesRates,
+        hasCashback: !isMilesCard,
         cashbackEarned: cardMap['cashbackEarned'] as String? ?? '',
-        cashbackRates: rawCashbackRates.map((r) => ExtractedRewardRate(
-          category: r['category'] as String? ?? 'Dining',
-          rate: r['rate'] as String? ?? '1.5',
-          minSpend: r['minSpend'] as String? ?? '',
-          maxSpend: r['maxSpend'] as String? ?? '',
-        )).toList(),
+        cashbackRates: cashbackRates,
         totalSpend: spendStr,
         paymentDueDate: dueVal,
       );

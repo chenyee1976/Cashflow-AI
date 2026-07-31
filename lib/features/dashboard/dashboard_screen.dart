@@ -340,6 +340,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.primary,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.currentMonthBreakdown),
+                        onTap: () => _showMonthlyBreakdownSheet(
+                          context,
+                          'Monthly Income',
+                          data.currentMonthStr,
+                          data.currentMonthBreakdown,
+                          AppColors.primary,
+                        ),
                       ),
                       const Divider(height: 1, color: AppColors.divider),
                       _buildRowItem(
@@ -349,6 +356,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.primary,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.lastMonthBreakdown),
+                        onTap: () => _showMonthlyBreakdownSheet(
+                          context,
+                          'Monthly Income',
+                          data.lastMonthStr,
+                          data.lastMonthBreakdown,
+                          AppColors.primary,
+                        ),
                       ),
                       const Divider(height: 1, color: AppColors.divider),
                       _buildRowItem(
@@ -358,6 +372,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.primary,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.twoMonthsAgoBreakdown),
+                        onTap: () => _showMonthlyBreakdownSheet(
+                          context,
+                          'Monthly Income',
+                          data.twoMonthsAgoStr,
+                          data.twoMonthsAgoBreakdown,
+                          AppColors.primary,
+                        ),
                       ),
                     ],
                   ),
@@ -384,6 +405,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.error,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.currentMonthBreakdown),
+                        onTap: () => _showMonthlyBreakdownSheet(
+                          context,
+                          'Monthly Expenses',
+                          data.currentMonthStr,
+                          data.currentMonthBreakdown,
+                          AppColors.error,
+                        ),
                       ),
                       const Divider(height: 1, color: AppColors.divider),
                       _buildRowItem(
@@ -393,6 +421,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.error,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.lastMonthBreakdown),
+                        onTap: () => _showMonthlyBreakdownSheet(
+                          context,
+                          'Monthly Expenses',
+                          data.lastMonthStr,
+                          data.lastMonthBreakdown,
+                          AppColors.error,
+                        ),
                       ),
                       const Divider(height: 1, color: AppColors.divider),
                       _buildRowItem(
@@ -402,6 +437,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.error,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.twoMonthsAgoBreakdown),
+                        onTap: () => _showMonthlyBreakdownSheet(
+                          context,
+                          'Monthly Expenses',
+                          data.twoMonthsAgoStr,
+                          data.twoMonthsAgoBreakdown,
+                          AppColors.error,
+                        ),
                       ),
                     ],
                   ),
@@ -476,9 +518,103 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              const AppFooterBrand(),
+              const SizedBox(height: 32),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showMonthlyBreakdownSheet(
+    BuildContext context,
+    String title,
+    String dateInfo,
+    Map<String, double> breakdown,
+    Color color,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(color == AppColors.primary ? Icons.trending_up : Icons.history_toggle_off, color: color, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '$title ($dateInfo)',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppColors.textHint, size: 20),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (breakdown.isEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text('No main entries recorded for this month.', style: TextStyle(color: AppColors.textSecondary)),
+                ),
+              ),
+            ] else ...[
+              ...breakdown.entries.map((entry) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: color.withOpacity(0.18)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        entry.key,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                      ),
+                    ),
+                    Text(
+                      'S\$${NumberFormat('#,##0.00').format(entry.value)}',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
+                    ),
+                  ],
+                ),
+              )),
+            ],
+            const SizedBox(height: 16),
+          ],
         ),
       ),
     );

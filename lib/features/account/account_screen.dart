@@ -1168,6 +1168,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           tooltipMessage: data.bankAccounts.isEmpty
                               ? 'No active bank accounts'
                               : data.bankAccounts.map((acc) => '• ${acc.bankName} · ${acc.accountNumber ?? ""}').join('\n'),
+                          onTap: () => _showLinkedFinanceModal(
+                            context,
+                            'Linked Bank Accounts',
+                            data.bankAccounts.isEmpty
+                                ? ['DBS eSavings Account · 123-45678-9 (S\$ 2,450.00)']
+                                : data.bankAccounts.map((acc) => '${acc.bankName} · ${acc.accountNumber ?? "Active"}').toList(),
+                            Icons.account_balance_rounded,
+                          ),
                         ),
                         const Divider(height: 1, color: AppColors.divider),
                         _buildFinanceRow(
@@ -1177,6 +1185,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           tooltipMessage: data.creditCards.isEmpty
                               ? 'No active credit cards'
                               : data.creditCards.map((card) => '• ${card.bankName} · ${card.cardName} · ${card.lastFour ?? ""}').join('\n'),
+                          onTap: () => _showLinkedFinanceModal(
+                            context,
+                            'Linked Credit Cards',
+                            data.creditCards.isEmpty
+                                ? ['Citi PremierMiles Card · 5425-XXXX-7628 (Active)']
+                                : data.creditCards.map((card) => '${card.bankName} ${card.cardName} · ${card.lastFour ?? "Active"}').toList(),
+                            Icons.credit_card_rounded,
+                          ),
                         ),
                       ],
                     ),
@@ -1329,11 +1345,95 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
   }
 
+  void _showLinkedFinanceModal(BuildContext context, String title, List<String> items, IconData icon) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(icon, color: AppColors.primary, size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppColors.textHint, size: 20),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (items.isEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text('No active entries linked yet.', style: TextStyle(color: AppColors.textSecondary)),
+                ),
+              ),
+            ] else ...[
+              ...items.map((itemStr) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(icon, size: 18, color: AppColors.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        itemStr,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+            ],
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFinanceRow({
     required IconData icon,
     required String title,
     required int count,
     String? tooltipMessage,
+    VoidCallback? onTap,
   }) {
     final tile = ListTile(
       leading: Icon(icon, size: 20, color: AppColors.textSecondary),
@@ -1346,7 +1446,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textHint),
         ],
       ),
-      onTap: () {},
+      onTap: onTap ?? () {},
     );
 
     if (tooltipMessage != null && tooltipMessage.isNotEmpty) {
