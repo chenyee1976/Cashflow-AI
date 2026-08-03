@@ -92,8 +92,8 @@ class AnalyticsService {
   static const String _feedbackKey = 'beta_user_feedback';
   static const String _logsKey = 'beta_activity_logs';
 
-  String _currentUserId = 'chenyee_user';
-  String _currentUserEmail = 'chenwallpaper@gmail.com';
+  String _currentUserId = 'unknown_user';
+  String _currentUserEmail = '';
 
   AnalyticsService() {
     _initUser();

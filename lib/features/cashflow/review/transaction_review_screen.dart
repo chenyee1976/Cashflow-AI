@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_header_brand.dart';
 import '../statement/cashflow_provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../data/database/app_database.dart';
 import '../../../data/secure_storage/secure_storage_service.dart';
@@ -401,7 +402,13 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
         // Draft is deleted (Processed statement). Load from DB!
         _isViewOnly = true;
         final db = ref.read(appDatabaseProvider);
-        const userId = 'chenyee_user';
+        final storage = ref.read(secureStorageProvider);
+        final prefs = await SharedPreferences.getInstance();
+        final testerEmail = prefs.getString('tester_email') ?? '';
+        var userId = await storage.getUserId();
+        if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+          userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}' : 'chenyee_user';
+        }
 
         final allTxs = await db.getTransactionsByUser(userId);
         final statementTxs = allTxs.where((t) => t.statementId == widget.statementId).toList();
@@ -762,8 +769,15 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
 
     var userId = await storage.getUserId();
     if (userId == null || userId.isEmpty || userId == 'unknown_user') {
-      userId = 'chenyee_user';
-      await storage.saveGoogleUser(userId: userId, googleId: 'google_mock_123', email: 'chenwallpaper@gmail.com');
+      final prefs = await SharedPreferences.getInstance();
+      final testerEmail = prefs.getString('tester_email') ?? '';
+      if (testerEmail.contains('@')) {
+        userId = 'tester_${testerEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+        await storage.saveGoogleUser(userId: userId, googleId: 'web_user_${testerEmail.hashCode}', email: testerEmail);
+      } else {
+        userId = 'chenyee_user';
+        await storage.saveGoogleUser(userId: userId, googleId: 'web_user', email: '');
+      }
     }
 
     final nonNullUserId = userId;
@@ -775,13 +789,17 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
       final user = await db.getUserById(nonNullUserId);
       if (user == null) {
         debugPrint('DB Transaction: Creating user row...');
+        final prefs2 = await SharedPreferences.getInstance();
+        final fName = prefs2.getString('tester_first_name') ?? '';
+        final lName = prefs2.getString('tester_last_name') ?? '';
+        final email = await storage.getGoogleEmail() ?? prefs2.getString('tester_email') ?? '';
         await db.upsertUser(
           UsersCompanion.insert(
             id: nonNullUserId,
-            firstName: 'Chen Yee',
-            lastName: 'Tok',
-            email: 'chenwallpaper@gmail.com',
-            googleId: 'google_mock_123',
+            firstName: fName,
+            lastName: lName,
+            email: email,
+            googleId: await storage.getGoogleId() ?? 'web_user',
             createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
           ),
         );

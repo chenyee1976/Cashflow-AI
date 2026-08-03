@@ -118,8 +118,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 await prefs.setString('tester_last_name', lName);
                 await prefs.setString('tester_email', email);
 
-                final analytics = ref.read(analyticsServiceProvider);
                 final userId = 'tester_${email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+                
+                // Also update SecureStorage with real identity
+                final storage = ref.read(secureStorageProvider);
+                await storage.saveGoogleUser(userId: userId, googleId: 'web_user_${email.hashCode}', email: email);
+                
+                final analytics = ref.read(analyticsServiceProvider);
                 analytics.setUser(userId, email);
                 analytics.logEvent('beta_tester_registered', parameters: {
                   'firstName': fName,
@@ -1171,7 +1176,16 @@ class _VoiceExpenseCardState extends State<_VoiceExpenseCard> {
       }
 
       final db = widget.ref.read(appDatabaseProvider);
-      final userId = await storage.getUserId() ?? 'chenyee_user';
+      final prefs = await SharedPreferences.getInstance();
+      final testerEmail = prefs.getString('tester_email') ?? '';
+      var userId = await storage.getUserId();
+      if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+        if (testerEmail.contains('@')) {
+          userId = 'tester_${testerEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+        } else {
+          userId = 'unknown_user';
+        }
+      }
 
       await db.insertTransactions([
         TransactionsCompanion.insert(

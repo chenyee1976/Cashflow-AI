@@ -14,6 +14,8 @@ import '../../../shared/widgets/app_footer_brand.dart';
 import 'cashflow_provider.dart';
 import '../../../data/database/app_database.dart';
 import '../../dashboard/dashboard_provider.dart';
+import '../../../data/secure_storage/secure_storage_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CashFlowHomeScreen extends ConsumerWidget {
   const CashFlowHomeScreen({super.key});
@@ -748,8 +750,15 @@ class CashFlowHomeScreen extends ConsumerWidget {
 
   void _showAddTransactionBottomSheet(BuildContext context, WidgetRef ref) async {
     final db = ref.read(appDatabaseProvider);
-    final bankAccounts = await db.getBankAccountsByUser('chenyee_user');
-    final creditCards = await db.getCreditCardsByUser('chenyee_user');
+    final storage = ref.read(secureStorageProvider);
+    final prefs = await SharedPreferences.getInstance();
+    final testerEmail = prefs.getString('tester_email') ?? '';
+    var cfUserId = await storage.getUserId();
+    if (cfUserId == null || cfUserId.isEmpty || cfUserId == 'unknown_user') {
+      cfUserId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+    }
+    final bankAccounts = await db.getBankAccountsByUser(cfUserId);
+    final creditCards = await db.getCreditCardsByUser(cfUserId);
 
     final accountOptions = <Map<String, String>>[
       {'id': 'manual_cash', 'name': 'Cash on hand / Physical Cash'},

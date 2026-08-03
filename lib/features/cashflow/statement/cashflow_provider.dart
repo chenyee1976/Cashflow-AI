@@ -4,6 +4,7 @@ import '../../../../data/database/app_database.dart';
 import '../../../../data/secure_storage/secure_storage_service.dart';
 import '../../../../core/constants/category_enum.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CashFlowMonthData {
   final double totalIncome;
@@ -51,13 +52,19 @@ final cashFlowScreenProvider = FutureProvider.autoDispose<CashFlowMonthData>((re
   final selectedMonth = ref.watch(selectedMonthProvider);
   final filter = ref.watch(cashFlowFilterProvider);
   final db = ref.watch(appDatabaseProvider);
-  const userId = 'chenyee_user';
+  final storage = ref.read(secureStorageProvider);
+  final prefs = await SharedPreferences.getInstance();
+  final testerEmail = prefs.getString('tester_email') ?? '';
+  var userId = await storage.getUserId();
+  if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+    userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+  }
 
   List<Transaction> allTxs = [];
   int retries = 20;
   while (true) {
     try {
-      allTxs = await db.getTransactionsByUser(userId);
+      allTxs = await db.getTransactionsByUser(userId!);
       break;
     } catch (e) {
       if (retries > 0) {
@@ -119,8 +126,8 @@ final cashFlowScreenProvider = FutureProvider.autoDispose<CashFlowMonthData>((re
     int retries2 = 10;
     while (true) {
       try {
-        bankAccounts = await db.getBankAccountsByUser(userId);
-        cardAccounts = await db.getCreditCardsByUser(userId);
+        bankAccounts = await db.getBankAccountsByUser(userId!);
+        cardAccounts = await db.getCreditCardsByUser(userId!);
         break;
       } catch (e) {
         if (retries2 > 0) {

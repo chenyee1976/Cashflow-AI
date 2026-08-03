@@ -5,6 +5,7 @@ import '../../../data/database/app_database.dart';
 import '../../../data/secure_storage/secure_storage_service.dart';
 import 'card_rewards_store.dart';
 import 'rewards_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MilesScreenData {
   final double totalMiles;
@@ -29,9 +30,14 @@ final milesScreenProvider = FutureProvider.autoDispose<MilesScreenData>((ref) as
   try {
     final db = ref.watch(appDatabaseProvider);
     final storage = ref.watch(secureStorageProvider);
-    final userId = await storage.getUserId() ?? 'chenyee_user';
+    final prefs = await SharedPreferences.getInstance();
+    final testerEmail = prefs.getString('tester_email') ?? '';
+    var userId = await storage.getUserId();
+    if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+      userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+    }
 
-    final statements = await db.getStatementsByUser(userId);
+    final statements = await db.getStatementsByUser(userId!);
     final ccStatements = statements.where((s) => s.accountType == 'credit_card').toList();
 
     // Clean up legacy hardcoded 'kf_wallet' entry
@@ -43,7 +49,7 @@ final milesScreenProvider = FutureProvider.autoDispose<MilesScreenData>((ref) as
     if (ccStatements.isNotEmpty) {
 
       // Automatically derive and sync miles wallets from credit cards with miles statements
-      final rawCards = await db.getCreditCardsByUser(userId);
+      final rawCards = await db.getCreditCardsByUser(userId!);
       
       // Group cards by normalized key
       String _norm(String s) => s.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
@@ -97,8 +103,8 @@ final milesScreenProvider = FutureProvider.autoDispose<MilesScreenData>((ref) as
       }
     }
 
-    final list = await db.getMilesWalletByUser(userId);
-    final goal = await db.getTravelGoalByUser(userId);
+    final list = await db.getMilesWalletByUser(userId!);
+    final goal = await db.getTravelGoalByUser(userId!);
 
     final airline = list.where((item) => item.programType == 'airline').toList();
     final bank = list.where((item) => item.programType == 'bank').toList();

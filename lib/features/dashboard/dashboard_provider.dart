@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/database/app_database.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
 import '../../core/constants/category_enum.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Cash Position display model
 class CashPositionModel {
@@ -60,8 +61,13 @@ class MonthSummaryModel {
 final userProfileProvider = FutureProvider.autoDispose<User?>((ref) async {
   final storage = ref.watch(secureStorageProvider);
   final db = ref.watch(appDatabaseProvider);
-  final userId = await storage.getUserId() ?? 'chenyee_user';
-  return db.getUserById(userId);
+  final prefs = await SharedPreferences.getInstance();
+  final testerEmail = prefs.getString('tester_email') ?? '';
+  var userId = await storage.getUserId();
+  if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+    userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+  }
+  return db.getUserById(userId!);
 });
 
 double _calculateBalanceAsOf(List<BankAccount> consolidatedAccounts, List<BankAccount> allAccounts, List<Transaction> transactions, DateTime date) {
@@ -173,7 +179,13 @@ Map<String, double> _calculateIndividualBalancesAsOf(List<BankAccount> consolida
 // Cash Position Provider (Stream-based - synchronous user query to prevent OperationError)
 final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref) async {
   final db = ref.watch(appDatabaseProvider);
-  const userId = 'chenyee_user';
+  final storage = ref.read(secureStorageProvider);
+  final prefs = await SharedPreferences.getInstance();
+  final testerEmail = prefs.getString('tester_email') ?? '';
+  var userId = await storage.getUserId();
+  if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+    userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+  }
 
   List<BankAccount> accounts = [];
   List<Transaction> transactions = [];
@@ -181,8 +193,8 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
 
   while (true) {
     try {
-      accounts = await DatabaseMutex.run(() => db.getBankAccountsByUser(userId));
-      transactions = await DatabaseMutex.run(() => db.getTransactionsByUser(userId));
+      accounts = await DatabaseMutex.run(() => db.getBankAccountsByUser(userId!));
+      transactions = await DatabaseMutex.run(() => db.getTransactionsByUser(userId!));
       break;
     } catch (e) {
       if (retries > 0) {
@@ -217,8 +229,6 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
       cashAdjustmentsTotal += tx.amount.abs(); // Positive addition to Cash on hand
     }
   }
-
-  final storage = ref.read(secureStorageProvider);
 
   final now = DateTime.now();
   final endOfLastMonth = DateTime(now.year, now.month, 0, 23, 59, 59);
@@ -330,13 +340,19 @@ CashPositionModel _emptyCashPosition() {
 // Monthly Income Provider (Inflows: amount > 0, Future-based)
 final monthlyIncomeProvider = FutureProvider.autoDispose<MonthSummaryModel>((ref) async {
   final db = ref.watch(appDatabaseProvider);
-  const userId = 'chenyee_user';
+  final storage = ref.read(secureStorageProvider);
+  final prefs = await SharedPreferences.getInstance();
+  final testerEmail = prefs.getString('tester_email') ?? '';
+  var userId = await storage.getUserId();
+  if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+    userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+  }
 
   List<Transaction> txs = [];
   int retries = 20;
   while (true) {
     try {
-      txs = await db.getTransactionsByUser(userId);
+      txs = await db.getTransactionsByUser(userId!);
       break;
     } catch (e) {
       if (retries > 0) {
@@ -370,13 +386,19 @@ final monthlyIncomeProvider = FutureProvider.autoDispose<MonthSummaryModel>((ref
 // Monthly Expenses Provider (Outflows: amount < 0, Future-based)
 final monthlyExpensesProvider = FutureProvider.autoDispose<MonthSummaryModel>((ref) async {
   final db = ref.watch(appDatabaseProvider);
-  const userId = 'chenyee_user';
+  final storage = ref.read(secureStorageProvider);
+  final prefs = await SharedPreferences.getInstance();
+  final testerEmail = prefs.getString('tester_email') ?? '';
+  var userId = await storage.getUserId();
+  if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+    userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+  }
 
   List<Transaction> txs = [];
   int retries = 20;
   while (true) {
     try {
-      txs = await db.getTransactionsByUser(userId);
+      txs = await db.getTransactionsByUser(userId!);
       break;
     } catch (e) {
       if (retries > 0) {

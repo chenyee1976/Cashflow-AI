@@ -87,16 +87,23 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
 
     var userId = await _storage.getUserId();
     if (userId == null || userId.isEmpty || userId == 'unknown_user') {
-      userId = 'chenyee_user';
-      await _storage.saveGoogleUser(userId: userId, googleId: 'google_mock_123', email: 'chenwallpaper@gmail.com');
+      final prefs = await SharedPreferences.getInstance();
+      final testerEmail = prefs.getString('tester_email') ?? '';
+      if (testerEmail.contains('@')) {
+        userId = 'tester_${testerEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+        await _storage.saveGoogleUser(userId: userId, googleId: 'web_user_${testerEmail.hashCode}', email: testerEmail);
+      } else {
+        userId = 'pending_user_${DateTime.now().millisecondsSinceEpoch}';
+        await _storage.saveGoogleUser(userId: userId, googleId: 'web_pending', email: '');
+      }
     }
 
     final companion = UsersCompanion(
       id: Value(userId),
       firstName: Value(firstName),
       lastName: Value(lastName),
-      email: const Value('chenwallpaper@gmail.com'),
-      googleId: const Value('google_mock_123'),
+      email: Value(await _storage.getGoogleEmail() ?? ''),
+      googleId: Value(await _storage.getGoogleId() ?? 'web_user'),
       rewardFocus: const Value('Both'),
       currencyPref: Value(currencyPref),
       createdAt: Value(DateTime.now().millisecondsSinceEpoch ~/ 1000),
@@ -153,8 +160,15 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     try {
       var userId = await _storage.getUserId();
       if (userId == null || userId.isEmpty || userId == 'unknown_user') {
-        userId = 'chenyee_user';
-        await _storage.saveGoogleUser(userId: userId, googleId: 'google_mock_123', email: 'chenwallpaper@gmail.com');
+        final prefs = await SharedPreferences.getInstance();
+        final testerEmail = prefs.getString('tester_email') ?? '';
+        if (testerEmail.contains('@')) {
+          userId = 'tester_${testerEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+          await _storage.saveGoogleUser(userId: userId, googleId: 'web_user_${testerEmail.hashCode}', email: testerEmail);
+        } else {
+          userId = 'pending_user_${DateTime.now().millisecondsSinceEpoch}';
+          await _storage.saveGoogleUser(userId: userId, googleId: 'web_pending', email: '');
+        }
       }
       
       // Update or Insert User information in Drift SQLite using upsertUser
@@ -162,8 +176,8 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
         id: Value(userId),
         firstName: Value(state.firstName),
         lastName: Value(state.lastName),
-        email: const Value('beta.tester@example.com'),
-        googleId: const Value('google_mock_123'),
+        email: Value(await _storage.getGoogleEmail() ?? ''),
+        googleId: Value(await _storage.getGoogleId() ?? 'web_user'),
         rewardFocus: Value(state.rewardFocus),
         currencyPref: Value(state.currencyPref),
         createdAt: Value(DateTime.now().millisecondsSinceEpoch ~/ 1000),

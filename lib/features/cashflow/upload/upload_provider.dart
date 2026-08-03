@@ -9,6 +9,7 @@ import 'draft_statement_service.dart';
 import '../statement/cashflow_provider.dart';
 import '../../dashboard/dashboard_provider.dart';
 import '../../account/account_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UploadedStatementItem {
   final String id;
@@ -59,13 +60,18 @@ class UploadNotifier extends StateNotifier<UploadState> {
     try {
       final db = _ref.read(appDatabaseProvider);
       final storage = _ref.read(secureStorageProvider);
-      final userId = await storage.getUserId() ?? 'chenyee_user';
+      final prefs = await SharedPreferences.getInstance();
+      final testerEmail = prefs.getString('tester_email') ?? '';
+      var userId = await storage.getUserId();
+      if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+        userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+      }
 
       List<Statement> list = [];
       int retries = 20;
       while (true) {
         try {
-          list = await DatabaseMutex.run(() => db.getStatementsByUser(userId));
+          list = await DatabaseMutex.run(() => db.getStatementsByUser(userId!));
           break;
         } catch (e) {
           if (retries > 0) {
@@ -81,7 +87,7 @@ class UploadNotifier extends StateNotifier<UploadState> {
       list.sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
       
       print('loadStatements count: ${list.length} for user: $userId');
-      final allTxs = await DatabaseMutex.run(() => db.getTransactionsByUser(userId));
+      final allTxs = await DatabaseMutex.run(() => db.getTransactionsByUser(userId!));
       final Map<String, int> txCountMap = {};
       for (final tx in allTxs) {
         if (tx.statementId != null) {
@@ -120,7 +126,12 @@ class UploadNotifier extends StateNotifier<UploadState> {
   }) async {
     final db = _ref.read(appDatabaseProvider);
     final storage = _ref.read(secureStorageProvider);
-    final userId = await storage.getUserId() ?? 'chenyee_user';
+    final prefs = await SharedPreferences.getInstance();
+    final testerEmail = prefs.getString('tester_email') ?? '';
+    var userId = await storage.getUserId();
+    if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+      userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+    }
     final statementId = const Uuid().v4();
 
     final rawKey = await storage.getGeminiApiKey();

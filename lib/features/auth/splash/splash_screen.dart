@@ -46,8 +46,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       final onboardingComplete = await storage.isOnboardingComplete();
       
       final prefs = await SharedPreferences.getInstance();
-      final savedUserId = await storage.getUserId() ?? 'chenyee_user';
-      final savedEmail = prefs.getString('tester_email') ?? await storage.getGoogleEmail() ?? 'chenwallpaper@gmail.com';
+      final testerEmail = prefs.getString('tester_email') ?? '';
+      var savedUserId = await storage.getUserId();
+      if (savedUserId == null || savedUserId.isEmpty || savedUserId == 'unknown_user') {
+        if (testerEmail.contains('@')) {
+          savedUserId = 'tester_${testerEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+        } else {
+          savedUserId = 'unknown_user';
+        }
+      }
+      final savedEmail = testerEmail.isNotEmpty ? testerEmail : (await storage.getGoogleEmail() ?? '');
       
       final analytics = ref.read(analyticsServiceProvider);
       analytics.setUser(savedUserId, savedEmail);

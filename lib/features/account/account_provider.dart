@@ -35,7 +35,12 @@ class AccountProfileData {
 final accountProfileProvider = FutureProvider.autoDispose<AccountProfileData>((ref) async {
   final db = ref.watch(appDatabaseProvider);
   final storage = ref.watch(secureStorageProvider);
-  const userId = 'chenyee_user';
+  final prefs = await SharedPreferences.getInstance();
+  final testerEmail = prefs.getString('tester_email') ?? '';
+  var userId = await storage.getUserId();
+  if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+    userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+  }
 
   List<BankAccount> banks = [];
   User? user;
@@ -44,9 +49,9 @@ final accountProfileProvider = FutureProvider.autoDispose<AccountProfileData>((r
   int retries = 20;
   while (true) {
     try {
-      banks = await db.getBankAccountsByUser(userId);
-      user = await db.getUserById(userId);
-      cards = await db.getCreditCardsByUser(userId);
+      banks = await db.getBankAccountsByUser(userId!);
+      user = await db.getUserById(userId!);
+      cards = await db.getCreditCardsByUser(userId!);
       break;
     } catch (e) {
       if (retries > 0) {
@@ -58,7 +63,6 @@ final accountProfileProvider = FutureProvider.autoDispose<AccountProfileData>((r
     }
   }
 
-  final prefs = await SharedPreferences.getInstance();
   final prefFName = prefs.getString('tester_first_name');
   final prefLName = prefs.getString('tester_last_name');
   final prefEmail = prefs.getString('tester_email');
@@ -134,9 +138,11 @@ class AccountOperations {
   }
 
   Future<void> clearAllData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final testerEmail = prefs.getString('tester_email') ?? '';
     var userId = await _storage.getUserId();
     if (userId == null || userId.isEmpty || userId == 'unknown_user') {
-      userId = 'chenyee_user';
+      userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
     }
 
     int retries = 20;
