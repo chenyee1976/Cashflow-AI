@@ -312,24 +312,27 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                         );
                       }
 
-                      // Group logs by User Email
+                      // Group logs by User Email / ID
                       final grouped = <String, List<BetaLogEntry>>{};
                       for (final log in rawLogs) {
-                        String email = (log.details?['userEmail'] as String?)?.isNotEmpty == true
-                            ? log.details!['userEmail'] as String
+                        String rawEmail = (log.details?['userEmail'] as String?)?.isNotEmpty == true
+                            ? (log.details!['userEmail'] as String).trim()
                             : ((log.details?['email'] as String?)?.isNotEmpty == true
-                                ? log.details!['email'] as String
+                                ? (log.details!['email'] as String).trim()
                                 : ((log.details?['userId'] as String?)?.isNotEmpty == true
-                                    ? log.details!['userId'] as String
-                                    : 'chenwallpaper@gmail.com'));
+                                    ? (log.details!['userId'] as String).trim()
+                                    : 'Guest Beta Tester'));
 
-                        final lower = email.toLowerCase();
+                        String displayGroup = rawEmail;
+                        final lower = rawEmail.toLowerCase();
                         if (lower.contains('andrea') || lower.contains('b9fb4')) {
-                          email = 'andrea@gmail.com';
+                          displayGroup = 'andrea@gmail.com';
                         } else if (lower.contains('chenwallpaper') || lower.contains('chenyee')) {
-                          email = 'chenwallpaper@gmail.com';
+                          displayGroup = 'chenwallpaper@gmail.com';
+                        } else if (!rawEmail.contains('@')) {
+                          displayGroup = '$rawEmail (Beta Tester)';
                         }
-                        grouped.putIfAbsent(email, () => []).add(log);
+                        grouped.putIfAbsent(displayGroup, () => []).add(log);
                       }
 
                       // Sort each user's log list reverse-chronologically (newest first)
