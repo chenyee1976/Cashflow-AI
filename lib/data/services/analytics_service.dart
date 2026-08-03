@@ -339,12 +339,11 @@ class AnalyticsService {
       }
     } catch (_) {}
 
-    // 2. Direct Cloud REST Fallback (Guarantees data presence even if serverless instance recycles)
+    // 2. Direct Cloud REST Fallback (JSONBlob permanent storage)
     try {
-      final resCloud = await dio.get('https://api.restful-api.dev/objects/ff8081819f7e10ae019fc55ab9e864fd');
+      final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fc580-ce0c-7dda-bf0d-529081d6421c', options: Options(headers: {'Accept': 'application/json'}));
       if (resCloud.statusCode == 200 && resCloud.data != null) {
-        final dataObj = resCloud.data['data'] as Map<String, dynamic>?;
-        final itemsList = dataObj?['items'] as List<dynamic>?;
+        final itemsList = resCloud.data['items'] as List<dynamic>?;
         if (itemsList != null) {
           for (final item in itemsList) {
             final entry = BetaFeedbackEntry.fromJson(item as Map<String, dynamic>);
@@ -391,12 +390,11 @@ class AnalyticsService {
       }
     } catch (_) {}
 
-    // 2. Direct Cloud REST Fallback
+    // 2. Direct Cloud REST Fallback (JSONBlob permanent storage)
     try {
-      final resCloud = await dio.get('https://api.restful-api.dev/objects/ff8081819f7e10ae019fc55ababe64fe');
+      final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fc580-d01f-7aa3-a883-60d62aa3603b', options: Options(headers: {'Accept': 'application/json'}));
       if (resCloud.statusCode == 200 && resCloud.data != null) {
-        final dataObj = resCloud.data['data'] as Map<String, dynamic>?;
-        final itemsList = dataObj?['items'] as List<dynamic>?;
+        final itemsList = resCloud.data['items'] as List<dynamic>?;
         if (itemsList != null) {
           for (final item in itemsList) {
             final entry = BetaLogEntry.fromJson(item as Map<String, dynamic>);

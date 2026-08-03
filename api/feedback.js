@@ -1,17 +1,20 @@
 const https = require('https');
 
-const FEEDBACK_ENDPOINT = 'https://api.restful-api.dev/objects/ff8081819f7e10ae019fc55ab9e864fd';
+const FEEDBACK_ENDPOINT = 'https://jsonblob.com/api/jsonBlob/019fc580-ce0c-7dda-bf0d-529081d6421c';
 
 function fetchCloudFeedback() {
   return new Promise((resolve) => {
-    https.get(FEEDBACK_ENDPOINT, (res) => {
+    const req = https.request(FEEDBACK_ENDPOINT, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    }, (res) => {
       let data = '';
       res.on('data', (chunk) => data += chunk);
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          if (parsed && parsed.data && Array.isArray(parsed.data.items)) {
-            resolve(parsed.data.items);
+          if (parsed && Array.isArray(parsed.items)) {
+            resolve(parsed.items);
           } else {
             resolve([]);
           }
@@ -19,21 +22,21 @@ function fetchCloudFeedback() {
           resolve([]);
         }
       });
-    }).on('error', () => resolve([]));
+    });
+    req.on('error', () => resolve([]));
+    req.end();
   });
 }
 
 function saveCloudFeedback(items) {
   return new Promise((resolve) => {
     try {
-      const payload = JSON.stringify({
-        name: 'sgcashflow_global_feedback',
-        data: { items }
-      });
+      const payload = JSON.stringify({ items });
       const req = https.request(FEEDBACK_ENDPOINT, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Content-Length': Buffer.byteLength(payload),
         },
       }, () => resolve(true));
