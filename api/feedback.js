@@ -1,20 +1,20 @@
 const https = require('https');
 
-// Central Feedback API for CashFlow AI Beta Testers with global persistent KV sync
-let memoryFeedback = [];
+const FEEDBACK_ENDPOINT = 'https://api.restful-api.dev/objects/ff8081819f7e10ae019fc55ab9e864fd';
 
-const KV_URL = 'https://kvdb.io/A84NqQ12999kksx882a177/sgcashflow_feedback';
-
-function fetchFromKv() {
+function fetchCloudFeedback() {
   return new Promise((resolve) => {
-    https.get(KV_URL, (res) => {
+    https.get(FEEDBACK_ENDPOINT, (res) => {
       let data = '';
       res.on('data', (chunk) => data += chunk);
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          if (Array.isArray(parsed)) resolve(parsed);
-          else resolve([]);
+          if (parsed && parsed.data && Array.isArray(parsed.data.items)) {
+            resolve(parsed.data.items);
+          } else {
+            resolve([]);
+          }
         } catch (_) {
           resolve([]);
         }
@@ -23,15 +23,15 @@ function fetchFromKv() {
   });
 }
 
-function saveToKv(data) {
+function saveCloudFeedback(items) {
   return new Promise((resolve) => {
     try {
-      const url = new URL(KV_URL);
-      const payload = JSON.stringify(data);
-      const req = https.request({
-        hostname: url.hostname,
-        path: url.pathname,
-        method: 'POST',
+      const payload = JSON.stringify({
+        name: 'sgcashflow_global_feedback',
+        data: { items }
+      });
+      const req = https.request(FEEDBACK_ENDPOINT, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(payload),
@@ -47,7 +47,6 @@ function saveToKv(data) {
 }
 
 module.exports = async (req, res) => {
-  // CORS Headers for Flutter Web
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -60,12 +59,12 @@ module.exports = async (req, res) => {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (body) {
-        const kvList = await fetchFromKv();
+        const cloudItems = await fetchCloudFeedback();
         const existingMap = new Map();
-        for (const item of kvList) {
+        for (const item of cloudItems) {
           if (item && item.id) existingMap.set(item.id, item);
         }
-        
+
         const newEntry = {
           ...body,
           serverTimestamp: new Date().toISOString(),
@@ -74,29 +73,19 @@ module.exports = async (req, res) => {
 
         const updatedList = Array.from(existingMap.values());
         updatedList.sort((a, b) => new Date(b.timestamp || b.serverTimestamp || 0) - new Date(a.timestamp || a.serverTimestamp || 0));
-        
-        const finalFeedback = updatedList.slice(0, 200);
-        memoryFeedback = finalFeedback;
-        await saveToKv(finalFeedback);
+
+        await saveCloudFeedback(updatedList);
+        return res.status(200).json({ success: true, count: updatedList.length });
       }
-      return res.status(200).json({ success: true, count: memoryFeedback.length });
+      return res.status(200).json({ success: true });
     } catch (e) {
       return res.status(400).json({ error: e.toString() });
     }
   }
 
   if (req.method === 'GET') {
-    const kvList = await fetchFromKv();
-    const map = new Map();
-    for (const item of memoryFeedback) {
-      if (item && item.id) map.set(item.id, item);
-    }
-    for (const item of kvList) {
-      if (item && item.id) map.set(item.id, item);
-    }
-    const merged = Array.from(map.values());
-    merged.sort((a, b) => new Date(b.timestamp || b.serverTimestamp || 0) - new Date(a.timestamp || a.serverTimestamp || 0));
-    return res.status(200).json(merged);
+    const cloudItems = await fetchCloudFeedback();
+    return res.status(200).json(cloudItems);
   }
 
   return res.status(405).json({ error: 'Method Not Allowed' });

@@ -289,11 +289,20 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                       // Group logs by User Email
                       final grouped = <String, List<BetaLogEntry>>{};
                       for (final log in rawLogs) {
-                        final email = (log.details?['userEmail'] as String?)?.isNotEmpty == true
+                        String email = (log.details?['userEmail'] as String?)?.isNotEmpty == true
                             ? log.details!['userEmail'] as String
                             : ((log.details?['email'] as String?)?.isNotEmpty == true
                                 ? log.details!['email'] as String
-                                : 'chenwallpaper@gmail.com');
+                                : ((log.details?['userId'] as String?)?.isNotEmpty == true
+                                    ? log.details!['userId'] as String
+                                    : 'chenwallpaper@gmail.com'));
+
+                        final lower = email.toLowerCase();
+                        if (lower.contains('andrea') || lower.contains('b9fb4')) {
+                          email = 'andrea@gmail.com';
+                        } else if (lower.contains('chenwallpaper') || lower.contains('chenyee')) {
+                          email = 'chenwallpaper@gmail.com';
+                        }
                         grouped.putIfAbsent(email, () => []).add(log);
                       }
 
