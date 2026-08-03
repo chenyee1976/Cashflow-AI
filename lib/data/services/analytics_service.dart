@@ -187,12 +187,12 @@ class AnalyticsService {
     // 2. Dual Backup Post directly to Cloud REST Storage (Guarantees zero data loss across cold starts)
     try {
       final endpoint = path.contains('feedback')
-          ? 'https://api.restful-api.dev/objects/ff8081819f7e10ae019fc55ab9e864fd'
-          : 'https://api.restful-api.dev/objects/ff8081819f7e10ae019fc55ababe64fe';
+          ? 'https://jsonblob.com/api/jsonBlob/019fc580-ce0c-7dda-bf0d-529081d6421c'
+          : 'https://jsonblob.com/api/jsonBlob/019fc580-d01f-7aa3-a883-60d62aa3603b';
 
-      final getRes = await dio.get(endpoint);
+      final getRes = await dio.get(endpoint, options: Options(headers: {'Accept': 'application/json'}));
       if (getRes.statusCode == 200 && getRes.data != null) {
-        final currentItems = (getRes.data['data']?['items'] as List<dynamic>?) ?? [];
+        final currentItems = (getRes.data['items'] as List<dynamic>?) ?? [];
         final map = <String, dynamic>{};
 
         for (final item in currentItems) {
@@ -212,9 +212,8 @@ class AnalyticsService {
         final trimmed = updatedList.length > 500 ? updatedList.sublist(updatedList.length - 500) : updatedList;
 
         await dio.put(endpoint, data: {
-          'name': path.contains('feedback') ? 'sgcashflow_global_feedback' : 'sgcashflow_global_logs',
-          'data': {'items': trimmed},
-        });
+          'items': trimmed,
+        }, options: Options(headers: {'Content-Type': 'application/json', 'Accept': 'application/json'}));
       }
     } catch (_) {}
   }
