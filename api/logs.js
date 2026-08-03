@@ -71,12 +71,16 @@ module.exports = async (req, res) => {
           }
         }
 
-        const newEntry = {
-          ...body,
-          serverTimestamp: new Date().toISOString(),
-        };
-        const entryKey = `${newEntry.name || 'evt'}_${newEntry.timestamp || Date.now()}`;
-        existingMap.set(entryKey, newEntry);
+        const incomingItems = Array.isArray(body) ? body : [body];
+        for (const item of incomingItems) {
+          if (!item) continue;
+          const newEntry = {
+            ...item,
+            serverTimestamp: new Date().toISOString(),
+          };
+          const entryKey = `${newEntry.name || 'evt'}_${newEntry.timestamp || Date.now()}`;
+          existingMap.set(entryKey, newEntry);
+        }
 
         const updatedList = Array.from(existingMap.values());
         updatedList.sort((a, b) => new Date(b.timestamp || b.serverTimestamp || 0) - new Date(a.timestamp || a.serverTimestamp || 0));

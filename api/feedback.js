@@ -68,11 +68,16 @@ module.exports = async (req, res) => {
           if (item && item.id) existingMap.set(item.id, item);
         }
 
-        const newEntry = {
-          ...body,
-          serverTimestamp: new Date().toISOString(),
-        };
-        existingMap.set(newEntry.id || Date.now().toString(), newEntry);
+        const incomingItems = Array.isArray(body) ? body : [body];
+        for (const item of incomingItems) {
+          if (!item) continue;
+          const newEntry = {
+            ...item,
+            serverTimestamp: new Date().toISOString(),
+          };
+          const key = item.id || `${item.timestamp || Date.now()}`;
+          existingMap.set(key, newEntry);
+        }
 
         const updatedList = Array.from(existingMap.values());
         updatedList.sort((a, b) => new Date(b.timestamp || b.serverTimestamp || 0) - new Date(a.timestamp || a.serverTimestamp || 0));

@@ -108,31 +108,6 @@ class AnalyticsService {
     });
   }
 
-  Future<void> syncAllLocalToCloud() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await _ensureUserIdentity();
-
-      // 1. Sync all local feedback items
-      final rawFeedback = prefs.getStringList(_feedbackKey) ?? [];
-      for (final str in rawFeedback) {
-        try {
-          final map = jsonDecode(str) as Map<String, dynamic>;
-          await _postCentral('/api/feedback', map);
-        } catch (_) {}
-      }
-
-      // 2. Sync all local activity logs
-      final rawLogs = prefs.getStringList(_logsKey) ?? [];
-      for (final str in rawLogs) {
-        try {
-          final map = jsonDecode(str) as Map<String, dynamic>;
-          await _postCentral('/api/logs', map);
-        } catch (_) {}
-      }
-    } catch (_) {}
-  }
-
   Future<void> _ensureUserIdentity() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -169,6 +144,56 @@ class AnalyticsService {
     }
   }
 
+  Future<void> syncAllLocalToCloud() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await _ensureUserIdentity();
+
+      // 1. Sync all local feedback items in a SINGLE batch POST call
+      final rawFeedback = prefs.getStringList(_feedbackKey) ?? [];
+      if (rawFeedback.isNotEmpty) {
+        final batch = <Map<String, dynamic>>[];
+        for (final str in rawFeedback) {
+          try {
+            batch.add(jsonDecode(str) as Map<String, dynamic>);
+          } catch (_) {}
+        }
+        if (batch.isNotEmpty) {
+          await _postCentralBatch('/api/feedback', batch);
+        }
+      }
+
+      // 2. Sync all local activity logs in a SINGLE batch POST call
+      final rawLogs = prefs.getStringList(_logsKey) ?? [];
+      if (rawLogs.isNotEmpty) {
+        final batch = <Map<String, dynamic>>[];
+        for (final str in rawLogs) {
+          try {
+            batch.add(jsonDecode(str) as Map<String, dynamic>);
+          } catch (_) {}
+        }
+        if (batch.isNotEmpty) {
+          await _postCentralBatch('/api/logs', batch);
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _postCentralBatch(String path, List<Map<String, dynamic>> items) async {
+    final allowed = await _isAnalyticsAllowed();
+    if (!allowed || items.isEmpty) return;
+
+    final dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+    ));
+
+    try {
+      final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
+      await dio.post('$baseUrl$path', data: items);
+    } catch (_) {}
+  }
+
   Future<void> _postCentral(String path, Map<String, dynamic> payload) async {
     final allowed = await _isAnalyticsAllowed();
     if (!allowed) return; // Respect user opt-out
@@ -178,43 +203,10 @@ class AnalyticsService {
       receiveTimeout: const Duration(seconds: 8),
     ));
 
-    // 1. Post to Vercel API endpoint
+    // Post to Vercel API endpoint (which manages server-side storage safely without rate limits)
     try {
       final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
       await dio.post('$baseUrl$path', data: payload);
-    } catch (_) {}
-
-    // 2. Dual Backup Post directly to Cloud REST Storage (Guarantees zero data loss across cold starts)
-    try {
-      final endpoint = path.contains('feedback')
-          ? 'https://jsonblob.com/api/jsonBlob/019fc580-ce0c-7dda-bf0d-529081d6421c'
-          : 'https://jsonblob.com/api/jsonBlob/019fc580-d01f-7aa3-a883-60d62aa3603b';
-
-      final getRes = await dio.get(endpoint, options: Options(headers: {'Accept': 'application/json'}));
-      if (getRes.statusCode == 200 && getRes.data != null) {
-        final currentItems = (getRes.data['items'] as List<dynamic>?) ?? [];
-        final map = <String, dynamic>{};
-
-        for (final item in currentItems) {
-          if (item is Map<String, dynamic>) {
-            final key = item['id'] ?? '${item['name']}_${item['timestamp']}';
-            map[key.toString()] = item;
-          }
-        }
-
-        final newKey = payload['id'] ?? '${payload['name']}_${payload['timestamp'] ?? DateTime.now().millisecondsSinceEpoch}';
-        map[newKey.toString()] = {
-          ...payload,
-          'cloudSyncedAt': DateTime.now().toIso8601String(),
-        };
-
-        final updatedList = map.values.toList();
-        final trimmed = updatedList.length > 500 ? updatedList.sublist(updatedList.length - 500) : updatedList;
-
-        await dio.put(endpoint, data: {
-          'items': trimmed,
-        }, options: Options(headers: {'Content-Type': 'application/json', 'Accept': 'application/json'}));
-      }
     } catch (_) {}
   }
 
@@ -325,6 +317,7 @@ class AnalyticsService {
     ));
 
     // 1. Try Vercel Serverless Function
+    var vercelSuccess = false;
     try {
       final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
       final res = await dio.get('$baseUrl/api/feedback');
@@ -335,22 +328,25 @@ class AnalyticsService {
         for (final item in serverList) {
           map[item.id] = item;
         }
+        vercelSuccess = true;
       }
     } catch (_) {}
 
-    // 2. Direct Cloud REST Fallback (JSONBlob permanent storage)
-    try {
-      final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fc580-ce0c-7dda-bf0d-529081d6421c', options: Options(headers: {'Accept': 'application/json'}));
-      if (resCloud.statusCode == 200 && resCloud.data != null) {
-        final itemsList = resCloud.data['items'] as List<dynamic>?;
-        if (itemsList != null) {
-          for (final item in itemsList) {
-            final entry = BetaFeedbackEntry.fromJson(item as Map<String, dynamic>);
-            map[entry.id] = entry;
+    // 2. Direct Cloud REST Fallback if Vercel endpoint didn't respond
+    if (!vercelSuccess) {
+      try {
+        final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fc580-ce0c-7dda-bf0d-529081d6421c', options: Options(headers: {'Accept': 'application/json'}));
+        if (resCloud.statusCode == 200 && resCloud.data != null) {
+          final itemsList = resCloud.data['items'] as List<dynamic>?;
+          if (itemsList != null) {
+            for (final item in itemsList) {
+              final entry = BetaFeedbackEntry.fromJson(item as Map<String, dynamic>);
+              map[entry.id] = entry;
+            }
           }
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
 
     final merged = map.values.toList();
     merged.sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -376,6 +372,7 @@ class AnalyticsService {
     ));
 
     // 1. Try Vercel Serverless Function
+    var vercelSuccess = false;
     try {
       final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
       final res = await dio.get('$baseUrl/api/logs');
@@ -386,22 +383,25 @@ class AnalyticsService {
         for (final item in serverList) {
           map['${item.name}_${item.timestamp.millisecondsSinceEpoch}'] = item;
         }
+        vercelSuccess = true;
       }
     } catch (_) {}
 
-    // 2. Direct Cloud REST Fallback (JSONBlob permanent storage)
-    try {
-      final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fc580-d01f-7aa3-a883-60d62aa3603b', options: Options(headers: {'Accept': 'application/json'}));
-      if (resCloud.statusCode == 200 && resCloud.data != null) {
-        final itemsList = resCloud.data['items'] as List<dynamic>?;
-        if (itemsList != null) {
-          for (final item in itemsList) {
-            final entry = BetaLogEntry.fromJson(item as Map<String, dynamic>);
-            map['${entry.name}_${entry.timestamp.millisecondsSinceEpoch}'] = entry;
+    // 2. Direct Cloud REST Fallback if Vercel endpoint didn't respond
+    if (!vercelSuccess) {
+      try {
+        final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fc580-d01f-7aa3-a883-60d62aa3603b', options: Options(headers: {'Accept': 'application/json'}));
+        if (resCloud.statusCode == 200 && resCloud.data != null) {
+          final itemsList = resCloud.data['items'] as List<dynamic>?;
+          if (itemsList != null) {
+            for (final item in itemsList) {
+              final entry = BetaLogEntry.fromJson(item as Map<String, dynamic>);
+              map['${entry.name}_${entry.timestamp.millisecondsSinceEpoch}'] = entry;
+            }
           }
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
 
     final merged = map.values.toList();
     merged.sort((a, b) => b.timestamp.compareTo(a.timestamp));
