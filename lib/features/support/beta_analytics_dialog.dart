@@ -110,6 +110,32 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                   ),
                   const Spacer(),
                   InkWell(
+                    onTap: () async {
+                      await analytics.syncAllLocalToCloud();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Cloud Sync Complete! All records updated.')),
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.4)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.sync_rounded, size: 14, color: AppColors.primary),
+                          SizedBox(width: 3),
+                          Text('Sync Cloud', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  InkWell(
                     onTap: () => _exportAllLogsToCSV(context, analytics),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),

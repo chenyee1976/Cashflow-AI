@@ -101,10 +101,36 @@ class AnalyticsService {
 
   Future<void> _initUser() async {
     await _ensureUserIdentity();
+    await syncAllLocalToCloud();
     logEvent('user_login', parameters: {
       'platform': 'Web PWA',
       'email': _currentUserEmail,
     });
+  }
+
+  Future<void> syncAllLocalToCloud() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await _ensureUserIdentity();
+
+      // 1. Sync all local feedback items
+      final rawFeedback = prefs.getStringList(_feedbackKey) ?? [];
+      for (final str in rawFeedback) {
+        try {
+          final map = jsonDecode(str) as Map<String, dynamic>;
+          await _postCentral('/api/feedback', map);
+        } catch (_) {}
+      }
+
+      // 2. Sync all local activity logs
+      final rawLogs = prefs.getStringList(_logsKey) ?? [];
+      for (final str in rawLogs) {
+        try {
+          final map = jsonDecode(str) as Map<String, dynamic>;
+          await _postCentral('/api/logs', map);
+        } catch (_) {}
+      }
+    } catch (_) {}
   }
 
   Future<void> _ensureUserIdentity() async {
