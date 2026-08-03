@@ -216,7 +216,7 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                         itemCount: items.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
-                          final item = items[items.length - 1 - index]; // newest first
+                          final item = items[index]; // newest first
                           return Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
