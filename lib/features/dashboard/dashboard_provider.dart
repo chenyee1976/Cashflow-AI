@@ -3,6 +3,7 @@ import '../../data/database/app_database.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
 import '../../core/constants/category_enum.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../cashflow/statement/cashflow_provider.dart';
 
 // Cash Position display model
 class CashPositionModel {
@@ -230,21 +231,11 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
     }
   }
 
-  final now = DateTime.now();
-  final endOfLastMonth = DateTime(now.year, now.month, 0, 23, 59, 59);
-  final endOfLastYear = DateTime(now.year - 1, 12, 31, 23, 59, 59);
+  final targetMonth = ref.watch(selectedMonthProvider);
+  final endOfTargetMonth = DateTime(targetMonth.year, targetMonth.month + 1, 0, 23, 59, 59);
 
-  final currentBase = await storage.getCashOnHandBaseForMonth(year: now.year, month: now.month) ?? 0.0;
-  final prevMonthBase = await storage.getCashOnHandBaseForMonth(year: endOfLastMonth.year, month: endOfLastMonth.month) ?? 0.0;
-  final prevYearBase = await storage.getCashOnHandBaseForMonth(year: endOfLastYear.year, month: endOfLastYear.month) ?? 0.0;
-
-  final monthBases = {
-    '${now.year}_${now.month}': currentBase,
-    '${endOfLastMonth.year}_${endOfLastMonth.month}': prevMonthBase,
-    '${endOfLastYear.year}_${endOfLastYear.month}': prevYearBase,
-  };
-
-  final currentCashOnHand = currentBase + cashAdjustmentsTotal; // Net after cash expenses & ATM withdrawals
+  final targetMonthBase = await storage.getCashOnHandBaseForMonth(year: targetMonth.year, month: targetMonth.month) ?? 0.0;
+  final currentCashOnHand = targetMonthBase + cashAdjustmentsTotal;
 
   final cashOnHandAcc = BankAccount(
     id: 'manual_cash_account',
@@ -253,15 +244,40 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
     accountType: 'Physical Cash Pool',
     accountNumber: 'Wallet',
     currentBalance: currentCashOnHand,
-    openingBalance: currentBase,
+    openingBalance: targetMonthBase,
     currency: 'SGD',
     sourceStatementId: null,
     createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
   );
   consolidatedAccounts.add(cashOnHandAcc);
 
+  // Compute per-account individual balances as of the end of the targetMonth
+  final targetBalances = _calculateIndividualBalancesAsOf(
+    consolidatedAccounts,
+    accounts,
+    transactions,
+    endOfTargetMonth,
+    monthCashBases: {'${targetMonth.year}_${targetMonth.month}': targetMonthBase},
+  );
+
+  final updatedConsolidatedAccounts = consolidatedAccounts.map((acc) {
+    final bal = targetBalances[acc.id] ?? 0.0;
+    return BankAccount(
+      id: acc.id,
+      userId: acc.userId,
+      bankName: acc.bankName,
+      accountType: acc.accountType,
+      accountNumber: acc.accountNumber,
+      currentBalance: bal,
+      openingBalance: acc.openingBalance,
+      currency: acc.currency,
+      sourceStatementId: acc.sourceStatementId,
+      createdAt: acc.createdAt,
+    );
+  }).toList();
+
   double current = 0.0;
-  for (final item in consolidatedAccounts) {
+  for (final item in updatedConsolidatedAccounts) {
     final currencyStr = item.currency.trim().toUpperCase();
     if (currencyStr == 'SGD') {
       current += item.currentBalance;
@@ -271,6 +287,18 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
       current += item.currentBalance * rate;
     }
   }
+
+  final endOfLastMonth = DateTime(targetMonth.year, targetMonth.month, 0, 23, 59, 59);
+  final endOfLastYear = DateTime(targetMonth.year - 1, 12, 31, 23, 59, 59);
+
+  final prevMonthBase = await storage.getCashOnHandBaseForMonth(year: endOfLastMonth.year, month: endOfLastMonth.month) ?? 0.0;
+  final prevYearBase = await storage.getCashOnHandBaseForMonth(year: endOfLastYear.year, month: endOfLastYear.month) ?? 0.0;
+
+  final monthBases = {
+    '${targetMonth.year}_${targetMonth.month}': targetMonthBase,
+    '${endOfLastMonth.year}_${endOfLastMonth.month}': prevMonthBase,
+    '${endOfLastYear.year}_${endOfLastYear.month}': prevYearBase,
+  };
 
   // Calculate balances converting non-SGD on the fly:
   double prevMonthBalance = 0.0;
@@ -315,10 +343,10 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
     currentBalance: current,
     prevMonthBalance: prevMonthBalance,
     prevYearBalance: prevYearBalance,
-    currentDateStr: _formatDate(DateTime.now()),
+    currentDateStr: _formatDate(endOfTargetMonth),
     prevMonthDateStr: _formatDate(endOfLastMonth),
     prevYearDateStr: _formatDate(endOfLastYear),
-    accounts: consolidatedAccounts,
+    accounts: updatedConsolidatedAccounts,
     prevMonthBalances: prevMonthBalances,
     prevYearBalances: prevYearBalances,
     fxRates: fxRatesMap,

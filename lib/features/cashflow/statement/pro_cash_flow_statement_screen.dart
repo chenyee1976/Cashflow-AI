@@ -651,9 +651,10 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     bool isPositive = true,
     bool isBold = false,
   }) {
-    final c2 = v2 == 0 ? Colors.white38 : (isPositive ? Colors.greenAccent : Colors.white70);
-    final c1 = v1 == 0 ? Colors.white38 : (isPositive ? Colors.greenAccent : Colors.white70);
-    final c0 = v0 == 0 ? Colors.white54 : (isPositive ? Colors.greenAccent : Colors.white);
+    final activeColor = isPositive ? const Color(0xFF60A5FA) : const Color(0xFFF87171); // Blue for income, Red for expenses
+    final c2 = v2 == 0 ? Colors.white38 : activeColor.withOpacity(0.8);
+    final c1 = v1 == 0 ? Colors.white38 : activeColor.withOpacity(0.9);
+    final c0 = v0 == 0 ? Colors.white54 : activeColor;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -724,7 +725,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             child: Text(
               fmt.format(v2),
               textAlign: TextAlign.right,
-              style: TextStyle(color: v2 >= 0 ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12),
+              style: TextStyle(color: v2 >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
           Expanded(
@@ -732,7 +733,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             child: Text(
               fmt.format(v1),
               textAlign: TextAlign.right,
-              style: TextStyle(color: v1 >= 0 ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12),
+              style: TextStyle(color: v1 >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
           Expanded(
@@ -740,7 +741,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             child: Text(
               fmt.format(v0),
               textAlign: TextAlign.right,
-              style: TextStyle(color: v0 >= 0 ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.w900, fontSize: 14),
+              style: TextStyle(color: v0 >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.w900, fontSize: 14),
             ),
           ),
         ],
