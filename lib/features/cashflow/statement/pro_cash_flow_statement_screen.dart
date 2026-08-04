@@ -216,9 +216,19 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     _buildLineItem('Interest & Investment Returns', passiveInflow, currencyFormat, isPositive: true),
                     _buildLineItem('Other Inflows', otherInflow, currencyFormat, isPositive: true),
                     const Divider(color: Colors.white24, height: 24),
-                    _buildLineItem('Total Inflow', totalIncome, currencyFormat, isBold: true, isPositive: true),
+                    _buildLineItem('Total Income', totalIncome, currencyFormat, isBold: true, isPositive: true),
                     const SizedBox(height: 12),
-                    _buildLineItem('Total Expenses', -totalExpenses, currencyFormat, isPositive: false),
+                    // Expense Categories Breakdown
+                    if (state.topCategories.isNotEmpty) ...[
+                      const Text('Expense Categories:', style: TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      ...state.topCategories.map((cat) => Padding(
+                        padding: const EdgeInsets.only(left: 12.0, top: 2, bottom: 2),
+                        child: _buildLineItem('• ${cat.categoryName}', -cat.amount, currencyFormat, isPositive: false),
+                      )),
+                      const SizedBox(height: 4),
+                    ],
+                    _buildLineItem('Total Expenses', -totalExpenses, currencyFormat, isBold: true, isPositive: false),
                     const Divider(color: Colors.white24, height: 24),
                     _buildSubtotalRow('NET CASH FLOW', netCashFlow, currencyFormat),
                   ],
@@ -403,7 +413,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                         const Text('NET SAVINGS RATE', style: TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold)),
                         const SizedBox(width: 3),
                         Tooltip(
-                          message: 'Formula: (Net Cash Flow / Total Income) × 100%\n\nMeasures the percentage of total income retained as net savings after deducting total living expenses.',
+                          message: 'Formula: (Net Cash Flow / Total Income) × 100%\n\nMeasures the percentage of total income retained as net savings after deducting total expenses.',
                           padding: const EdgeInsets.all(10),
                           margin: const EdgeInsets.symmetric(horizontal: 20),
                           decoration: BoxDecoration(

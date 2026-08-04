@@ -847,7 +847,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // Header with Month Navigation Controls
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -855,35 +855,77 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                nowStr,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          'Breakdown by bank account as of $nowStr',
-                          style: const TextStyle(
-                            fontSize: 13,
+                        const Text(
+                          'Breakdown by bank account balance',
+                          style: TextStyle(
+                            fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight.withOpacity(0.5),
-                        shape: BoxShape.circle,
+                  Row(
+                    children: [
+                      // Month Navigation Controls (Previous / Next)
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left_rounded, color: AppColors.primary, size: 28),
+                        tooltip: 'Previous Month',
+                        onPressed: () {
+                          final current = ref.read(selectedMonthProvider);
+                          ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month - 1);
+                        },
                       ),
-                      child: const Icon(Icons.close, size: 18, color: AppColors.primary),
-                    ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 28),
+                        tooltip: 'Next Month',
+                        onPressed: () {
+                          final current = ref.read(selectedMonthProvider);
+                          ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month + 1);
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLight.withOpacity(0.5),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close, size: 18, color: AppColors.primary),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
