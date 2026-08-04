@@ -89,58 +89,84 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         ),
         data: (state) {
           final txs = state.transactions;
-          final accountProfileAsync = ref.watch(accountProfileProvider);
-          final bankAccounts = accountProfileAsync.when(
-            data: (profile) => profile.bankAccounts,
-            loading: () => <BankAccount>[],
-            error: (_, __) => <BankAccount>[],
-          );
+          
+          // Define 3 monthly periods: Current Month, 1 Month Ago, 2 Months Ago
+          final m0Date = selectedMonth; // Current month
+          final m1Date = DateTime(selectedMonth.year, selectedMonth.month - 1); // 1 month ago
+          final m2Date = DateTime(selectedMonth.year, selectedMonth.month - 2); // 2 months ago
 
-          // Filter transactions for the period
-          final periodTxs = txs.where((t) {
-            final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
-            if (_periodType == 'YTD') {
-              return d.year == selectedMonth.year;
-            } else if (_periodType == 'Quarter') {
-              final currentQ = ((selectedMonth.month - 1) ~/ 3) + 1;
-              final txQ = ((d.month - 1) ~/ 3) + 1;
-              return d.year == selectedMonth.year && txQ == currentQ;
+          final m0Label = DateFormat('MMM yyyy').format(m0Date);
+          final m1Label = DateFormat('MMM yyyy').format(m1Date);
+          final m2Label = DateFormat('MMM yyyy').format(m2Date);
+
+          // Helper to calculate monthly metrics for a given target month
+          Map<String, dynamic> _calcMonthMetrics(DateTime targetMonth) {
+            final periodTxs = txs.where((t) {
+              final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
+              return d.year == targetMonth.year && d.month == targetMonth.month;
+            }).toList();
+
+            final salary = periodTxs
+                .where((t) => t.category == TransactionCategory.incomeSalary.value)
+                .fold<double>(0.0, (s, t) => s + t.amount);
+
+            final passive = periodTxs
+                .where((t) =>
+                    t.category == TransactionCategory.incomeInterest.value ||
+                    t.category == TransactionCategory.incomeInvestments.value ||
+                    t.category == TransactionCategory.incomeDividends.value)
+                .fold<double>(0.0, (s, t) => s + t.amount);
+
+            final totalInc = periodTxs
+                .where((t) => TransactionCategory.fromValue(t.category).isIncome && t.category != TransactionCategory.incomeTransfer.value)
+                .fold<double>(0.0, (s, t) => s + t.amount);
+
+            final otherInc = totalInc - salary - passive;
+
+            final totalExp = periodTxs
+                .where((t) => TransactionCategory.fromValue(t.category).isExpense && t.category != TransactionCategory.expenseTransfer.value && t.category != TransactionCategory.expenseTransferToCash.value)
+                .fold<double>(0.0, (s, t) => s + t.amount.abs());
+
+            final netCash = totalInc - totalExp;
+
+            final newCashPos = periodTxs
+                .where((t) => t.amount > 0 && t.accountId != 'manual_cash' && t.accountId != 'manual' && t.category != TransactionCategory.incomeTransfer.value)
+                .fold<double>(0.0, (s, t) => s + t.amount);
+
+            // Category breakdown for expenses
+            final catMap = <String, double>{};
+            for (final t in periodTxs) {
+              final cat = TransactionCategory.fromValue(t.category);
+              if (cat.isExpense && cat != TransactionCategory.expenseTransfer && cat != TransactionCategory.expenseTransferToCash) {
+                catMap[cat.displayName] = (catMap[cat.displayName] ?? 0.0) + t.amount.abs();
+              }
             }
-            return d.year == selectedMonth.year && d.month == selectedMonth.month;
-          }).toList();
 
-          // ── Calculations (100% Aligned with Cash Flow & Home Tab) ──
-          final totalIncome = state.totalIncome;
-          final totalExpenses = state.totalExpenses;
-          final netCashFlow = state.netCashFlow;
-          final transferMismatch = state.transferMismatch;
+            return {
+              'salary': salary,
+              'passive': passive,
+              'other': otherInc,
+              'totalInc': totalInc,
+              'totalExp': totalExp,
+              'netCash': netCash,
+              'newCashPos': newCashPos,
+              'catMap': catMap,
+            };
+          }
 
-          // Category breakdown for Part I detail lines
-          final salaryInflow = periodTxs
-              .where((t) => t.category == TransactionCategory.incomeSalary.value)
-              .fold<double>(0.0, (s, t) => s + t.amount);
+          final m0 = _calcMonthMetrics(m0Date);
+          final m1 = _calcMonthMetrics(m1Date);
+          final m2 = _calcMonthMetrics(m2Date);
 
-          final passiveInflow = periodTxs
-              .where((t) =>
-                  t.category == TransactionCategory.incomeInterest.value ||
-                  t.category == TransactionCategory.incomeInvestments.value ||
-                  t.category == TransactionCategory.incomeDividends.value)
-              .fold<double>(0.0, (s, t) => s + t.amount);
+          // Get unique category names across all 3 months
+          final allCatNames = <String>{
+            ...(m2['catMap'] as Map<String, double>).keys,
+            ...(m1['catMap'] as Map<String, double>).keys,
+            ...(m0['catMap'] as Map<String, double>).keys,
+          }.toList();
+          allCatNames.sort();
 
-          final otherInflow = totalIncome - salaryInflow - passiveInflow;
-
-          // Net Transfers calculation
-          final transferIn = periodTxs
-              .where((t) => t.category == TransactionCategory.incomeTransfer.value)
-              .fold<double>(0.0, (s, t) => s + t.amount);
-
-          final transferOut = periodTxs
-              .where((t) => t.category == TransactionCategory.expenseTransfer.value)
-              .fold<double>(0.0, (s, t) => s + t.amount.abs());
-
-          final netTransfers = transferIn - transferOut;
-
-          // Cash Position from Home Tab
+          // Cash position balances
           final cashPositionAsync = ref.watch(cashPositionProvider);
           final currentLiquidCash = cashPositionAsync.when(
             data: (pos) => pos.currentBalance,
@@ -153,10 +179,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             error: (_, __) => 0.0,
           );
 
-          // Calculate new cash positions added for the month (total deposits from uploaded bank statements for the month)
-          final newCashPositionsAdded = periodTxs
-              .where((t) => t.amount > 0 && t.accountId != 'manual_cash' && t.accountId != 'manual' && t.category != TransactionCategory.incomeTransfer.value)
-              .fold<double>(0.0, (s, t) => s + t.amount);
+          final transferMismatch = state.transferMismatch;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -169,10 +192,10 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
                 // Executive Summary Cards
                 _buildExecutiveSummary(
-                  netCashFlow,
-                  totalIncome,
-                  totalExpenses,
-                  netTransfers,
+                  m0['netCash'] as double,
+                  m0['totalInc'] as double,
+                  m0['totalExp'] as double,
+                  0.0,
                   currencyFormat,
                 ),
                 const SizedBox(height: 20),
@@ -206,45 +229,53 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 _buildAccountingNoticeBanner(),
                 const SizedBox(height: 20),
 
-                // Part I: Operating Cash Flows (Personal)
+                // Part I: Operating Cash Flows (Personal) - 3 Month Comparative
                 _buildStatementSection(
                   title: 'PART I: OPERATING CASH FLOWS (PERSONAL)',
                   icon: Icons.account_balance_wallet_outlined,
                   accentColor: AppColors.proPrimary,
                   children: [
-                    _buildLineItem('Salary & Earned Income', salaryInflow, currencyFormat, isPositive: true),
-                    _buildLineItem('Interest & Investment Returns', passiveInflow, currencyFormat, isPositive: true),
-                    _buildLineItem('Other Inflows', otherInflow, currencyFormat, isPositive: true),
-                    const Divider(color: Colors.white24, height: 24),
-                    _buildLineItem('Total Income', totalIncome, currencyFormat, isBold: true, isPositive: true),
+                    _buildMultiColumnHeader(m2Label, m1Label, m0Label),
+                    const Divider(color: Colors.white24, height: 16),
+                    _buildMultiColumnRow('Salary & Earned Income', m2['salary'], m1['salary'], m0['salary'], currencyFormat, isPositive: true),
+                    _buildMultiColumnRow('Interest & Investment Returns', m2['passive'], m1['passive'], m0['passive'], currencyFormat, isPositive: true),
+                    _buildMultiColumnRow('Other Inflows', m2['other'], m1['other'], m0['other'], currencyFormat, isPositive: true),
+                    const Divider(color: Colors.white24, height: 20),
+                    _buildMultiColumnRow('Total Income', m2['totalInc'], m1['totalInc'], m0['totalInc'], currencyFormat, isBold: true, isPositive: true),
                     const SizedBox(height: 12),
-                    // Expense Categories Breakdown
-                    if (state.topCategories.isNotEmpty) ...[
+                    if (allCatNames.isNotEmpty) ...[
                       const Text('Expense Categories:', style: TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      ...state.topCategories.map((cat) => Padding(
-                        padding: const EdgeInsets.only(left: 12.0, top: 2, bottom: 2),
-                        child: _buildLineItem('• ${cat.categoryName}', -cat.amount, currencyFormat, isPositive: false),
-                      )),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
+                      ...allCatNames.map((catName) {
+                        final v2 = (m2['catMap'] as Map<String, double>)[catName] ?? 0.0;
+                        final v1 = (m1['catMap'] as Map<String, double>)[catName] ?? 0.0;
+                        final v0 = (m0['catMap'] as Map<String, double>)[catName] ?? 0.0;
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 8.0, top: 2, bottom: 2),
+                          child: _buildMultiColumnRow('• $catName', -v2, -v1, -v0, currencyFormat, isPositive: false),
+                        );
+                      }),
+                      const SizedBox(height: 6),
                     ],
-                    _buildLineItem('Total Expenses', -totalExpenses, currencyFormat, isBold: true, isPositive: false),
-                    const Divider(color: Colors.white24, height: 24),
-                    _buildSubtotalRow('NET CASH FLOW', netCashFlow, currencyFormat),
+                    _buildMultiColumnRow('Total Expenses', -(m2['totalExp'] as double), -(m1['totalExp'] as double), -(m0['totalExp'] as double), currencyFormat, isBold: true, isPositive: false),
+                    const Divider(color: Colors.white24, height: 20),
+                    _buildMultiColumnSubtotalRow('NET CASH FLOW', m2['netCash'], m1['netCash'], m0['netCash'], currencyFormat),
                   ],
                 ),
                 const SizedBox(height: 20),
 
-                // Total Cash Positions (formerly Part II: Internal Liquidity & Transfers)
+                // Total Cash Positions - 3 Month Comparative
                 _buildStatementSection(
                   title: 'TOTAL CASH POSITIONS',
                   icon: Icons.account_balance_outlined,
                   accentColor: Colors.cyanAccent,
                   children: [
-                    _buildLineItem('Beginning cash', prevMonthCash, currencyFormat, isPositive: true),
-                    _buildLineItem('New cash positions added for the month', newCashPositionsAdded, currencyFormat, isPositive: true),
-                    _buildLineItem('Total Income', totalIncome, currencyFormat, isPositive: true),
-                    _buildLineItem('Total Expenses', -totalExpenses, currencyFormat, isPositive: false),
+                    _buildMultiColumnHeader(m2Label, m1Label, m0Label),
+                    const Divider(color: Colors.white24, height: 16),
+                    _buildMultiColumnRow('Beginning cash', prevMonthCash, prevMonthCash, prevMonthCash, currencyFormat, isPositive: true),
+                    _buildMultiColumnRow('New cash positions added', m2['newCashPos'], m1['newCashPos'], m0['newCashPos'], currencyFormat, isPositive: true),
+                    _buildMultiColumnRow('Total Income', m2['totalInc'], m1['totalInc'], m0['totalInc'], currencyFormat, isPositive: true),
+                    _buildMultiColumnRow('Total Expenses', -(m2['totalExp'] as double), -(m1['totalExp'] as double), -(m0['totalExp'] as double), currencyFormat, isPositive: false),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -256,10 +287,12 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     icon: Icons.business_center_outlined,
                     accentColor: AppColors.proGold,
                     children: [
-                      _buildLineItem('Business Operating Revenues', 0.0, currencyFormat, isPositive: true),
-                      _buildLineItem('Capital Expenditures & Property', 0.0, currencyFormat, isPositive: false),
-                      const Divider(color: Colors.white24, height: 24),
-                      _buildSubtotalRow('NET BUSINESS CASH FLOW', 0.0, currencyFormat),
+                      _buildMultiColumnHeader(m2Label, m1Label, m0Label),
+                      const Divider(color: Colors.white24, height: 16),
+                      _buildMultiColumnRow('Business Operating Revenues', 0.0, 0.0, 0.0, currencyFormat, isPositive: true),
+                      _buildMultiColumnRow('Capital Expenditures & Property', 0.0, 0.0, 0.0, currencyFormat, isPositive: false),
+                      const Divider(color: Colors.white24, height: 20),
+                      _buildMultiColumnSubtotalRow('NET BUSINESS CASH FLOW', 0.0, 0.0, 0.0, currencyFormat),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -580,6 +613,135 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           Text(
             fmt.format(currentLiquidCash),
             style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w900, fontSize: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMultiColumnHeader(String m2Label, String m1Label, String m0Label) {
+    return Row(
+      children: [
+        const Expanded(
+          flex: 4,
+          child: Text('Line Item', style: TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.bold)),
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(m2Label, textAlign: TextAlign.right, style: const TextStyle(color: AppColors.proGold, fontSize: 11, fontWeight: FontWeight.bold)),
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(m1Label, textAlign: TextAlign.right, style: const TextStyle(color: AppColors.proGold, fontSize: 11, fontWeight: FontWeight.bold)),
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(m0Label, textAlign: TextAlign.right, style: const TextStyle(color: AppColors.proGold, fontSize: 11, fontWeight: FontWeight.bold)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMultiColumnRow(
+    String label,
+    double v2,
+    double v1,
+    double v0,
+    NumberFormat fmt, {
+    bool isPositive = true,
+    bool isBold = false,
+  }) {
+    final c2 = v2 == 0 ? Colors.white38 : (isPositive ? Colors.greenAccent : Colors.white70);
+    final c1 = v1 == 0 ? Colors.white38 : (isPositive ? Colors.greenAccent : Colors.white70);
+    final c0 = v0 == 0 ? Colors.white54 : (isPositive ? Colors.greenAccent : Colors.white);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isBold ? Colors.white : Colors.white70,
+                fontSize: isBold ? 13.5 : 12.5,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              fmt.format(v2),
+              textAlign: TextAlign.right,
+              style: TextStyle(color: c2, fontSize: isBold ? 13 : 12, fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              fmt.format(v1),
+              textAlign: TextAlign.right,
+              style: TextStyle(color: c1, fontSize: isBold ? 13 : 12, fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              fmt.format(v0),
+              textAlign: TextAlign.right,
+              style: TextStyle(color: c0, fontSize: isBold ? 14 : 12.5, fontWeight: isBold ? FontWeight.bold : FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMultiColumnSubtotalRow(
+    String label,
+    double v2,
+    double v1,
+    double v0,
+    NumberFormat fmt,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.proBackground,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.proPrimary.withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              fmt.format(v2),
+              textAlign: TextAlign.right,
+              style: TextStyle(color: v2 >= 0 ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              fmt.format(v1),
+              textAlign: TextAlign.right,
+              style: TextStyle(color: v1 >= 0 ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              fmt.format(v0),
+              textAlign: TextAlign.right,
+              style: TextStyle(color: v0 >= 0 ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.w900, fontSize: 14),
+            ),
           ),
         ],
       ),
