@@ -108,8 +108,13 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             return d.year == selectedMonth.year && d.month == selectedMonth.month;
           }).toList();
 
-          // ── Calculations ──
-          // 1. Inflows
+          // ── Calculations (Matching Cash Flow Screen) ──
+          final totalIncome = state.totalIncome;
+          final totalExpenses = state.totalExpenses;
+          final netCashFlow = state.netCashFlow;
+          final transferMismatch = state.transferMismatch;
+
+          // Category breakdown for Part I detail lines
           final salaryInflow = periodTxs
               .where((t) => t.category == TransactionCategory.incomeSalary.value)
               .fold<double>(0.0, (s, t) => s + t.amount);
@@ -121,26 +126,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                   t.category == TransactionCategory.incomeDividends.value)
               .fold<double>(0.0, (s, t) => s + t.amount);
 
-          final otherInflow = periodTxs
-              .where((t) =>
-                  t.category == TransactionCategory.incomeOther.value &&
-                  t.category != TransactionCategory.incomeTransfer.value)
-              .fold<double>(0.0, (s, t) => s + t.amount);
+          final otherInflow = totalIncome - salaryInflow - passiveInflow;
 
-          final grossOperatingInflow = salaryInflow + passiveInflow + otherInflow;
-
-          // 2. Outflows (Living Expenses)
-          final livingOutflows = periodTxs.where((t) {
-            final cat = t.category ?? '';
-            return t.amount < 0 &&
-                cat != TransactionCategory.expenseTransfer.value &&
-                cat != TransactionCategory.expenseTransferToCash.value &&
-                cat != TransactionCategory.incomeTransfer.value;
-          }).fold<double>(0.0, (s, t) => s + t.amount.abs());
-
-          final netOperatingCashFlow = grossOperatingInflow - livingOutflows;
-
-          // 3. Transfers & Credit Card Debt Settlements (Net-Zero Audit)
+          // 3. Transfers & Credit Card Debt Settlements
           final transferIn = periodTxs
               .where((t) => t.category == TransactionCategory.incomeTransfer.value)
               .fold<double>(0.0, (s, t) => s + t.amount);
@@ -149,11 +137,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               .where((t) => t.category == TransactionCategory.expenseTransfer.value)
               .fold<double>(0.0, (s, t) => s + t.amount.abs());
 
-          final transferToCash = periodTxs
-              .where((t) => t.category == TransactionCategory.expenseTransferToCash.value)
-              .fold<double>(0.0, (s, t) => s + t.amount.abs());
-
-          final netTransferImpact = transferIn - transferOut; // $0 net impact on real external cash
+          final netTransfers = transferIn - transferOut;
 
           final cashPositionAsync = ref.watch(cashPositionProvider);
           final currentLiquidCash = cashPositionAsync.when(
@@ -161,6 +145,16 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             loading: () => 0.0,
             error: (_, __) => 0.0,
           );
+          final prevMonthCash = cashPositionAsync.when(
+            data: (pos) => pos.prevMonthBalance,
+            loading: () => 0.0,
+            error: (_, __) => 0.0,
+          );
+
+          // Calculate new cash positions added for the month (total deposits from uploaded bank statements for the month)
+          final newCashPositionsAdded = periodTxs
+              .where((t) => t.amount > 0 && t.accountId != 'manual_cash' && t.accountId != 'manual')
+              .fold<double>(0.0, (s, t) => s + t.amount);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -173,12 +167,38 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
                 // Executive Summary Cards
                 _buildExecutiveSummary(
-                  netOperatingCashFlow,
-                  grossOperatingInflow,
-                  livingOutflows,
+                  netCashFlow,
+                  totalIncome,
+                  totalExpenses,
+                  netTransfers,
                   currencyFormat,
                 ),
                 const SizedBox(height: 20),
+
+                // Transfer Mismatch Warning (if transfers don't offset to 0)
+                if (transferMismatch > 0) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFF39C12).withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Color(0xFFF39C12), size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Internal transfers do not net to zero (S\$${transferMismatch.toStringAsFixed(2)} mismatch). Tap "+ Add" on Cash Flow screen to manually offset.',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFFE65100), fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
 
                 // Statement Banner Info
                 _buildAccountingNoticeBanner(),
@@ -191,50 +211,28 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                   accentColor: AppColors.proPrimary,
                   children: [
                     _buildLineItem('Salary & Earned Income', salaryInflow, currencyFormat, isPositive: true),
-                    _buildLineItem('Dividends & Investment Returns', passiveInflow, currencyFormat, isPositive: true),
-                    _buildLineItem('Other Personal Inflows', otherInflow, currencyFormat, isPositive: true),
+                    _buildLineItem('Interest & Investment Returns', passiveInflow, currencyFormat, isPositive: true),
+                    _buildLineItem('Other Inflows', otherInflow, currencyFormat, isPositive: true),
                     const Divider(color: Colors.white24, height: 24),
-                    _buildLineItem('Total Gross Operating Inflow', grossOperatingInflow, currencyFormat, isBold: true, isPositive: true),
+                    _buildLineItem('Total Income', totalIncome, currencyFormat, isBold: true, isPositive: true),
                     const SizedBox(height: 12),
-                    _buildLineItem('Personal & Living Outflows', -livingOutflows, currencyFormat, isPositive: false),
+                    _buildLineItem('Total Expenses', -totalExpenses, currencyFormat, isPositive: false),
                     const Divider(color: Colors.white24, height: 24),
-                    _buildSubtotalRow('NET OPERATING CASH FLOW', netOperatingCashFlow, currencyFormat),
+                    _buildSubtotalRow('NET CASH FLOW', netCashFlow, currencyFormat),
                   ],
                 ),
                 const SizedBox(height: 20),
 
-                // Part II: Internal Liquidity & Transfers (Net-Zero Settlement Audit)
+                // Total Cash Positions (formerly Part II: Internal Liquidity & Transfers)
                 _buildStatementSection(
-                  title: 'PART II: INTERNAL LIQUIDITY & TRANSFERS',
-                  icon: Icons.swap_horiz_outlined,
+                  title: 'TOTAL CASH POSITIONS',
+                  icon: Icons.account_balance_outlined,
                   accentColor: Colors.cyanAccent,
                   children: [
-                    _buildLineItem('Internal Transfers In', transferIn, currencyFormat, isPositive: true),
-                    _buildLineItem('Internal Transfers Out', -transferOut, currencyFormat, isPositive: false),
-                    _buildLineItem('Transfer to Physical Cash Wallet', -transferToCash, currencyFormat, isPositive: false),
-                    const Divider(color: Colors.white24, height: 24),
-                    _buildLineItem('Net External Cash Impact of Transfers', netTransferImpact, currencyFormat, isBold: true, isPositive: true, subtitle: '\$0 net impact on 3rd-party cash flow'),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.cyanAccent.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.cyanAccent.withOpacity(0.3)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.shield_outlined, color: Colors.cyanAccent, size: 18),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Credit card bill repayments are classified as internal debt settlements (Bank Transfer Out → Credit Card Account Transfer In) and do not double-count against category expenses.',
-                              style: TextStyle(color: Colors.white70, fontSize: 11),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildLineItem('Beginning cash', prevMonthCash, currencyFormat, isPositive: true),
+                    _buildLineItem('New cash positions added for the month', newCashPositionsAdded, currencyFormat, isPositive: true),
+                    _buildLineItem('Total Income', totalIncome, currencyFormat, isPositive: true),
+                    _buildLineItem('Total Expenses', -totalExpenses, currencyFormat, isPositive: false),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -326,7 +324,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     );
   }
 
-  Widget _buildExecutiveSummary(double netCash, double grossIn, double grossOut, NumberFormat fmt) {
+  Widget _buildExecutiveSummary(double netCash, double grossIn, double grossOut, double netTransfers, NumberFormat fmt) {
     final savingsRatio = grossIn > 0 ? ((netCash / grossIn) * 100).clamp(0.0, 100.0) : 0.0;
 
     return Container(
@@ -348,14 +346,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('NET OPERATING CASH FLOW', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              Text('NET CASH FLOW', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
               Icon(Icons.verified_outlined, color: AppColors.proGold, size: 20),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             fmt.format(netCash),
-            style: TextStyle(
+            style: const TextStyle(
               color: AppColors.white,
               fontSize: 30,
               fontWeight: FontWeight.w900,
@@ -368,9 +366,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('TOTAL INFLOWS', style: TextStyle(color: Colors.white60, fontSize: 10)),
+                    const Text('TOTAL INCOME', style: TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
-                    Text(fmt.format(grossIn), style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(fmt.format(grossIn), style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13)),
                   ],
                 ),
               ),
@@ -378,9 +376,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('TOTAL OUTFLOWS', style: TextStyle(color: Colors.white60, fontSize: 10)),
+                    const Text('TOTAL EXPENSES', style: TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
-                    Text(fmt.format(grossOut), style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(fmt.format(grossOut), style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
                   ],
                 ),
               ),
@@ -388,9 +386,36 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('NET SAVINGS RATE', style: TextStyle(color: Colors.white60, fontSize: 10)),
+                    const Text('TOTAL NET TRANSFERS', style: TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
-                    Text('${savingsRatio.toStringAsFixed(1)}%', style: const TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(fmt.format(netTransfers), style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text('NET SAVINGS RATE', style: TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 3),
+                        Tooltip(
+                          message: 'Formula: (Net Cash Flow / Total Income) × 100%\n\nMeasures the percentage of total income retained as net savings after deducting total living expenses.',
+                          padding: const EdgeInsets.all(10),
+                          margin: const EdgeInsets.symmetric(horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: AppColors.proCardBackground,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.proGold),
+                          ),
+                          textStyle: const TextStyle(color: Colors.white, fontSize: 11, height: 1.3),
+                          child: const Icon(Icons.info_outline, color: Colors.white54, size: 11),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text('${savingsRatio.toStringAsFixed(1)}%', style: const TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold, fontSize: 13)),
                   ],
                 ),
               ),
@@ -535,7 +560,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('TOTAL ENDING CASH & LIQUIDITY', style: TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.8)),
+              Text('TOTAL ENDING CASH', style: TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.8)),
               SizedBox(height: 2),
               Text('Sum of Bank Balances + Physical Cash on Hand', style: TextStyle(color: Colors.white54, fontSize: 11)),
             ],
