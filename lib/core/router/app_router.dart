@@ -9,7 +9,7 @@ import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/cashflow/upload/upload_screen.dart';
 import '../../features/cashflow/review/transaction_review_screen.dart';
 import '../../features/cashflow/statement/cash_flow_screen.dart';
-import '../../shared/widgets/placeholder_screen.dart';
+import '../../features/cashflow/statement/pro_cash_flow_statement_screen.dart';
 
 import '../../features/rewards/rewards_screen.dart';
 import '../../features/rewards/miles_screen.dart';
@@ -54,11 +54,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const UploadScreen(),
               ),
               GoRoute(
-                path: 'processing',
-                builder: (context, state) =>
-                    const PlaceholderScreen(title: 'Processing'),
-              ),
-              GoRoute(
                 path: 'review',
                 builder: (context, state) {
                   final params = state.extra as Map<String, dynamic>? ?? {};
@@ -71,8 +66,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'statement',
-                builder: (context, state) =>
-                    const PlaceholderScreen(title: 'Cash Flow Statement'),
+                builder: (context, state) => const ProCashFlowStatementScreen(),
               ),
             ],
           ),

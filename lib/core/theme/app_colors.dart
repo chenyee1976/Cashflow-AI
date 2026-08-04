@@ -42,4 +42,23 @@ class AppColors {
     Color(0xFFE67E22),
     Color(0xFF2980B9),
   ];
+
+  // Pro Theme (Royal Electric Amethyst)
+  static const Color proPrimary = Color(0xFF7C3AED);
+  static const Color proPrimaryDark = Color(0xFF6D28D9);
+  static const Color proAccent = Color(0xFF9333EA);
+  static const Color proBackground = Color(0xFF0F172A);
+  static const Color proCardBackground = Color(0xFF1E293B);
+  static const Color proGold = Color(0xFFF59E0B);
+  static const Color proGoldLight = Color(0xFFFEF3C7);
+  static const LinearGradient proGradient = LinearGradient(
+    colors: [Color(0xFF7C3AED), Color(0xFF9333EA)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  static const LinearGradient proGoldGradient = LinearGradient(
+    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }

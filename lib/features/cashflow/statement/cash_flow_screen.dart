@@ -52,18 +52,37 @@ class CashFlowHomeScreen extends ConsumerWidget {
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddTransactionBottomSheet(context, ref),
-                    icon: const Icon(Icons.add, size: 16, color: AppColors.white),
-                    label: const Text('Add', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      minimumSize: const Size(80, 36),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => context.push('/home/cashflow/statement'),
+                        icon: const Icon(Icons.verified, size: 14, color: AppColors.proGold),
+                        label: const Text('Pro Statement', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.proBackground,
+                          minimumSize: const Size(100, 36),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: const BorderSide(color: AppColors.proPrimary, width: 1.5),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () => _showAddTransactionBottomSheet(context, ref),
+                        icon: const Icon(Icons.add, size: 16, color: AppColors.white),
+                        label: const Text('Add', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          minimumSize: const Size(80, 36),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
