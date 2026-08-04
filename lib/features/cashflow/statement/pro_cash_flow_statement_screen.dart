@@ -109,7 +109,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             return d.year == selectedMonth.year && d.month == selectedMonth.month;
           }).toList();
 
-          // ── Calculations (Matching Cash Flow Screen) ──
+          // ── Calculations (100% Aligned with Cash Flow & Home Tab) ──
           final totalIncome = state.totalIncome;
           final totalExpenses = state.totalExpenses;
           final netCashFlow = state.netCashFlow;
@@ -129,7 +129,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
           final otherInflow = totalIncome - salaryInflow - passiveInflow;
 
-          // 3. Transfers & Credit Card Debt Settlements
+          // Net Transfers calculation
           final transferIn = periodTxs
               .where((t) => t.category == TransactionCategory.incomeTransfer.value)
               .fold<double>(0.0, (s, t) => s + t.amount);
@@ -140,6 +140,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
           final netTransfers = transferIn - transferOut;
 
+          // Cash Position from Home Tab
           final cashPositionAsync = ref.watch(cashPositionProvider);
           final currentLiquidCash = cashPositionAsync.when(
             data: (pos) => pos.currentBalance,
@@ -154,7 +155,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
           // Calculate new cash positions added for the month (total deposits from uploaded bank statements for the month)
           final newCashPositionsAdded = periodTxs
-              .where((t) => t.amount > 0 && t.accountId != 'manual_cash' && t.accountId != 'manual')
+              .where((t) => t.amount > 0 && t.accountId != 'manual_cash' && t.accountId != 'manual' && t.category != TransactionCategory.incomeTransfer.value)
               .fold<double>(0.0, (s, t) => s + t.amount);
 
           return SingleChildScrollView(
@@ -176,7 +177,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 ),
                 const SizedBox(height: 20),
 
-                // Transfer Mismatch Warning (if transfers don't offset to 0)
+                // Transfer Mismatch Warning (shown ONLY if internal transfers don't net to 0)
                 if (transferMismatch > 0) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -215,7 +216,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     _buildLineItem('Interest & Investment Returns', passiveInflow, currencyFormat, isPositive: true),
                     _buildLineItem('Other Inflows', otherInflow, currencyFormat, isPositive: true),
                     const Divider(color: Colors.white24, height: 24),
-                    _buildLineItem('Total Income', totalIncome, currencyFormat, isBold: true, isPositive: true),
+                    _buildLineItem('Total Inflow', totalIncome, currencyFormat, isBold: true, isPositive: true),
                     const SizedBox(height: 12),
                     _buildLineItem('Total Expenses', -totalExpenses, currencyFormat, isPositive: false),
                     const Divider(color: Colors.white24, height: 24),
