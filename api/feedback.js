@@ -1,6 +1,6 @@
 const https = require('https');
 
-const FEEDBACK_ENDPOINT = 'https://jsonblob.com/api/jsonBlob/019fc580-ce0c-7dda-bf0d-529081d6421c';
+const FEEDBACK_ENDPOINT = 'https://jsonblob.com/api/jsonBlob/019fcb0d-a129-7247-a603-e4411cb9c647';
 
 function fetchCloudFeedback() {
   return new Promise((resolve) => {

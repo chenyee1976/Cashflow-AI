@@ -329,6 +329,8 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                           displayGroup = 'andrea@gmail.com';
                         } else if (lower.contains('chenwallpaper') || lower.contains('chenyee')) {
                           displayGroup = 'chenwallpaper@gmail.com';
+                        } else if (lower.contains('unknown_user') || lower.contains('guest')) {
+                          displayGroup = 'Guest User (Not Logged In)';
                         } else if (!rawEmail.contains('@')) {
                           displayGroup = '$rawEmail (Beta Tester)';
                         }

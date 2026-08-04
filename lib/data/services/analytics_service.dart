@@ -332,7 +332,7 @@ class AnalyticsService {
 
     // 2. Query Direct Cloud REST Storage to guarantee complete multi-device coverage
     try {
-      final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fc580-ce0c-7dda-bf0d-529081d6421c', options: Options(headers: {'Accept': 'application/json'}));
+      final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fcb0d-a129-7247-a603-e4411cb9c647', options: Options(headers: {'Accept': 'application/json'}));
       if (resCloud.statusCode == 200 && resCloud.data != null) {
         final itemsList = resCloud.data['items'] as List<dynamic>?;
         if (itemsList != null) {
@@ -383,7 +383,7 @@ class AnalyticsService {
 
     // 2. Query Direct Cloud REST Storage to guarantee complete multi-device coverage
     try {
-      final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fc580-d01f-7aa3-a883-60d62aa3603b', options: Options(headers: {'Accept': 'application/json'}));
+      final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fcb0d-da70-7e5c-abc3-3c0cebee615a', options: Options(headers: {'Accept': 'application/json'}));
       if (resCloud.statusCode == 200 && resCloud.data != null) {
         final itemsList = resCloud.data['items'] as List<dynamic>?;
         if (itemsList != null) {

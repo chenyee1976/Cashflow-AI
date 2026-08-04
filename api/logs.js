@@ -1,6 +1,6 @@
 const https = require('https');
 
-const LOGS_ENDPOINT = 'https://jsonblob.com/api/jsonBlob/019fc580-d01f-7aa3-a883-60d62aa3603b';
+const LOGS_ENDPOINT = 'https://jsonblob.com/api/jsonBlob/019fcb0d-da70-7e5c-abc3-3c0cebee615a';
 
 function fetchCloudLogs() {
   return new Promise((resolve) => {
