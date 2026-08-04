@@ -325,11 +325,7 @@ class BetaAnalyticsDialog extends ConsumerWidget {
 
                         String displayGroup = rawEmail;
                         final lower = rawEmail.toLowerCase();
-                        if (lower.contains('andrea') || lower.contains('b9fb4')) {
-                          displayGroup = 'andrea@gmail.com';
-                        } else if (lower.contains('chenwallpaper') || lower.contains('chenyee')) {
-                          displayGroup = 'chenwallpaper@gmail.com';
-                        } else if (lower.contains('unknown_user') || lower.contains('guest')) {
+                        if (lower.contains('unknown_user') || lower.contains('guest') || rawEmail.isEmpty) {
                           displayGroup = 'Guest User (Not Logged In)';
                         } else if (!rawEmail.contains('@')) {
                           displayGroup = '$rawEmail (Beta Tester)';

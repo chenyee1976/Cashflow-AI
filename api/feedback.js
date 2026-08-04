@@ -68,11 +68,13 @@ module.exports = async (req, res) => {
           if (item && item.id) existingMap.set(item.id, item);
         }
 
+        const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'Unknown IP';
         const incomingItems = Array.isArray(body) ? body : [body];
         for (const item of incomingItems) {
           if (!item) continue;
           const newEntry = {
             ...item,
+            ipAddress: clientIp,
             serverTimestamp: new Date().toISOString(),
           };
           const key = item.id || `${item.timestamp || Date.now()}`;

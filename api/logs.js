@@ -71,11 +71,16 @@ module.exports = async (req, res) => {
           }
         }
 
+        const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'Unknown IP';
         const incomingItems = Array.isArray(body) ? body : [body];
         for (const item of incomingItems) {
           if (!item) continue;
           const newEntry = {
             ...item,
+            details: {
+              ...(item.details || {}),
+              ipAddress: clientIp,
+            },
             serverTimestamp: new Date().toISOString(),
           };
           const entryKey = `${newEntry.name || 'evt'}_${newEntry.timestamp || Date.now()}`;
