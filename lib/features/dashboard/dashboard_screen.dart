@@ -562,36 +562,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             error: (_, __) => currentBreakdown.values.fold<double>(0.0, (s, v) => s + v),
           );
 
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 120),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: SingleChildScrollView(
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+            child: Container(
+              width: 500,
+              constraints: const BoxConstraints(maxHeight: 520),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.divider,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Icon(color == AppColors.primary ? Icons.trending_up : Icons.history_toggle_off, color: color, size: 22),
@@ -630,39 +622,47 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  if (currentBreakdown.isEmpty) ...[
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: Text('No main entries recorded for this month.', style: TextStyle(color: AppColors.textSecondary)),
-                      ),
-                    ),
-                  ] else ...[
-                    ...currentBreakdown.entries.map((entry) => Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.06),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: color.withOpacity(0.18)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
                         children: [
-                          Expanded(
-                            child: Text(
-                              entry.key,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          if (currentBreakdown.isEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 24),
+                              child: Center(
+                                child: Text('No main entries recorded for this month.', style: TextStyle(color: AppColors.textSecondary)),
+                              ),
                             ),
-                          ),
-                          Text(
-                            'S\$${NumberFormat('#,##0.00').format(entry.value)}',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
-                          ),
+                          ] else ...[
+                            ...currentBreakdown.entries.map((entry) => Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: color.withOpacity(0.18)),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      entry.key,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                    ),
+                                  ),
+                                  Text(
+                                    'S\$${NumberFormat('#,##0.00').format(entry.value)}',
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
+                                  ),
+                                ],
+                              ),
+                            )),
+                          ],
                         ],
                       ),
-                    )),
-                  ],
+                    ),
+                  ),
                   const Divider(height: 24, color: AppColors.divider),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -685,7 +685,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),
