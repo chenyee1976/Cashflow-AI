@@ -154,13 +154,7 @@ Map<String, double> _calculateIndividualBalancesAsOf(List<BankAccount> consolida
     final validTxs = familyTxs.where((t) => t.date > 946684800); // Filter for year >= 2000
 
     if (validTxs.isEmpty) {
-      balances[acc.id] = 0.0;
-      continue;
-    }
-
-    final earliestTx = validTxs.map((t) => t.date).reduce((a, b) => a < b ? a : b);
-    if (targetTimestamp < earliestTx) {
-      balances[acc.id] = 0.0;
+      balances[acc.id] = accBalance;
       continue;
     }
 

@@ -144,7 +144,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final otherInc = totalInc - salary - passive;
 
             final totalExp = periodTxs
-                .where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value && t.category != TransactionCategory.expenseTransferToCash.value)
+                .where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value)
                 .fold<double>(0.0, (s, t) => s + t.amount.abs());
 
             final netCash = totalInc - totalExp;
