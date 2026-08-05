@@ -1022,6 +1022,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                    _normalize(a.bankName) == _normalize(acc.bankCtrl.text),
           );
 
+          final balanceAsOfTs = acc.balanceAsOf.millisecondsSinceEpoch ~/ 1000;
           if (matchIndex != -1) {
             final match = existingAccounts[matchIndex];
             accountId = match.id;
@@ -1034,6 +1035,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                 accountNumber: drift.Value(acc.numCtrl.text),
                 currency: drift.Value(acc.currencyCtrl.text),
                 sourceStatementId: drift.Value(statementId),
+                createdAt: drift.Value(balanceAsOfTs),
               ),
             );
           } else {
@@ -1050,7 +1052,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                 openingBalance: drift.Value(balance),
                 currency: drift.Value(acc.currencyCtrl.text),
                 sourceStatementId: drift.Value(statementId),
-                createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                createdAt: balanceAsOfTs,
               ),
             );
           }
@@ -1129,6 +1131,10 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
         }
       }
 
+      final effectiveMonthTs = _accounts.isNotEmpty
+          ? _accounts.first.balanceAsOf.millisecondsSinceEpoch ~/ 1000
+          : statementMonthTimestamp;
+
       if (existing != null) {
         final statementCompanion = StatementsCompanion(
           id: drift.Value(statementId),
@@ -1141,7 +1147,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
           bankOrCard: drift.Value(bankOrCardName),
           accountType: drift.Value(widget.fileType),
           transactionCount: drift.Value(insertedCount),
-          periodEnd: drift.Value(statementMonthTimestamp),
+          periodEnd: drift.Value(effectiveMonthTs),
           uploadedAt: drift.Value(existing.uploadedAt),
           processedAt: drift.Value(DateTime.now().millisecondsSinceEpoch ~/ 1000),
         );
@@ -1159,7 +1165,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
             bankOrCard: drift.Value(bankOrCardName),
             accountType: drift.Value(widget.fileType),
             transactionCount: drift.Value(insertedCount),
-            periodEnd: drift.Value(statementMonthTimestamp),
+            periodEnd: drift.Value(effectiveMonthTs),
             uploadedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
             processedAt: drift.Value(DateTime.now().millisecondsSinceEpoch ~/ 1000),
           ),
