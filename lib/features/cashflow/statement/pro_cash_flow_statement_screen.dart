@@ -150,15 +150,15 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final netCash = totalInc - totalExp;
 
             double newCashPos = 0.0;
-            final targetMonthStart = DateTime(targetMonth.year, targetMonth.month, 1);
-            final targetMonthEnd = DateTime(targetMonth.year, targetMonth.month + 1, 0, 23, 59, 59);
             final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
             final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
             for (final acc in allUserAccounts) {
               if (acc.id == 'manual_cash_account') continue;
+
               final createdDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
-              final isCreatedInTarget = createdDate.year == targetMonth.year && createdDate.month == targetMonth.month;
-              if (isCreatedInTarget) {
+              final isFromTargetMonth = createdDate.year == targetMonth.year && createdDate.month == targetMonth.month;
+
+              if (isFromTargetMonth) {
                 final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
                 final currencyStr = acc.currency.trim().toUpperCase();
                 if (currencyStr == 'SGD') {
@@ -243,6 +243,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                   state.totalExpenses,
                   0.0,
                   currencyFormat,
+                  m0Label,
                 ),
                 const SizedBox(height: 20),
 
@@ -422,7 +423,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     );
   }
 
-  Widget _buildExecutiveSummary(double netCash, double grossIn, double grossOut, double netTransfers, NumberFormat fmt) {
+  Widget _buildExecutiveSummary(double netCash, double grossIn, double grossOut, double netTransfers, NumberFormat fmt, String monthLabel) {
     final savingsRatio = grossIn > 0 ? ((netCash / grossIn) * 100).clamp(0.0, 100.0) : 0.0;
 
     return Container(
@@ -441,11 +442,11 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('NET CASH FLOW', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-              Icon(Icons.verified_outlined, color: AppColors.proGold, size: 20),
+              Text('NET CASH FLOW · $monthLabel', style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              const Icon(Icons.verified_outlined, color: AppColors.proGold, size: 20),
             ],
           ),
           const SizedBox(height: 6),

@@ -1022,8 +1022,20 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
           }
 
           final matchIndex = existingAccounts.indexWhere(
-            (a) => _normalize(a.accountNumber ?? '') == _normalize(acc.numCtrl.text) &&
-                   _normalize(a.bankName) == _normalize(acc.bankCtrl.text),
+            (a) {
+              final normAccNum = _normalize(a.accountNumber ?? '');
+              final targetAccNum = _normalize(acc.numCtrl.text);
+              final normBank = _normalize(a.bankName);
+              final targetBank = _normalize(acc.bankCtrl.text);
+              final normName = _normalize(a.accountType);
+              final targetName = _normalize(acc.nameCtrl.text);
+
+              if (normBank == targetBank) {
+                if (targetAccNum.isNotEmpty && normAccNum == targetAccNum) return true;
+                if (targetAccNum.isEmpty && normName == targetName) return true;
+              }
+              return false;
+            },
           );
 
           final balanceAsOfTs = acc.balanceAsOf.millisecondsSinceEpoch ~/ 1000;
