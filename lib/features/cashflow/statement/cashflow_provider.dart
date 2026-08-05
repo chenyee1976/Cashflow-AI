@@ -13,6 +13,7 @@ class CashFlowMonthData {
   final double transferMismatch; // If transfers do not net to 0
   final List<CategoryProgressItem> topCategories;
   final List<Transaction> transactions;
+  final List<Transaction> allTransactions;
   final Map<String, String> accountNamesMap;
 
   const CashFlowMonthData({
@@ -22,6 +23,7 @@ class CashFlowMonthData {
     required this.transferMismatch,
     required this.topCategories,
     required this.transactions,
+    required this.allTransactions,
     required this.accountNamesMap,
   });
 }
@@ -183,6 +185,7 @@ final cashFlowScreenProvider = FutureProvider.autoDispose<CashFlowMonthData>((re
       transferMismatch: mismatch > 0.01 ? mismatch : 0.0,
       topCategories: categoriesList,
       transactions: filteredTxs,
+      allTransactions: allTxs,
       accountNamesMap: accountNames,
     );
 });

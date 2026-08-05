@@ -95,7 +95,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           child: Text('Error: $err', style: const TextStyle(color: Colors.redAccent)),
         ),
         data: (state) {
-          final txs = state.transactions;
+          final txs = state.allTransactions;
           
           // Define 3 monthly periods: Current Month, 1 Month Ago, 2 Months Ago
           final m0Date = selectedMonth; // Current month
@@ -106,8 +106,21 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           final m1Label = DateFormat('MMM yyyy').format(m1Date);
           final m2Label = DateFormat('MMM yyyy').format(m2Date);
 
+          // Cash position balances
+          final cashPositionAsync = ref.watch(cashPositionProvider);
+          final currentLiquidCash = cashPositionAsync.when(
+            data: (pos) => pos.currentBalance,
+            loading: () => 0.0,
+            error: (_, __) => 0.0,
+          );
+          final prevMonthCash = cashPositionAsync.when(
+            data: (pos) => pos.prevMonthBalance,
+            loading: () => 0.0,
+            error: (_, __) => 0.0,
+          );
+
           // Helper to calculate monthly metrics for a given target month
-          Map<String, dynamic> _calcMonthMetrics(DateTime targetMonth) {
+          Map<String, dynamic> _calcMonthMetrics(DateTime targetMonth, double endCashVal) {
             final periodTxs = txs.where((t) {
               final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
               return d.year == targetMonth.year && d.month == targetMonth.month;
@@ -157,13 +170,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               'totalExp': totalExp,
               'netCash': netCash,
               'newCashPos': newCashPos,
+              'endCash': endCashVal,
               'catMap': catMap,
             };
           }
 
-          final m0 = _calcMonthMetrics(m0Date);
-          final m1 = _calcMonthMetrics(m1Date);
-          final m2 = _calcMonthMetrics(m2Date);
+          final m0 = _calcMonthMetrics(m0Date, currentLiquidCash);
+          final m1 = _calcMonthMetrics(m1Date, prevMonthCash);
+          final m2 = _calcMonthMetrics(m2Date, cashPositionAsync.when(data: (pos) => pos.prevYearBalance, loading: () => 0.0, error: (_, __) => 0.0));
 
           // Get unique category names across all 3 months
           final allCatNames = <String>{
@@ -172,19 +186,6 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             ...(m0['catMap'] as Map<String, double>).keys,
           }.toList();
           allCatNames.sort();
-
-          // Cash position balances
-          final cashPositionAsync = ref.watch(cashPositionProvider);
-          final currentLiquidCash = cashPositionAsync.when(
-            data: (pos) => pos.currentBalance,
-            loading: () => 0.0,
-            error: (_, __) => 0.0,
-          );
-          final prevMonthCash = cashPositionAsync.when(
-            data: (pos) => pos.prevMonthBalance,
-            loading: () => 0.0,
-            error: (_, __) => 0.0,
-          );
 
           final transferMismatch = state.transferMismatch;
 
@@ -296,7 +297,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                   children: [
                     _buildMultiColumnHeader(m2Label, m1Label, m0Label),
                     const Divider(color: Colors.white24, height: 16),
-                    _buildMultiColumnRow('Beginning cash', prevMonthCash, prevMonthCash, prevMonthCash, currencyFormat, isPositive: true),
+                    _buildMultiColumnRow('Beginning cash', (m2['endCash'] as double) - (m2['netCash'] as double), (m1['endCash'] as double) - (m1['netCash'] as double), (m0['endCash'] as double) - (m0['netCash'] as double), currencyFormat, isPositive: true),
                     _buildMultiColumnRow('New cash positions added', m2['newCashPos'], m1['newCashPos'], m0['newCashPos'], currencyFormat, isPositive: true),
                     _buildMultiColumnRow('Total Income', m2['totalInc'], m1['totalInc'], m0['totalInc'], currencyFormat, isPositive: true),
                     _buildMultiColumnRow('Total Expenses', -(m2['totalExp'] as double), -(m1['totalExp'] as double), -(m0['totalExp'] as double), currencyFormat, isPositive: false),
