@@ -20,6 +20,13 @@ class ProCashFlowStatementScreen extends ConsumerStatefulWidget {
 class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatementScreen> {
   bool _includeBusiness = false;
   String _periodType = 'Month'; // 'Month', 'Quarter', 'YTD'
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -188,12 +195,17 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 trackColor: WidgetStateProperty.all(Colors.white24),
                 trackBorderColor: WidgetStateProperty.all(Colors.white38),
                 radius: const Radius.circular(8),
-                thickness: WidgetStateProperty.all(8.0),
+                thickness: WidgetStateProperty.all(12.0),
                 thumbVisibility: WidgetStateProperty.all(true),
+                interactive: true,
               ),
             ),
             child: Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              interactive: true,
               child: SingleChildScrollView(
+                controller: _scrollController,
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,9 +216,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
                 // Executive Summary Cards
                 _buildExecutiveSummary(
-                  m0['netCash'] as double,
-                  m0['totalInc'] as double,
-                  m0['totalExp'] as double,
+                  state.netCashFlow,
+                  state.totalIncome,
+                  state.totalExpenses,
                   0.0,
                   currencyFormat,
                 ),
