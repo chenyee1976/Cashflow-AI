@@ -113,8 +113,15 @@ double _calculateBalanceAsOf(List<BankAccount> consolidatedAccounts, List<BankAc
   return balance;
 }
 
-Map<String, double> _calculateIndividualBalancesAsOf(List<BankAccount> consolidatedAccounts, List<BankAccount> allAccounts, List<Transaction> transactions, DateTime date, {Map<String, double> monthCashBases = const {}}) {
+Map<String, double> _calculateIndividualBalancesAsOf(
+    List<BankAccount> consolidatedAccounts,
+    List<BankAccount> allAccounts,
+    List<Transaction> transactions,
+    List<Statement> statements,
+    DateTime date,
+    {Map<String, double> monthCashBases = const {}}) {
   final targetTimestamp = date.millisecondsSinceEpoch ~/ 1000;
+  final startOfMonthTimestamp = DateTime(date.year, date.month, 1).millisecondsSinceEpoch ~/ 1000;
   String _normalize(String s) => s.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
 
   final Map<String, double> balances = {};
@@ -143,16 +150,46 @@ Map<String, double> _calculateIndividualBalancesAsOf(List<BankAccount> consolida
       continue;
     }
 
-    double accBalance = acc.currentBalance;
+    // Check if a statement exists for this account family that covers or precedes the target month
     final key = '${_normalize(acc.bankName)}_${_normalize(acc.accountNumber ?? '')}';
-    final familyIds = allAccounts
+    final familyAccIds = allAccounts
         .where((a) => '${_normalize(a.bankName)}_${_normalize(a.accountNumber ?? '')}' == key)
         .map((a) => a.id)
         .toSet();
 
-    final familyTxs = transactions.where((t) => familyIds.contains(t.accountId));
-    final validTxs = familyTxs.where((t) => t.date > 946684800); // Filter for year >= 2000
+    final familyStatementIds = allAccounts
+        .where((a) => familyAccIds.contains(a.id))
+        .map((a) => a.sourceStatementId)
+        .whereType<String>()
+        .toSet();
 
+    final familyStatements = statements.where((s) => familyStatementIds.contains(s.id) || (s.bankOrCard != null && _normalize(s.bankOrCard!) == _normalize(acc.bankName)));
+
+    int earliestStatementStart = 9999999999;
+    for (final s in familyStatements) {
+      final pStart = s.periodStart ?? s.uploadedAt;
+      if (pStart < earliestStatementStart) {
+        earliestStatementStart = pStart;
+      }
+    }
+
+    final familyTxs = transactions.where((t) => familyAccIds.contains(t.accountId));
+    final validTxs = familyTxs.where((t) => t.date > 946684800);
+
+    if (validTxs.isNotEmpty) {
+      final earliestTxDate = validTxs.map((t) => t.date).reduce((a, b) => a < b ? a : b);
+      if (earliestTxDate < earliestStatementStart) {
+        earliestStatementStart = earliestTxDate;
+      }
+    }
+
+    // If target month is prior to the earliest uploaded statement start (or 1st of statement month), return 0.0
+    if (targetTimestamp < earliestStatementStart && startOfMonthTimestamp < (earliestStatementStart - 86400 * 25)) {
+      balances[acc.id] = 0.0;
+      continue;
+    }
+
+    double accBalance = acc.currentBalance;
     if (validTxs.isEmpty) {
       balances[acc.id] = accBalance;
       continue;
@@ -182,12 +219,14 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
 
   List<BankAccount> accounts = [];
   List<Transaction> transactions = [];
+  List<Statement> statements = [];
   int retries = 20;
 
   while (true) {
     try {
       accounts = await DatabaseMutex.run(() => db.getBankAccountsByUser(userId!));
       transactions = await DatabaseMutex.run(() => db.getTransactionsByUser(userId!));
+      statements = await DatabaseMutex.run(() => db.getStatementsByUser(userId!));
       break;
     } catch (e) {
       if (retries > 0) {
@@ -248,6 +287,7 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
     consolidatedAccounts,
     accounts,
     transactions,
+    statements,
     endOfTargetMonth,
     monthCashBases: {'${targetMonth.year}_${targetMonth.month}': targetMonthBase},
   );
@@ -294,7 +334,7 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
 
   // Calculate balances converting non-SGD on the fly:
   double prevMonthBalance = 0.0;
-  final prevMonthBalances = _calculateIndividualBalancesAsOf(consolidatedAccounts, accounts, transactions, endOfLastMonth, monthCashBases: monthBases);
+  final prevMonthBalances = _calculateIndividualBalancesAsOf(consolidatedAccounts, accounts, transactions, statements, endOfLastMonth, monthCashBases: monthBases);
   for (final item in consolidatedAccounts) {
     final bal = prevMonthBalances[item.id] ?? 0.0;
     final currencyStr = item.currency.trim().toUpperCase();
@@ -308,7 +348,7 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
   }
 
   double prevYearBalance = 0.0;
-  final prevYearBalances = _calculateIndividualBalancesAsOf(consolidatedAccounts, accounts, transactions, endOfLastYear, monthCashBases: monthBases);
+  final prevYearBalances = _calculateIndividualBalancesAsOf(consolidatedAccounts, accounts, transactions, statements, endOfLastYear, monthCashBases: monthBases);
   for (final item in consolidatedAccounts) {
     final bal = prevYearBalances[item.id] ?? 0.0;
     final currencyStr = item.currency.trim().toUpperCase();

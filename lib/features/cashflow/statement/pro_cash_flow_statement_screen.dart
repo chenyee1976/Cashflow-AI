@@ -149,9 +149,15 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
             final netCash = totalInc - totalExp;
 
-            final newCashPos = periodTxs
-                .where((t) => t.amount > 0 && t.accountId != 'manual_cash' && t.accountId != 'manual' && t.category != TransactionCategory.incomeTransfer.value)
-                .fold<double>(0.0, (s, t) => s + t.amount);
+            double newCashPos = 0.0;
+            final targetMonthStartTs = DateTime(targetMonth.year, targetMonth.month, 1).millisecondsSinceEpoch ~/ 1000;
+            final targetMonthEndTs = DateTime(targetMonth.year, targetMonth.month + 1, 0, 23, 59, 59).millisecondsSinceEpoch ~/ 1000;
+            final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
+            for (final acc in allUserAccounts) {
+              if (acc.id != 'manual_cash_account' && acc.createdAt >= targetMonthStartTs && acc.createdAt <= targetMonthEndTs) {
+                newCashPos += acc.currentBalance;
+              }
+            }
 
             // Category breakdown for expenses
             final catMap = <String, double>{};
