@@ -124,7 +124,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final otherInc = totalInc - salary - passive;
 
             final totalExp = periodTxs
-                .where((t) => TransactionCategory.fromValue(t.category).isExpense && t.category != TransactionCategory.expenseTransfer.value && t.category != TransactionCategory.expenseTransferToCash.value)
+                .where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value && t.category != TransactionCategory.expenseTransferToCash.value)
                 .fold<double>(0.0, (s, t) => s + t.amount.abs());
 
             final netCash = totalInc - totalExp;
@@ -181,11 +181,23 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
           final transferMismatch = state.transferMismatch;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          return Theme(
+            data: Theme.of(context).copyWith(
+              scrollbarTheme: ScrollbarThemeData(
+                thumbColor: WidgetStateProperty.all(Colors.white),
+                trackColor: WidgetStateProperty.all(Colors.white24),
+                trackBorderColor: WidgetStateProperty.all(Colors.white38),
+                radius: const Radius.circular(8),
+                thickness: WidgetStateProperty.all(8.0),
+                thumbVisibility: WidgetStateProperty.all(true),
+              ),
+            ),
+            child: Scrollbar(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                 // Period Controls & Business Toggle
                 _buildHeaderControls(),
                 const SizedBox(height: 16),
@@ -303,8 +315,10 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 const SizedBox(height: 30),
               ],
             ),
-          );
-        },
+          ),
+        ),
+      );
+    },
       ),
     );
   }

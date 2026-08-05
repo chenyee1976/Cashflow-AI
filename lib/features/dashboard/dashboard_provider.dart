@@ -152,11 +152,7 @@ Map<String, double> _calculateIndividualBalancesAsOf(List<BankAccount> consolida
     final validTxs = familyTxs.where((t) => t.date > 946684800); // Filter for year >= 2000
 
     if (validTxs.isEmpty) {
-      if (date.year < DateTime.now().year) {
-        balances[acc.id] = 0.0;
-        continue;
-      }
-      balances[acc.id] = accBalance;
+      balances[acc.id] = 0.0;
       continue;
     }
 
@@ -369,6 +365,7 @@ CashPositionModel _emptyCashPosition() {
 final monthlyIncomeProvider = FutureProvider.autoDispose<MonthSummaryModel>((ref) async {
   final db = ref.watch(appDatabaseProvider);
   final storage = ref.read(secureStorageProvider);
+  final selectedMonth = ref.watch(selectedMonthProvider);
   final prefs = await SharedPreferences.getInstance();
   final testerEmail = prefs.getString('tester_email') ?? '';
   var userId = await storage.getUserId();
@@ -392,7 +389,7 @@ final monthlyIncomeProvider = FutureProvider.autoDispose<MonthSummaryModel>((ref
     }
   }
 
-  final refDate = DateTime.now();
+  final refDate = selectedMonth;
 
   final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
   final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
@@ -415,6 +412,7 @@ final monthlyIncomeProvider = FutureProvider.autoDispose<MonthSummaryModel>((ref
 final monthlyExpensesProvider = FutureProvider.autoDispose<MonthSummaryModel>((ref) async {
   final db = ref.watch(appDatabaseProvider);
   final storage = ref.read(secureStorageProvider);
+  final selectedMonth = ref.watch(selectedMonthProvider);
   final prefs = await SharedPreferences.getInstance();
   final testerEmail = prefs.getString('tester_email') ?? '';
   var userId = await storage.getUserId();
@@ -438,7 +436,7 @@ final monthlyExpensesProvider = FutureProvider.autoDispose<MonthSummaryModel>((r
     }
   }
 
-  final refDate = DateTime.now();
+  final refDate = selectedMonth;
 
   final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
   final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
