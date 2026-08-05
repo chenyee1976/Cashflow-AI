@@ -1050,7 +1050,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    isCashOnHand ? 'Physical wallet pool' : '${acc.bankName} · as of 30/06/2026',
+                                    isCashOnHand
+                                        ? 'Physical wallet pool'
+                                        : '${acc.bankName} · as of ${DateFormat('dd/MM/yyyy').format(DateTime(selectedMonth.year, selectedMonth.month + 1, 0))}',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       color: AppColors.textSecondary,
