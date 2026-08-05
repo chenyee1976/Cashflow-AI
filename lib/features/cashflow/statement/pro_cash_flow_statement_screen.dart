@@ -153,12 +153,20 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final targetMonthStart = DateTime(targetMonth.year, targetMonth.month, 1);
             final targetMonthEnd = DateTime(targetMonth.year, targetMonth.month + 1, 0, 23, 59, 59);
             final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
+            final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
             for (final acc in allUserAccounts) {
               if (acc.id == 'manual_cash_account') continue;
               final createdDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
               final isCreatedInTarget = createdDate.year == targetMonth.year && createdDate.month == targetMonth.month;
               if (isCreatedInTarget) {
-                newCashPos += acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
+                final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
+                final currencyStr = acc.currency.trim().toUpperCase();
+                if (currencyStr == 'SGD') {
+                  newCashPos += baseBal;
+                } else {
+                  final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+                  newCashPos += baseBal * rate;
+                }
               }
             }
 

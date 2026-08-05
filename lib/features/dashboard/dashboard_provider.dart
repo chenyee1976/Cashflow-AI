@@ -120,44 +120,32 @@ Map<String, double> _calculateIndividualBalancesAsOf(
         .map((a) => a.id)
         .toSet();
 
-    final familyStatementIds = allAccounts
-        .where((a) => familyAccIds.contains(a.id))
-        .map((a) => a.sourceStatementId)
-        .whereType<String>()
-        .toSet();
-
-    final familyStatements = statements.where((s) => familyStatementIds.contains(s.id) || (s.bankOrCard != null && _normalize(s.bankOrCard!) == _normalize(acc.bankName)));
-
-    int earliestStatementStart = 9999999999;
-    for (final s in familyStatements) {
-      final pStart = s.periodStart ?? s.uploadedAt;
-      if (pStart < earliestStatementStart) {
-        earliestStatementStart = pStart;
+    // Check if target month is prior to this specific account's statement / creation month
+    int accStart = acc.createdAt > 0 ? acc.createdAt : 9999999999;
+    if (acc.sourceStatementId != null) {
+      final matchedStmt = statements.where((s) => s.id == acc.sourceStatementId).firstOrNull;
+      if (matchedStmt != null) {
+        final pStart = matchedStmt.periodStart ?? matchedStmt.uploadedAt;
+        if (pStart < accStart) accStart = pStart;
       }
     }
 
-    final familyTxs = transactions.where((t) => familyAccIds.contains(t.accountId));
+    final familyTxs = transactions.where((t) => t.accountId == acc.id);
     final validTxs = familyTxs.where((t) => t.date > 946684800);
-
     if (validTxs.isNotEmpty) {
       final earliestTxDate = validTxs.map((t) => t.date).reduce((a, b) => a < b ? a : b);
-      if (earliestTxDate < earliestStatementStart) {
-        earliestStatementStart = earliestTxDate;
-      }
+      if (earliestTxDate < accStart) accStart = earliestTxDate;
     }
 
-    // Check if target month is prior to earliest statement / transaction month
-    if (earliestStatementStart < 9999999999) {
-      final earliestDate = DateTime.fromMillisecondsSinceEpoch(earliestStatementStart * 1000);
-      // Compare year and month cleanly
-      final isBeforeEarliest = (date.year < earliestDate.year) ||
-          (date.year == earliestDate.year && date.month < earliestDate.month);
-      if (isBeforeEarliest) {
+    if (accStart < 9999999999) {
+      final accStartDate = DateTime.fromMillisecondsSinceEpoch(accStart * 1000);
+      final isBeforeStart = (date.year < accStartDate.year) ||
+          (date.year == accStartDate.year && date.month < accStartDate.month);
+      if (isBeforeStart) {
         balances[acc.id] = 0.0;
         continue;
       }
     } else {
-      // No statements or transactions found for this account family at all
       balances[acc.id] = 0.0;
       continue;
     }
