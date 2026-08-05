@@ -345,7 +345,12 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 ],
 
                 // Ending Reconciliation Section
-                _buildEndingReconciliationCard(currentLiquidCash, currencyFormat),
+                _buildEndingReconciliationCard(
+                  (m2['endCash'] as double),
+                  (m1['endCash'] as double),
+                  (m0['endCash'] as double),
+                  currencyFormat,
+                ),
                 const SizedBox(height: 30),
               ],
             ),
@@ -639,7 +644,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     );
   }
 
-  Widget _buildEndingReconciliationCard(double currentLiquidCash, NumberFormat fmt) {
+  Widget _buildEndingReconciliationCard(double e2, double e1, double e0, NumberFormat fmt) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -647,21 +652,18 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.proGold.withOpacity(0.5)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('TOTAL ENDING CASH', style: TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.8)),
-              SizedBox(height: 2),
               Text('Sum of Bank Balances + Physical Cash on Hand', style: TextStyle(color: Colors.white54, fontSize: 11)),
             ],
           ),
-          Text(
-            fmt.format(currentLiquidCash),
-            style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w900, fontSize: 20),
-          ),
+          const SizedBox(height: 12),
+          _buildMultiColumnSubtotalRow('TOTAL ENDING CASH', e2, e1, e0, fmt),
         ],
       ),
     );

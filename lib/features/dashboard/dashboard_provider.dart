@@ -125,9 +125,16 @@ Map<String, double> _calculateIndividualBalancesAsOf(
     if (acc.sourceStatementId != null) {
       final matchedStmt = statements.where((s) => s.id == acc.sourceStatementId).firstOrNull;
       if (matchedStmt != null) {
-        final pStart = matchedStmt.periodStart ?? matchedStmt.uploadedAt;
+        final pStart = matchedStmt.periodStart ?? matchedStmt.periodEnd ?? matchedStmt.uploadedAt;
         if (pStart < accStart) accStart = pStart;
       }
+    }
+
+    // Also check any statements linked by bank name
+    final matchingStmts = statements.where((s) => s.bankOrCard != null && _normalize(s.bankOrCard!) == _normalize(acc.bankName));
+    for (final s in matchingStmts) {
+      final pStart = s.periodStart ?? s.periodEnd ?? s.uploadedAt;
+      if (pStart < accStart) accStart = pStart;
     }
 
     final familyTxs = transactions.where((t) => t.accountId == acc.id);
@@ -139,9 +146,9 @@ Map<String, double> _calculateIndividualBalancesAsOf(
 
     if (accStart < 9999999999) {
       final accStartDate = DateTime.fromMillisecondsSinceEpoch(accStart * 1000);
-      final isBeforeStart = (date.year < accStartDate.year) ||
-          (date.year == accStartDate.year && date.month < accStartDate.month);
-      if (isBeforeStart) {
+      final targetMonthStart = DateTime(date.year, date.month, 1);
+      final accStartMonth = DateTime(accStartDate.year, accStartDate.month, 1);
+      if (targetMonthStart.isBefore(accStartMonth)) {
         balances[acc.id] = 0.0;
         continue;
       }
