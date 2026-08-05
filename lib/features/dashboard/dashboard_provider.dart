@@ -156,13 +156,13 @@ Map<String, double> _calculateIndividualBalancesAsOf(List<BankAccount> consolida
       continue;
     }
 
-    final txsUpToDate = validTxs.where((t) => t.date <= targetTimestamp);
-    if (txsUpToDate.isEmpty) {
+    final earliestTx = validTxs.map((t) => t.date).reduce((a, b) => a < b ? a : b);
+    if (targetTimestamp < earliestTx) {
       balances[acc.id] = 0.0;
       continue;
     }
 
-    // Find all transactions for this account family that occurred AFTER the target date
+    // Find transactions for this account family that occurred AFTER the target date
     final afterTxs = validTxs.where((t) => t.date > targetTimestamp);
     for (final tx in afterTxs) {
       // Subtract incoming amount, add outgoing amount to backtrack
