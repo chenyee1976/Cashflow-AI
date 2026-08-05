@@ -120,22 +120,24 @@ Map<String, double> _calculateIndividualBalancesAsOf(List<BankAccount> consolida
   final Map<String, double> balances = {};
   for (final acc in consolidatedAccounts) {
     if (acc.id == 'manual_cash_account') {
-      if (date.year < DateTime.now().year) {
-        balances[acc.id] = 0.0;
-      } else {
-        // Calculate total cash expenses + ATM cash withdrawals up to target date:
-        double cashTxsUpToDate = 0.0;
-        for (final tx in transactions) {
-          if (tx.date <= targetTimestamp) {
-            if (tx.accountId == 'manual_cash' || tx.accountId == 'manual') {
-              cashTxsUpToDate += tx.amount;
-            } else if (tx.category == TransactionCategory.expenseTransferToCash.value) {
-              cashTxsUpToDate += tx.amount.abs();
-            }
+      // Calculate total cash expenses + ATM cash withdrawals up to target date:
+      double cashTxsUpToDate = 0.0;
+      bool hasCashTxs = false;
+      for (final tx in transactions) {
+        if (tx.date <= targetTimestamp) {
+          if (tx.accountId == 'manual_cash' || tx.accountId == 'manual') {
+            cashTxsUpToDate += tx.amount;
+            hasCashTxs = true;
+          } else if (tx.category == TransactionCategory.expenseTransferToCash.value) {
+            cashTxsUpToDate += tx.amount.abs();
+            hasCashTxs = true;
           }
         }
-        // Base cash set for that specific month:
-        final base = monthCashBases['${date.year}_${date.month}'] ?? 0.0;
+      }
+      final base = monthCashBases['${date.year}_${date.month}'] ?? 0.0;
+      if (base == 0.0 && !hasCashTxs) {
+        balances[acc.id] = 0.0;
+      } else {
         balances[acc.id] = base + cashTxsUpToDate;
       }
       continue;
