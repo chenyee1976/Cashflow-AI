@@ -154,8 +154,11 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final targetMonthEndTs = DateTime(targetMonth.year, targetMonth.month + 1, 0, 23, 59, 59).millisecondsSinceEpoch ~/ 1000;
             final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
             for (final acc in allUserAccounts) {
-              if (acc.id != 'manual_cash_account' && acc.createdAt >= targetMonthStartTs && acc.createdAt <= targetMonthEndTs) {
-                newCashPos += acc.currentBalance;
+              if (acc.id == 'manual_cash_account') continue;
+              // Use openingBalance (initial statement balance) for accounts whose
+              // statement period start falls within the target month
+              if (acc.createdAt >= targetMonthStartTs && acc.createdAt <= targetMonthEndTs) {
+                newCashPos += acc.openingBalance;
               }
             }
 
@@ -183,7 +186,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
           final m0 = _calcMonthMetrics(m0Date, currentLiquidCash);
           final m1 = _calcMonthMetrics(m1Date, prevMonthCash);
-          final m2 = _calcMonthMetrics(m2Date, cashPositionAsync.when(data: (pos) => pos.prevYearBalance, loading: () => 0.0, error: (_, __) => 0.0));
+          final m2 = _calcMonthMetrics(m2Date, cashPositionAsync.when(data: (pos) => pos.twoMonthsAgoBalance, loading: () => 0.0, error: (_, __) => 0.0));
 
           // Get unique category names across all 3 months
           final allCatNames = <String>{

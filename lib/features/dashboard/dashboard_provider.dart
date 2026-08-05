@@ -9,9 +9,11 @@ import '../cashflow/statement/cashflow_provider.dart';
 class CashPositionModel {
   final double currentBalance;
   final double prevMonthBalance;
+  final double twoMonthsAgoBalance;
   final double prevYearBalance;
   final String currentDateStr;
   final String prevMonthDateStr;
+  final String twoMonthsAgoDateStr;
   final String prevYearDateStr;
   final List<BankAccount> accounts;
   final Map<String, double> prevMonthBalances;
@@ -21,9 +23,11 @@ class CashPositionModel {
   const CashPositionModel({
     required this.currentBalance,
     required this.prevMonthBalance,
+    required this.twoMonthsAgoBalance,
     required this.prevYearBalance,
     required this.currentDateStr,
     required this.prevMonthDateStr,
+    required this.twoMonthsAgoDateStr,
     required this.prevYearDateStr,
     this.accounts = const [],
     this.prevMonthBalances = const {},
@@ -71,47 +75,6 @@ final userProfileProvider = FutureProvider.autoDispose<User?>((ref) async {
   return db.getUserById(userId!);
 });
 
-double _calculateBalanceAsOf(List<BankAccount> consolidatedAccounts, List<BankAccount> allAccounts, List<Transaction> transactions, DateTime date) {
-  final targetTimestamp = date.millisecondsSinceEpoch ~/ 1000;
-
-  String _normalize(String s) => s.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
-
-  double balance = 0.0;
-  for (final acc in consolidatedAccounts) {
-    double accBalance = acc.currentBalance;
-    final key = '${_normalize(acc.bankName)}_${_normalize(acc.accountNumber ?? '')}';
-    final familyIds = allAccounts
-        .where((a) => '${_normalize(a.bankName)}_${_normalize(a.accountNumber ?? '')}' == key)
-        .map((a) => a.id)
-        .toSet();
-
-    final familyTxs = transactions.where((t) => familyIds.contains(t.accountId));
-    final validTxs = familyTxs.where((t) => t.date > 946684800); // Filter for year >= 2000
-
-    if (validTxs.isEmpty) {
-      if (date.year < DateTime.now().year) {
-        continue;
-      }
-      balance += accBalance;
-      continue;
-    }
-
-    final earliestFamilyTx = validTxs.map((t) => t.date).reduce((a, b) => a < b ? a : b);
-    if (targetTimestamp < earliestFamilyTx) {
-      // Target date is before the account's earliest activity, so balance was 0.0
-      continue;
-    }
-
-    // Find all transactions for this account family that occurred AFTER the target date
-    final afterTxs = validTxs.where((t) => t.date > targetTimestamp);
-    for (final tx in afterTxs) {
-      // Subtract incoming amount, add outgoing amount to backtrack
-      accBalance -= tx.amount;
-    }
-    balance += accBalance;
-  }
-  return balance;
-}
 
 Map<String, double> _calculateIndividualBalancesAsOf(
     List<BankAccount> consolidatedAccounts,
@@ -183,8 +146,17 @@ Map<String, double> _calculateIndividualBalancesAsOf(
       }
     }
 
-    // If target month is prior to the earliest uploaded statement start (or 1st of statement month), return 0.0
-    if (targetTimestamp < earliestStatementStart && startOfMonthTimestamp < (earliestStatementStart - 86400 * 25)) {
+    // If target month end is before the earliest statement's month start, return 0.0
+    // Convert earliestStatementStart to its month's 1st day for clean comparison
+    if (earliestStatementStart < 9999999999) {
+      final earliestDate = DateTime.fromMillisecondsSinceEpoch(earliestStatementStart * 1000);
+      final earliestMonthStart = DateTime(earliestDate.year, earliestDate.month, 1).millisecondsSinceEpoch ~/ 1000;
+      if (targetTimestamp < earliestMonthStart) {
+        balances[acc.id] = 0.0;
+        continue;
+      }
+    } else {
+      // No statements or transactions found for this account family at all
       balances[acc.id] = 0.0;
       continue;
     }
@@ -321,45 +293,46 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
   }
 
   final endOfLastMonth = DateTime(targetMonth.year, targetMonth.month, 0, 23, 59, 59);
+  final endOfTwoMonthsAgo = DateTime(targetMonth.year, targetMonth.month - 1, 0, 23, 59, 59);
   final endOfLastYear = DateTime(targetMonth.year - 1, 12, 31, 23, 59, 59);
 
   final prevMonthBase = await storage.getCashOnHandBaseForMonth(year: endOfLastMonth.year, month: endOfLastMonth.month) ?? 0.0;
+  final twoMonthsAgoBase = await storage.getCashOnHandBaseForMonth(year: endOfTwoMonthsAgo.year, month: endOfTwoMonthsAgo.month) ?? 0.0;
   final prevYearBase = await storage.getCashOnHandBaseForMonth(year: endOfLastYear.year, month: endOfLastYear.month) ?? 0.0;
 
   final monthBases = {
     '${targetMonth.year}_${targetMonth.month}': targetMonthBase,
     '${endOfLastMonth.year}_${endOfLastMonth.month}': prevMonthBase,
+    '${endOfTwoMonthsAgo.year}_${endOfTwoMonthsAgo.month}': twoMonthsAgoBase,
     '${endOfLastYear.year}_${endOfLastYear.month}': prevYearBase,
   };
 
-  // Calculate balances converting non-SGD on the fly:
-  double prevMonthBalance = 0.0;
-  final prevMonthBalances = _calculateIndividualBalancesAsOf(consolidatedAccounts, accounts, transactions, statements, endOfLastMonth, monthCashBases: monthBases);
-  for (final item in consolidatedAccounts) {
-    final bal = prevMonthBalances[item.id] ?? 0.0;
-    final currencyStr = item.currency.trim().toUpperCase();
-    if (currencyStr == 'SGD') {
-      prevMonthBalance += bal;
-    } else {
-      final savedRate = await storage.getFxRate(currencyStr);
-      final rate = double.tryParse(savedRate ?? '') ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
-      prevMonthBalance += bal * rate;
+  // Helper to sum balances with FX conversion
+  Future<double> _sumBalancesWithFx(Map<String, double> balMap) async {
+    double total = 0.0;
+    for (final item in consolidatedAccounts) {
+      final bal = balMap[item.id] ?? 0.0;
+      final currencyStr = item.currency.trim().toUpperCase();
+      if (currencyStr == 'SGD') {
+        total += bal;
+      } else {
+        final savedRate = await storage.getFxRate(currencyStr);
+        final rate = double.tryParse(savedRate ?? '') ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+        total += bal * rate;
+      }
     }
+    return total;
   }
 
-  double prevYearBalance = 0.0;
+  // Calculate balances for all comparison periods:
+  final prevMonthBalances = _calculateIndividualBalancesAsOf(consolidatedAccounts, accounts, transactions, statements, endOfLastMonth, monthCashBases: monthBases);
+  final double prevMonthBalance = await _sumBalancesWithFx(prevMonthBalances);
+
+  final twoMonthsAgoBalances = _calculateIndividualBalancesAsOf(consolidatedAccounts, accounts, transactions, statements, endOfTwoMonthsAgo, monthCashBases: monthBases);
+  final double twoMonthsAgoBalance = await _sumBalancesWithFx(twoMonthsAgoBalances);
+
   final prevYearBalances = _calculateIndividualBalancesAsOf(consolidatedAccounts, accounts, transactions, statements, endOfLastYear, monthCashBases: monthBases);
-  for (final item in consolidatedAccounts) {
-    final bal = prevYearBalances[item.id] ?? 0.0;
-    final currencyStr = item.currency.trim().toUpperCase();
-    if (currencyStr == 'SGD') {
-      prevYearBalance += bal;
-    } else {
-      final savedRate = await storage.getFxRate(currencyStr);
-      final rate = double.tryParse(savedRate ?? '') ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
-      prevYearBalance += bal * rate;
-    }
-  }
+  final double prevYearBalance = await _sumBalancesWithFx(prevYearBalances);
 
   final Map<String, double> fxRatesMap = {};
   for (final item in consolidatedAccounts) {
@@ -374,9 +347,11 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
   return CashPositionModel(
     currentBalance: current,
     prevMonthBalance: prevMonthBalance,
+    twoMonthsAgoBalance: twoMonthsAgoBalance,
     prevYearBalance: prevYearBalance,
     currentDateStr: _formatDate(endOfTargetMonth),
     prevMonthDateStr: _formatDate(endOfLastMonth),
+    twoMonthsAgoDateStr: _formatDate(endOfTwoMonthsAgo),
     prevYearDateStr: _formatDate(endOfLastYear),
     accounts: updatedConsolidatedAccounts,
     prevMonthBalances: prevMonthBalances,
@@ -390,9 +365,11 @@ CashPositionModel _emptyCashPosition() {
   return CashPositionModel(
     currentBalance: 0.0,
     prevMonthBalance: 0.0,
+    twoMonthsAgoBalance: 0.0,
     prevYearBalance: 0.0,
     currentDateStr: _formatDate(now),
     prevMonthDateStr: _formatDate(DateTime(now.year, now.month, 0)),
+    twoMonthsAgoDateStr: _formatDate(DateTime(now.year, now.month - 1, 0)),
     prevYearDateStr: _formatDate(DateTime(now.year - 1, 12, 31)),
   );
 }
