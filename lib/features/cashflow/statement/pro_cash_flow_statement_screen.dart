@@ -150,12 +150,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final netCash = totalInc - totalExp;
 
             double newCashPos = 0.0;
-            final targetMonthStartTs = DateTime(targetMonth.year, targetMonth.month, 1).millisecondsSinceEpoch ~/ 1000;
-            final targetMonthEndTs = DateTime(targetMonth.year, targetMonth.month + 1, 0, 23, 59, 59).millisecondsSinceEpoch ~/ 1000;
+            final targetMonthStart = DateTime(targetMonth.year, targetMonth.month, 1);
+            final targetMonthEnd = DateTime(targetMonth.year, targetMonth.month + 1, 0, 23, 59, 59);
             final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
             for (final acc in allUserAccounts) {
               if (acc.id == 'manual_cash_account') continue;
-              if (acc.createdAt >= targetMonthStartTs && acc.createdAt <= targetMonthEndTs) {
+              final createdDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
+              final isCreatedInTarget = createdDate.year == targetMonth.year && createdDate.month == targetMonth.month;
+              if (isCreatedInTarget) {
                 newCashPos += acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
               }
             }

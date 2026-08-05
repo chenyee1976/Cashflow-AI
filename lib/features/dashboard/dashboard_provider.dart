@@ -146,12 +146,13 @@ Map<String, double> _calculateIndividualBalancesAsOf(
       }
     }
 
-    // If target month end is before the earliest statement's month start, return 0.0
-    // Convert earliestStatementStart to its month's 1st day for clean comparison
+    // Check if target month is prior to earliest statement / transaction month
     if (earliestStatementStart < 9999999999) {
       final earliestDate = DateTime.fromMillisecondsSinceEpoch(earliestStatementStart * 1000);
-      final earliestMonthStart = DateTime(earliestDate.year, earliestDate.month, 1).millisecondsSinceEpoch ~/ 1000;
-      if (targetTimestamp < earliestMonthStart) {
+      // Compare year and month cleanly
+      final isBeforeEarliest = (date.year < earliestDate.year) ||
+          (date.year == earliestDate.year && date.month < earliestDate.month);
+      if (isBeforeEarliest) {
         balances[acc.id] = 0.0;
         continue;
       }
