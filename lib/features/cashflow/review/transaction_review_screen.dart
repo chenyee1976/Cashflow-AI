@@ -237,7 +237,11 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
       'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
     ];
     for (int i = 0; i < 12; i++) {
-      if (lower.contains(months[i])) {
+      final monthStr = months[i];
+      // Use word boundaries or date separators (e.g. _jun2026, 2026-06, jun_, .jun.)
+      // so bank names like 'maribank' don't trigger 'mar' (March)!
+      final pattern = RegExp(r'(^|[^a-z])' + monthStr + r'([^a-z]|$)');
+      if (pattern.hasMatch(lower)) {
         month = i + 1;
         break;
       }
