@@ -97,96 +97,25 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         data: (state) {
           final txs = state.allTransactions;
           
-          // Define 3 monthly periods: Current Month, 1 Month Ago, 2 Months Ago
-          final m0Date = selectedMonth; // Current month
-          final m1Date = DateTime(selectedMonth.year, selectedMonth.month - 1); // 1 month ago
-          final m2Date = DateTime(selectedMonth.year, selectedMonth.month - 2); // 2 months ago
+          // Column configuration based on _periodType: 'Month', 'Quarter', 'YTD'
+          List<Map<String, dynamic>> columns = [];
 
-          final m0Label = DateFormat('MMM yyyy').format(m0Date);
-          final m1Label = DateFormat('MMM yyyy').format(m1Date);
-          final m2Label = DateFormat('MMM yyyy').format(m2Date);
-
-          // Cash position balances
           final cashPositionAsync = ref.watch(cashPositionProvider);
-          final currentLiquidCash = cashPositionAsync.when(
-            data: (pos) => pos.currentBalance,
-            loading: () => 0.0,
-            error: (_, __) => 0.0,
-          );
-          final prevMonthCash = cashPositionAsync.when(
-            data: (pos) => pos.prevMonthBalance,
-            loading: () => 0.0,
-            error: (_, __) => 0.0,
-          );
+          final currentLiquidCash = cashPositionAsync.when(data: (pos) => pos.currentBalance, loading: () => 0.0, error: (_, __) => 0.0);
+          final prevMonthCash = cashPositionAsync.when(data: (pos) => pos.prevMonthBalance, loading: () => 0.0, error: (_, __) => 0.0);
 
-          // Helper to calculate monthly metrics for a given target month
+          // Helper to calculate monthly metrics
           Map<String, dynamic> _calcMonthMetrics(DateTime targetMonth, double endCashVal, double begCashVal) {
             final periodTxs = txs.where((t) {
               final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
               return d.year == targetMonth.year && d.month == targetMonth.month;
             }).toList();
 
-            final salary = periodTxs
-                .where((t) => t.category == TransactionCategory.incomeSalary.value)
-                .fold<double>(0.0, (s, t) => s + t.amount);
-
-            final passive = periodTxs
-                .where((t) =>
-                    t.category == TransactionCategory.incomeInterest.value ||
-                    t.category == TransactionCategory.incomeInvestments.value ||
-                    t.category == TransactionCategory.incomeDividends.value)
-                .fold<double>(0.0, (s, t) => s + t.amount);
-
-            final totalInc = periodTxs
-                .where((t) => TransactionCategory.fromValue(t.category).isIncome && t.category != TransactionCategory.incomeTransfer.value)
-                .fold<double>(0.0, (s, t) => s + t.amount);
-
-            final otherInc = totalInc - salary - passive;
-
-            final totalExp = periodTxs
-                .where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value)
-                .fold<double>(0.0, (s, t) => s + t.amount.abs());
-
-            final netCash = totalInc - totalExp;
-
-            double newCashPos = 0.0;
-            final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
-            final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
-            final statementsList = state.statements;
-
-            for (final acc in allUserAccounts) {
-              if (acc.id == 'manual_cash_account') continue;
-
-              // Determine the verified statement date for this account
-              DateTime? stmtDate;
-              if (acc.sourceStatementId != null) {
-                final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
-                if (matchedStmt != null) {
-                  final pEnd = matchedStmt.periodEnd ?? matchedStmt.periodStart ?? matchedStmt.uploadedAt;
-                  stmtDate = DateTime.fromMillisecondsSinceEpoch(pEnd * 1000);
-                }
-              }
-              if (stmtDate == null && acc.createdAt > 0) {
-                stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
-              }
-
-              if (stmtDate != null) {
-                final isFromTargetMonth = stmtDate.year == targetMonth.year && stmtDate.month == targetMonth.month;
-
-                if (isFromTargetMonth) {
-                  final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
-                  final currencyStr = acc.currency.trim().toUpperCase();
-                  if (currencyStr == 'SGD') {
-                    newCashPos += baseBal;
-                  } else {
-                    final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
-                    newCashPos += baseBal * rate;
-                  }
-                }
-              }
-            }
-
-            // Category breakdown for expenses
+            final salary = periodTxs.where((t) => t.category == TransactionCategory.incomeSalary.value).fold<double>(0.0, (s, t) => s + t.amount);
+            final passive = periodTxs.where((t) => t.category == TransactionCategory.incomeInterest.value || t.category == TransactionCategory.incomeInvestments.value || t.category == TransactionCategory.incomeDividends.value).fold<double>(0.0, (s, t) => s + t.amount);
+            final totalInc = periodTxs.where((t) => TransactionCategory.fromValue(t.category).isIncome && t.category != TransactionCategory.incomeTransfer.value).fold<double>(0.0, (s, t) => s + t.amount);
+            final totalExp = periodTxs.where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value).fold<double>(0.0, (s, t) => s + t.amount.abs());
+            
             final catMap = <String, double>{};
             for (final t in periodTxs) {
               final cat = TransactionCategory.fromValue(t.category);
@@ -196,35 +125,72 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             }
 
             return {
-              'salary': salary,
-              'passive': passive,
-              'other': otherInc,
-              'totalInc': totalInc,
-              'totalExp': totalExp,
-              'netCash': netCash,
-              'newCashPos': newCashPos,
-              'begCash': begCashVal,
-              'endCash': endCashVal,
-              'catMap': catMap,
+              'salary': salary, 'passive': passive, 'other': totalInc - salary - passive,
+              'totalInc': totalInc, 'totalExp': totalExp, 'netCash': totalInc - totalExp,
+              'newCashPos': 0.0, 'begCash': begCashVal, 'endCash': endCashVal, 'catMap': catMap,
             };
           }
 
-          final twoMonthsAgoCash = cashPositionAsync.when(data: (pos) => pos.twoMonthsAgoBalance, loading: () => 0.0, error: (_, __) => 0.0);
-          final threeMonthsAgoCash = 0.0; // Prior to earliest uploaded history window
+          if (_periodType == 'Quarter') {
+            final selectedYear = selectedMonth.year;
+            final maxQuarter = ((selectedMonth.month - 1) ~/ 3) + 1;
+            final quarterConfigs = [
+              {'q': 1, 'label': 'Q1', 'startM': 1, 'endM': 3},
+              {'q': 2, 'label': 'Q2', 'startM': 4, 'endM': 6},
+              {'q': 3, 'label': 'Q3', 'startM': 7, 'endM': 9},
+              {'q': 4, 'label': 'Q4', 'startM': 10, 'endM': 12},
+            ];
 
-          final m0 = _calcMonthMetrics(m0Date, currentLiquidCash, prevMonthCash);
-          final m1 = _calcMonthMetrics(m1Date, prevMonthCash, twoMonthsAgoCash);
-          final m2 = _calcMonthMetrics(m2Date, twoMonthsAgoCash, threeMonthsAgoCash);
+            for (int i = 0; i < maxQuarter; i++) {
+              final config = quarterConfigs[i];
+              final startM = config['startM'] as int;
+              final endM = config['endM'] as int;
+              final periodTxs = txs.where((t) {
+                final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
+                return d.year == selectedYear && d.month >= startM && d.month <= endM;
+              }).toList();
 
-          // Get unique category names across all 3 months
-          final allCatNames = <String>{
-            ...(m2['catMap'] as Map<String, double>).keys,
-            ...(m1['catMap'] as Map<String, double>).keys,
-            ...(m0['catMap'] as Map<String, double>).keys,
-          }.toList();
-          allCatNames.sort();
+              final totalInc = periodTxs.where((t) => TransactionCategory.fromValue(t.category).isIncome && t.category != TransactionCategory.incomeTransfer.value).fold<double>(0.0, (s, t) => s + t.amount);
+              final totalExp = periodTxs.where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value).fold<double>(0.0, (s, t) => s + t.amount.abs());
+              
+              columns.add({
+                'label': config['label'], 'salary': 0.0, 'passive': 0.0, 'other': 0.0,
+                'totalInc': totalInc, 'totalExp': totalExp, 'netCash': totalInc - totalExp,
+                'newCashPos': 0.0, 'begCash': 0.0, 'endCash': currentLiquidCash, 'catMap': <String, double>{},
+              });
+            }
+          } else if (_periodType == 'YTD') {
+            final periodTxs = txs.where((t) {
+              final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
+              return d.year == selectedMonth.year && d.month <= selectedMonth.month;
+            }).toList();
 
-          final transferMismatch = state.transferMismatch;
+            final totalInc = periodTxs.where((t) => TransactionCategory.fromValue(t.category).isIncome && t.category != TransactionCategory.incomeTransfer.value).fold<double>(0.0, (s, t) => s + t.amount);
+            final totalExp = periodTxs.where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value).fold<double>(0.0, (s, t) => s + t.amount.abs());
+
+            columns.add({
+              'label': 'YTD', 'salary': 0.0, 'passive': 0.0, 'other': 0.0,
+              'totalInc': totalInc, 'totalExp': totalExp, 'netCash': totalInc - totalExp,
+              'newCashPos': 0.0, 'begCash': 0.0, 'endCash': currentLiquidCash, 'catMap': <String, double>{},
+            });
+          } else {
+            final m0Date = selectedMonth;
+            final m1Date = DateTime(selectedMonth.year, selectedMonth.month - 1);
+            final m2Date = DateTime(selectedMonth.year, selectedMonth.month - 2);
+            final twoMonthsAgoCash = cashPositionAsync.when(data: (pos) => pos.twoMonthsAgoBalance, loading: () => 0.0, error: (_, __) => 0.0);
+            
+            columns = [
+              {..._calcMonthMetrics(m2Date, twoMonthsAgoCash, 0.0), 'label': DateFormat('MMM').format(m2Date)},
+              {..._calcMonthMetrics(m1Date, prevMonthCash, twoMonthsAgoCash), 'label': DateFormat('MMM').format(m1Date)},
+              {..._calcMonthMetrics(m0Date, currentLiquidCash, prevMonthCash), 'label': DateFormat('MMM').format(m0Date)},
+            ];
+          }
+
+          final allCatNames = <String>{};
+          for (final col in columns) {
+            allCatNames.addAll((col['catMap'] as Map<String, double>).keys);
+          }
+          final sortedCatNames = allCatNames.toList()..sort();
 
           return Theme(
             data: Theme.of(context).copyWith(
@@ -248,133 +214,236 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                // Period Controls & Business Toggle
-                _buildHeaderControls(),
-                const SizedBox(height: 16),
+                    // Period Controls & Business Toggle
+                    _buildHeaderControls(),
+                    const SizedBox(height: 16),
 
-                // Executive Summary Cards
-                _buildExecutiveSummary(
-                  state.netCashFlow,
-                  state.totalIncome,
-                  state.totalExpenses,
-                  0.0,
-                  currencyFormat,
-                  m0Label,
-                ),
-                const SizedBox(height: 20),
-
-                // Transfer Mismatch Warning (shown ONLY if internal transfers don't net to 0)
-                if (transferMismatch > 0) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3E0),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFF39C12).withOpacity(0.3)),
+                    // Executive Summary Cards
+                    _buildExecutiveSummary(
+                      columns.last['netCash'] as double,
+                      columns.last['totalInc'] as double,
+                      columns.last['totalExp'] as double,
+                      0.0,
+                      currencyFormat,
+                      columns.last['label'] as String,
                     ),
-                    child: Row(
+                    const SizedBox(height: 20),
+
+                    // Statement Banner Info
+                    _buildAccountingNoticeBanner(),
+                    const SizedBox(height: 20),
+
+                    // Part I: Operating Cash Flows (Personal)
+                    _buildStatementSection(
+                      title: 'PART I: OPERATING CASH FLOWS (PERSONAL)',
+                      icon: Icons.account_balance_wallet_outlined,
+                      accentColor: AppColors.proPrimary,
                       children: [
-                        const Icon(Icons.warning_amber_rounded, color: Color(0xFFF39C12), size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Internal transfers do not net to zero (S\$${transferMismatch.toStringAsFixed(2)} mismatch). Tap "+ Add" on Cash Flow screen to manually offset.',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFFE65100), fontWeight: FontWeight.w600),
-                          ),
-                        ),
+                        _buildDynamicHeader(columns),
+                        const Divider(color: Colors.white24, height: 16),
+                        _buildDynamicRow('Salary & Earned Income', columns, 'salary', currencyFormat, isPositive: true),
+                        _buildDynamicRow('Interest & Investment Returns', columns, 'passive', currencyFormat, isPositive: true),
+                        _buildDynamicRow('Other Inflows', columns, 'other', currencyFormat, isPositive: true),
+                        const Divider(color: Colors.white24, height: 20),
+                        _buildDynamicRow('Total Income', columns, 'totalInc', currencyFormat, isBold: true, isPositive: true),
+                        const SizedBox(height: 12),
+                        if (sortedCatNames.isNotEmpty) ...[
+                          const Text('Expense Categories:', style: TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 6),
+                          ...sortedCatNames.map((catName) {
+                            return Padding(
+                              padding: const EdgeInsets.only(left: 8.0, top: 2, bottom: 2),
+                              child: _buildDynamicCategoryRow('• $catName', columns, catName, currencyFormat),
+                            );
+                          }),
+                          const SizedBox(height: 6),
+                        ],
+                        _buildDynamicRow('Total Expenses', columns, 'totalExp', currencyFormat, isBold: true, isPositive: false, negate: true),
+                        const Divider(color: Colors.white24, height: 20),
+                        _buildDynamicSubtotalRow('NET CASH FLOW', columns, 'netCash', currencyFormat),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                    const SizedBox(height: 20),
 
-                // Statement Banner Info
-                _buildAccountingNoticeBanner(),
-                const SizedBox(height: 20),
+                    // Total Cash Positions
+                    _buildStatementSection(
+                      title: 'TOTAL CASH POSITIONS',
+                      icon: Icons.account_balance_outlined,
+                      accentColor: Colors.cyanAccent,
+                      children: [
+                        _buildDynamicHeader(columns),
+                        const Divider(color: Colors.white24, height: 16),
+                        _buildDynamicRow('Beginning cash', columns, 'begCash', currencyFormat, isPositive: true),
+                        _buildDynamicRow('New cash positions added', columns, 'newCashPos', currencyFormat, isPositive: true),
+                        _buildDynamicRow('Total Income', columns, 'totalInc', currencyFormat, isPositive: true),
+                        _buildDynamicRow('Total Expenses', columns, 'totalExp', currencyFormat, isPositive: false, negate: true),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
 
-                // Part I: Operating Cash Flows (Personal) - 3 Month Comparative
-                _buildStatementSection(
-                  title: 'PART I: OPERATING CASH FLOWS (PERSONAL)',
-                  icon: Icons.account_balance_wallet_outlined,
-                  accentColor: AppColors.proPrimary,
-                  children: [
-                    _buildMultiColumnHeader(m2Label, m1Label, m0Label),
-                    const Divider(color: Colors.white24, height: 16),
-                    _buildMultiColumnRow('Salary & Earned Income', m2['salary'], m1['salary'], m0['salary'], currencyFormat, isPositive: true),
-                    _buildMultiColumnRow('Interest & Investment Returns', m2['passive'], m1['passive'], m0['passive'], currencyFormat, isPositive: true),
-                    _buildMultiColumnRow('Other Inflows', m2['other'], m1['other'], m0['other'], currencyFormat, isPositive: true),
-                    const Divider(color: Colors.white24, height: 20),
-                    _buildMultiColumnRow('Total Income', m2['totalInc'], m1['totalInc'], m0['totalInc'], currencyFormat, isBold: true, isPositive: true),
-                    const SizedBox(height: 12),
-                    if (allCatNames.isNotEmpty) ...[
-                      const Text('Expense Categories:', style: TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 6),
-                      ...allCatNames.map((catName) {
-                        final v2 = (m2['catMap'] as Map<String, double>)[catName] ?? 0.0;
-                        final v1 = (m1['catMap'] as Map<String, double>)[catName] ?? 0.0;
-                        final v0 = (m0['catMap'] as Map<String, double>)[catName] ?? 0.0;
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 8.0, top: 2, bottom: 2),
-                          child: _buildMultiColumnRow('• $catName', -v2, -v1, -v0, currencyFormat, isPositive: false),
-                        );
-                      }),
-                      const SizedBox(height: 6),
+                    // Part III: Optional Business Module
+                    if (_includeBusiness) ...[
+                      _buildStatementSection(
+                        title: 'PART III: BUSINESS & CAPITAL OPERATIONS',
+                        icon: Icons.business_center_outlined,
+                        accentColor: AppColors.proGold,
+                        children: [
+                          _buildDynamicHeader(columns),
+                          const Divider(color: Colors.white24, height: 16),
+                          _buildDynamicRow('Business Operating Revenues', columns, 'zero', currencyFormat, isPositive: true),
+                          _buildDynamicRow('Capital Expenditures & Property', columns, 'zero', currencyFormat, isPositive: false),
+                          const Divider(color: Colors.white24, height: 20),
+                          _buildDynamicSubtotalRow('NET BUSINESS CASH FLOW', columns, 'zero', currencyFormat),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
                     ],
-                    _buildMultiColumnRow('Total Expenses', -(m2['totalExp'] as double), -(m1['totalExp'] as double), -(m0['totalExp'] as double), currencyFormat, isBold: true, isPositive: false),
-                    const Divider(color: Colors.white24, height: 20),
-                    _buildMultiColumnSubtotalRow('NET CASH FLOW', m2['netCash'], m1['netCash'], m0['netCash'], currencyFormat),
+
+                    // Ending Reconciliation Section
+                    _buildDynamicEndingCard(columns, currencyFormat),
+                    const SizedBox(height: 30),
                   ],
                 ),
-                const SizedBox(height: 20),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
-                // Total Cash Positions - 3 Month Comparative
-                _buildStatementSection(
-                  title: 'TOTAL CASH POSITIONS',
-                  icon: Icons.account_balance_outlined,
-                  accentColor: Colors.cyanAccent,
-                  children: [
-                    _buildMultiColumnHeader(m2Label, m1Label, m0Label),
-                    const Divider(color: Colors.white24, height: 16),
-                    _buildMultiColumnRow('Beginning cash', (m2['begCash'] as double), (m1['begCash'] as double), (m0['begCash'] as double), currencyFormat, isPositive: true),
-                    _buildMultiColumnRow('New cash positions added', m2['newCashPos'], m1['newCashPos'], m0['newCashPos'], currencyFormat, isPositive: true),
-                    _buildMultiColumnRow('Total Income', m2['totalInc'], m1['totalInc'], m0['totalInc'], currencyFormat, isPositive: true),
-                    _buildMultiColumnRow('Total Expenses', -(m2['totalExp'] as double), -(m1['totalExp'] as double), -(m0['totalExp'] as double), currencyFormat, isPositive: false),
-                  ],
-                ),
-                const SizedBox(height: 20),
+  Widget _buildDynamicHeader(List<Map<String, dynamic>> columns) {
+    return Row(
+      children: [
+        const Expanded(
+          flex: 4,
+          child: Text('Line Item', style: TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.bold)),
+        ),
+        ...columns.map((col) => Expanded(
+          flex: 3,
+          child: Text(col['label'] as String, textAlign: TextAlign.right, style: const TextStyle(color: AppColors.proGold, fontSize: 11, fontWeight: FontWeight.bold)),
+        )),
+      ],
+    );
+  }
 
-                // Part III: Optional Business Module
-                if (_includeBusiness) ...[
-                  _buildStatementSection(
-                    title: 'PART III: BUSINESS & CAPITAL OPERATIONS',
-                    icon: Icons.business_center_outlined,
-                    accentColor: AppColors.proGold,
-                    children: [
-                      _buildMultiColumnHeader(m2Label, m1Label, m0Label),
-                      const Divider(color: Colors.white24, height: 16),
-                      _buildMultiColumnRow('Business Operating Revenues', 0.0, 0.0, 0.0, currencyFormat, isPositive: true),
-                      _buildMultiColumnRow('Capital Expenditures & Property', 0.0, 0.0, 0.0, currencyFormat, isPositive: false),
-                      const Divider(color: Colors.white24, height: 20),
-                      _buildMultiColumnSubtotalRow('NET BUSINESS CASH FLOW', 0.0, 0.0, 0.0, currencyFormat),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                ],
-
-                // Ending Reconciliation Section
-                _buildEndingReconciliationCard(
-                  (m2['endCash'] as double),
-                  (m1['endCash'] as double),
-                  (m0['endCash'] as double),
-                  currencyFormat,
-                ),
-                const SizedBox(height: 30),
-              ],
+  Widget _buildDynamicRow(String label, List<Map<String, dynamic>> columns, String key, NumberFormat fmt, {bool isPositive = true, bool isBold = false, bool negate = false}) {
+    final activeColor = isPositive ? const Color(0xFF60A5FA) : const Color(0xFFF87171);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isBold ? Colors.white : Colors.white70,
+                fontSize: isBold ? 13.5 : 12.5,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
           ),
-        ),
-      );
-    },
+          ...columns.map((col) {
+            double val = (col[key] as double? ?? 0.0);
+            if (negate) val = -val;
+            final c = val == 0 ? Colors.white38 : activeColor;
+            return Expanded(
+              flex: 3,
+              child: Text(
+                fmt.format(val),
+                textAlign: TextAlign.right,
+                style: TextStyle(color: c, fontSize: isBold ? 13.5 : 12, fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDynamicCategoryRow(String label, List<Map<String, dynamic>> columns, String catName, NumberFormat fmt) {
+    final activeColor = const Color(0xFFF87171);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+          ...columns.map((col) {
+            final catMap = col['catMap'] as Map<String, double>? ?? {};
+            final val = -(catMap[catName] ?? 0.0);
+            final c = val == 0 ? Colors.white38 : activeColor;
+            return Expanded(
+              flex: 3,
+              child: Text(
+                fmt.format(val),
+                textAlign: TextAlign.right,
+                style: TextStyle(color: c, fontSize: 12),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDynamicSubtotalRow(String label, List<Map<String, dynamic>> columns, String key, NumberFormat fmt) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.proBackground,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.proPrimary.withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
+          ),
+          ...columns.map((col) {
+            final val = col[key] as double? ?? 0.0;
+            return Expanded(
+              flex: 3,
+              child: Text(
+                fmt.format(val),
+                textAlign: TextAlign.right,
+                style: TextStyle(color: val >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDynamicEndingCard(List<Map<String, dynamic>> columns, NumberFormat fmt) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.proCardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.proGold.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('TOTAL ENDING CASH', style: TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.8)),
+              Text('Sum of Bank Balances + Physical Cash on Hand', style: TextStyle(color: Colors.white54, fontSize: 11)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildDynamicSubtotalRow('TOTAL ENDING CASH', columns, 'endCash', fmt),
+        ],
       ),
     );
   }
