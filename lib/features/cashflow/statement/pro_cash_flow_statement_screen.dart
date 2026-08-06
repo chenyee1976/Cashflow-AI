@@ -229,11 +229,11 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
               // Evaluate exact ending cash as of the end of the quarter/month
               double qEndCash = 0.0;
-              if (qNum == maxQuarter) {
-                qEndCash = currentLiquidCash;
-              } else {
-                qEndCash = runningBegCash + newCashPos + netCash;
-              }
+              final endMonthDate = DateTime(selectedYear, endM);
+              final monthData = _calcMonthMetrics(endMonthDate, 0.0, 0.0);
+              // For month calculation, endCash in _calcMonthMetrics for June 2026 is currentLiquidCash when viewing July
+              // We compute exact endCash by finding month balance or accumulated balances up to endM
+              qEndCash = runningBegCash + newCashPos + netCash;
 
               columns.add({
                 'label': label,
@@ -469,7 +469,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         ),
         ...columns.map((col) => Expanded(
           flex: 3,
-          child: Text(col['label'] as String, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.proGold, fontSize: 11, fontWeight: FontWeight.bold)),
+          child: Text(col['label'] as String, textAlign: TextAlign.right, style: const TextStyle(color: AppColors.proGold, fontSize: 11, fontWeight: FontWeight.bold)),
         )),
       ],
     );
