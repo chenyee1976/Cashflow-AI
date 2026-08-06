@@ -227,13 +227,41 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 }
               }
 
-              // Evaluate exact ending cash as of the end of the quarter/month
-              double qEndCash = 0.0;
-              final endMonthDate = DateTime(selectedYear, endM);
-              final monthData = _calcMonthMetrics(endMonthDate, 0.0, 0.0);
-              // For month calculation, endCash in _calcMonthMetrics for June 2026 is currentLiquidCash when viewing July
-              // We compute exact endCash by finding month balance or accumulated balances up to endM
-              qEndCash = runningBegCash + newCashPos + netCash;
+              // Evaluate exact ending cash accumulated from all statements up to endM
+              double cumulativeCash = 0.0;
+
+              for (final acc in allUserAccounts) {
+                if (acc.id == 'manual_cash_account') continue;
+                DateTime? stmtDate;
+                if (acc.sourceStatementId != null) {
+                  final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
+                  if (matchedStmt != null) {
+                    final pEnd = matchedStmt.periodEnd ?? matchedStmt.periodStart ?? matchedStmt.uploadedAt;
+                    stmtDate = DateTime.fromMillisecondsSinceEpoch(pEnd * 1000);
+                  }
+                }
+                if (stmtDate == null && acc.createdAt > 0) {
+                  stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
+                }
+
+                // If account statement date is on or before endM month, include its balance
+                if (stmtDate != null) {
+                  final stmtMonthStart = DateTime(stmtDate.year, stmtDate.month, 1);
+                  final endMonthStart = DateTime(selectedYear, endM, 1);
+                  if (!stmtMonthStart.isAfter(endMonthStart)) {
+                    final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
+                    final currencyStr = acc.currency.trim().toUpperCase();
+                    if (currencyStr == 'SGD') {
+                      cumulativeCash += baseBal;
+                    } else {
+                      final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+                      cumulativeCash += baseBal * rate;
+                    }
+                  }
+                }
+              }
+
+              final qEndCash = cumulativeCash;
 
               columns.add({
                 'label': label,
