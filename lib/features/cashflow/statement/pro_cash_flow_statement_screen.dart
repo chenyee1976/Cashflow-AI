@@ -124,31 +124,57 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               }
             }
 
-            return {
-              'salary': salary, 'passive': passive, 'other': totalInc - salary - passive,
-              'totalInc': totalInc, 'totalExp': totalExp, 'netCash': totalInc - totalExp,
-              'newCashPos': 0.0, 'begCash': begCashVal, 'endCash': endCashVal, 'catMap': catMap,
-            };
-          }
+              double newCashPos = 0.0;
+              final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
+              final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
+              final statementsList = state.statements;
+
+              for (final acc in allUserAccounts) {
+                if (acc.id == 'manual_cash_account') continue;
+                DateTime? stmtDate;
+                if (acc.sourceStatementId != null) {
+                  final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
+                  if (matchedStmt != null) {
+                    final pEnd = matchedStmt.periodEnd ?? matchedStmt.periodStart ?? matchedStmt.uploadedAt;
+                    stmtDate = DateTime.fromMillisecondsSinceEpoch(pEnd * 1000);
+                  }
+                }
+                if (stmtDate == null && acc.createdAt > 0) {
+                  stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
+                }
+
+                if (stmtDate != null && stmtDate.year == targetMonth.year && stmtDate.month == targetMonth.month) {
+                  final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
+                  final currencyStr = acc.currency.trim().toUpperCase();
+                  if (currencyStr == 'SGD') {
+                    newCashPos += baseBal;
+                  } else {
+                    final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+                    newCashPos += baseBal * rate;
+                  }
+                }
+              }
+
+              return {
+                'salary': salary, 'passive': passive, 'other': totalInc - salary - passive,
+                'totalInc': totalInc, 'totalExp': totalExp, 'netCash': totalInc - totalExp,
+                'newCashPos': newCashPos, 'begCash': begCashVal, 'endCash': endCashVal, 'catMap': catMap,
+              };
+            }
 
           if (_periodType == 'Quarter') {
             final selectedYear = selectedMonth.year;
             final maxQuarter = ((selectedMonth.month - 1) ~/ 3) + 1;
 
-            final quarterConfigs = [
-              {'q': 1, 'label': 'Q1\n31 Mar $selectedYear', 'endMonth': DateTime(selectedYear, 3, 31)},
-              {'q': 2, 'label': 'Q2\n30 Jun $selectedYear', 'endMonth': DateTime(selectedYear, 6, 30)},
-              {'q': 3, 'label': 'Q3\n${selectedMonth.month < 9 ? '31 Aug' : '30 Sep'} $selectedYear', 'endMonth': DateTime(selectedYear, selectedMonth.month < 9 ? 8 : 9, selectedMonth.month < 9 ? 31 : 30)},
-              {'q': 4, 'label': 'Q4\n31 Dec $selectedYear', 'endMonth': DateTime(selectedYear, 12, 31)},
-            ];
-
             double runningBegCash = 0.0;
 
             for (int i = 0; i < maxQuarter; i++) {
-              final config = quarterConfigs[i];
-              final qNum = config['q'] as int;
+              final qNum = i + 1;
               final startM = (qNum - 1) * 3 + 1;
-              final endM = qNum * 3;
+              final endM = qNum == maxQuarter ? selectedMonth.month : qNum * 3;
+
+              final lastDay = DateTime(selectedYear, endM + 1, 0).day;
+              final label = 'Q$qNum\n$lastDay ${DateFormat('MMM yyyy').format(DateTime(selectedYear, endM))}';
 
               final periodTxs = txs.where((t) {
                 final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
@@ -201,10 +227,16 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 }
               }
 
-              final qEndCash = runningBegCash + newCashPos + netCash;
+              // Evaluate exact ending cash as of the end of the quarter/month
+              double qEndCash = 0.0;
+              if (qNum == maxQuarter) {
+                qEndCash = currentLiquidCash;
+              } else {
+                qEndCash = runningBegCash + newCashPos + netCash;
+              }
 
               columns.add({
-                'label': config['label'],
+                'label': label,
                 'salary': salary,
                 'passive': passive,
                 'other': otherInc,
@@ -437,7 +469,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         ),
         ...columns.map((col) => Expanded(
           flex: 3,
-          child: Text(col['label'] as String, textAlign: TextAlign.right, style: const TextStyle(color: AppColors.proGold, fontSize: 11, fontWeight: FontWeight.bold)),
+          child: Text(col['label'] as String, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.proGold, fontSize: 11, fontWeight: FontWeight.bold)),
         )),
       ],
     );
