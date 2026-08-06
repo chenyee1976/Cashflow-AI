@@ -11,6 +11,7 @@ import 'tables/credit_cards_table.dart';
 import 'tables/transactions_table.dart';
 import 'tables/statements_table.dart';
 import 'tables/miles_tables.dart';
+import '../../features/rewards/card_rewards_store.dart';
 
 part 'app_database.g.dart';
 
@@ -85,6 +86,12 @@ class AppDatabase extends _$AppDatabase {
   Future<void> deleteStatement(String id) async {
     await deleteTransactionsByStatement(id);
     await (delete(bankAccounts)..where((t) => t.sourceStatementId.equals(id))).go();
+    
+    // Purge associated credit cards & reward progress models
+    final cardsToDelete = await (select(creditCards)..where((t) => t.sourceStatementId.equals(id))).get();
+    for (final c in cardsToDelete) {
+      await CardRewardsDataStore.clearCardRewards(c.id);
+    }
     await (delete(creditCards)..where((t) => t.sourceStatementId.equals(id))).go();
     await (delete(statements)..where((t) => t.id.equals(id))).go();
 
@@ -100,6 +107,15 @@ class AppDatabase extends _$AppDatabase {
       final remainingCC = remaining.where((s) => s.accountType == 'credit_card').toList();
       if (remainingCC.isEmpty) {
         await delete(milesWallet).go();
+      }
+    }
+
+    // Database alignment cleanup: delete any bank accounts or credit cards missing an active statement
+    final activeStmtIds = remaining.map((s) => s.id).toSet();
+    final orphanedAccounts = await select(bankAccounts).get();
+    for (final acc in orphanedAccounts) {
+      if (acc.sourceStatementId != null && !activeStmtIds.contains(acc.sourceStatementId)) {
+        await (delete(bankAccounts)..where((t) => t.id.equals(acc.id))).go();
       }
     }
   }

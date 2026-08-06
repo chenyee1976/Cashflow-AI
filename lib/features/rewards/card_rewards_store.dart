@@ -72,4 +72,17 @@ class CardRewardsDataStore {
     }
     return null;
   }
+
+  static Future<void> clearCardRewards(String cardId, {String? statementId}) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (statementId != null && statementId.isNotEmpty) {
+      if (cardId.isNotEmpty) {
+        await prefs.remove('card_rewards_${cardId}_$statementId');
+      }
+      await prefs.remove('card_rewards_stmt_$statementId');
+    }
+    if (cardId.isNotEmpty) {
+      await prefs.remove('card_rewards_$cardId');
+    }
+  }
 }

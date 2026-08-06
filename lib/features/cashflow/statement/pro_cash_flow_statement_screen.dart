@@ -354,9 +354,10 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final m1Date = DateTime(selectedMonth.year, selectedMonth.month - 1);
             final m2Date = DateTime(selectedMonth.year, selectedMonth.month - 2);
             final twoMonthsAgoCash = cashPositionAsync.when(data: (pos) => pos.twoMonthsAgoBalance, loading: () => 0.0, error: (_, __) => 0.0);
+            final threeMonthsAgoCash = cashPositionAsync.when(data: (pos) => pos.threeMonthsAgoBalance, loading: () => 0.0, error: (_, __) => 0.0);
 
             columns = [
-              {..._calcMonthMetrics(m2Date, twoMonthsAgoCash, 0.0), 'label': DateFormat('MMM yyyy').format(m2Date)},
+              {..._calcMonthMetrics(m2Date, twoMonthsAgoCash, threeMonthsAgoCash), 'label': DateFormat('MMM yyyy').format(m2Date)},
               {..._calcMonthMetrics(m1Date, prevMonthCash, twoMonthsAgoCash), 'label': DateFormat('MMM yyyy').format(m1Date)},
               {..._calcMonthMetrics(m0Date, currentLiquidCash, prevMonthCash), 'label': DateFormat('MMM yyyy').format(m0Date)},
             ];

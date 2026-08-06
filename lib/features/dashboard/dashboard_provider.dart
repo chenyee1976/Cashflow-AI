@@ -10,10 +10,12 @@ class CashPositionModel {
   final double currentBalance;
   final double prevMonthBalance;
   final double twoMonthsAgoBalance;
+  final double threeMonthsAgoBalance;
   final double prevYearBalance;
   final String currentDateStr;
   final String prevMonthDateStr;
   final String twoMonthsAgoDateStr;
+  final String threeMonthsAgoDateStr;
   final String prevYearDateStr;
   final List<BankAccount> accounts;
   final Map<String, double> prevMonthBalances;
@@ -24,10 +26,12 @@ class CashPositionModel {
     required this.currentBalance,
     required this.prevMonthBalance,
     required this.twoMonthsAgoBalance,
+    required this.threeMonthsAgoBalance,
     required this.prevYearBalance,
     required this.currentDateStr,
     required this.prevMonthDateStr,
     required this.twoMonthsAgoDateStr,
+    required this.threeMonthsAgoDateStr,
     required this.prevYearDateStr,
     this.accounts = const [],
     this.prevMonthBalances = const {},
@@ -116,6 +120,12 @@ Map<String, double> _calculateIndividualBalancesAsOf(
     // Statement-driven evaluation: check for statements matching or preceding target month
     final matchedStmt = statements.where((s) => s.id == acc.sourceStatementId).firstOrNull;
     
+    // If account has a source statement ID but that statement is missing from active statements, evaluate to 0.0
+    if (acc.sourceStatementId != null && matchedStmt == null) {
+      balances[acc.id] = 0.0;
+      continue;
+    }
+
     // Determine the statement date month for this account
     DateTime? stmtDate;
     if (matchedStmt != null && matchedStmt.periodEnd != null) {
@@ -259,16 +269,19 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
 
   final endOfLastMonth = DateTime(targetMonth.year, targetMonth.month, 0, 23, 59, 59);
   final endOfTwoMonthsAgo = DateTime(targetMonth.year, targetMonth.month - 1, 0, 23, 59, 59);
+  final endOfThreeMonthsAgo = DateTime(targetMonth.year, targetMonth.month - 2, 0, 23, 59, 59);
   final endOfLastYear = DateTime(targetMonth.year - 1, 12, 31, 23, 59, 59);
 
   final prevMonthBase = await storage.getCashOnHandBaseForMonth(year: endOfLastMonth.year, month: endOfLastMonth.month) ?? 0.0;
   final twoMonthsAgoBase = await storage.getCashOnHandBaseForMonth(year: endOfTwoMonthsAgo.year, month: endOfTwoMonthsAgo.month) ?? 0.0;
+  final threeMonthsAgoBase = await storage.getCashOnHandBaseForMonth(year: endOfThreeMonthsAgo.year, month: endOfThreeMonthsAgo.month) ?? 0.0;
   final prevYearBase = await storage.getCashOnHandBaseForMonth(year: endOfLastYear.year, month: endOfLastYear.month) ?? 0.0;
 
   final monthBases = {
     '${targetMonth.year}_${targetMonth.month}': targetMonthBase,
     '${endOfLastMonth.year}_${endOfLastMonth.month}': prevMonthBase,
     '${endOfTwoMonthsAgo.year}_${endOfTwoMonthsAgo.month}': twoMonthsAgoBase,
+    '${endOfThreeMonthsAgo.year}_${endOfThreeMonthsAgo.month}': threeMonthsAgoBase,
     '${endOfLastYear.year}_${endOfLastYear.month}': prevYearBase,
   };
 
@@ -296,6 +309,9 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
   final twoMonthsAgoBalances = _calculateIndividualBalancesAsOf(consolidatedAccounts, accounts, transactions, statements, endOfTwoMonthsAgo, monthCashBases: monthBases);
   final double twoMonthsAgoBalance = await _sumBalancesWithFx(twoMonthsAgoBalances);
 
+  final threeMonthsAgoBalances = _calculateIndividualBalancesAsOf(consolidatedAccounts, accounts, transactions, statements, endOfThreeMonthsAgo, monthCashBases: monthBases);
+  final double threeMonthsAgoBalance = await _sumBalancesWithFx(threeMonthsAgoBalances);
+
   final prevYearBalances = _calculateIndividualBalancesAsOf(consolidatedAccounts, accounts, transactions, statements, endOfLastYear, monthCashBases: monthBases);
   final double prevYearBalance = await _sumBalancesWithFx(prevYearBalances);
 
@@ -313,10 +329,12 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
     currentBalance: current,
     prevMonthBalance: prevMonthBalance,
     twoMonthsAgoBalance: twoMonthsAgoBalance,
+    threeMonthsAgoBalance: threeMonthsAgoBalance,
     prevYearBalance: prevYearBalance,
     currentDateStr: _formatDate(endOfTargetMonth),
     prevMonthDateStr: _formatDate(endOfLastMonth),
     twoMonthsAgoDateStr: _formatDate(endOfTwoMonthsAgo),
+    threeMonthsAgoDateStr: _formatDate(endOfThreeMonthsAgo),
     prevYearDateStr: _formatDate(endOfLastYear),
     accounts: updatedConsolidatedAccounts,
     prevMonthBalances: prevMonthBalances,
@@ -331,10 +349,12 @@ CashPositionModel _emptyCashPosition() {
     currentBalance: 0.0,
     prevMonthBalance: 0.0,
     twoMonthsAgoBalance: 0.0,
+    threeMonthsAgoBalance: 0.0,
     prevYearBalance: 0.0,
     currentDateStr: _formatDate(now),
     prevMonthDateStr: _formatDate(DateTime(now.year, now.month, 0)),
     twoMonthsAgoDateStr: _formatDate(DateTime(now.year, now.month - 1, 0)),
+    threeMonthsAgoDateStr: _formatDate(DateTime(now.year, now.month - 2, 0)),
     prevYearDateStr: _formatDate(DateTime(now.year - 1, 12, 31)),
   );
 }
