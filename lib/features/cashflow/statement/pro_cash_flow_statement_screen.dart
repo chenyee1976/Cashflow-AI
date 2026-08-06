@@ -134,55 +134,171 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           if (_periodType == 'Quarter') {
             final selectedYear = selectedMonth.year;
             final maxQuarter = ((selectedMonth.month - 1) ~/ 3) + 1;
+
             final quarterConfigs = [
-              {'q': 1, 'label': 'Q1', 'startM': 1, 'endM': 3},
-              {'q': 2, 'label': 'Q2', 'startM': 4, 'endM': 6},
-              {'q': 3, 'label': 'Q3', 'startM': 7, 'endM': 9},
-              {'q': 4, 'label': 'Q4', 'startM': 10, 'endM': 12},
+              {'q': 1, 'label': 'Q1\n31 Mar $selectedYear', 'endMonth': DateTime(selectedYear, 3, 31)},
+              {'q': 2, 'label': 'Q2\n30 Jun $selectedYear', 'endMonth': DateTime(selectedYear, 6, 30)},
+              {'q': 3, 'label': 'Q3\n${selectedMonth.month < 9 ? '31 Aug' : '30 Sep'} $selectedYear', 'endMonth': DateTime(selectedYear, selectedMonth.month < 9 ? 8 : 9, selectedMonth.month < 9 ? 31 : 30)},
+              {'q': 4, 'label': 'Q4\n31 Dec $selectedYear', 'endMonth': DateTime(selectedYear, 12, 31)},
             ];
+
+            double runningBegCash = 0.0;
 
             for (int i = 0; i < maxQuarter; i++) {
               final config = quarterConfigs[i];
-              final startM = config['startM'] as int;
-              final endM = config['endM'] as int;
+              final qNum = config['q'] as int;
+              final startM = (qNum - 1) * 3 + 1;
+              final endM = qNum * 3;
+
               final periodTxs = txs.where((t) {
                 final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
                 return d.year == selectedYear && d.month >= startM && d.month <= endM;
               }).toList();
 
+              final salary = periodTxs.where((t) => t.category == TransactionCategory.incomeSalary.value).fold<double>(0.0, (s, t) => s + t.amount);
+              final passive = periodTxs.where((t) => t.category == TransactionCategory.incomeInterest.value || t.category == TransactionCategory.incomeInvestments.value || t.category == TransactionCategory.incomeDividends.value).fold<double>(0.0, (s, t) => s + t.amount);
               final totalInc = periodTxs.where((t) => TransactionCategory.fromValue(t.category).isIncome && t.category != TransactionCategory.incomeTransfer.value).fold<double>(0.0, (s, t) => s + t.amount);
+              final otherInc = totalInc - salary - passive;
               final totalExp = periodTxs.where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value).fold<double>(0.0, (s, t) => s + t.amount.abs());
-              
+              final netCash = totalInc - totalExp;
+
+              double newCashPos = 0.0;
+              final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
+              final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
+              final statementsList = state.statements;
+
+              for (final acc in allUserAccounts) {
+                if (acc.id == 'manual_cash_account') continue;
+                DateTime? stmtDate;
+                if (acc.sourceStatementId != null) {
+                  final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
+                  if (matchedStmt != null) {
+                    final pEnd = matchedStmt.periodEnd ?? matchedStmt.periodStart ?? matchedStmt.uploadedAt;
+                    stmtDate = DateTime.fromMillisecondsSinceEpoch(pEnd * 1000);
+                  }
+                }
+                if (stmtDate == null && acc.createdAt > 0) {
+                  stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
+                }
+
+                if (stmtDate != null && stmtDate.year == selectedYear && stmtDate.month >= startM && stmtDate.month <= endM) {
+                  final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
+                  final currencyStr = acc.currency.trim().toUpperCase();
+                  if (currencyStr == 'SGD') {
+                    newCashPos += baseBal;
+                  } else {
+                    final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+                    newCashPos += baseBal * rate;
+                  }
+                }
+              }
+
+              final catMap = <String, double>{};
+              for (final t in periodTxs) {
+                final cat = TransactionCategory.fromValue(t.category);
+                if (cat.isExpense && cat != TransactionCategory.expenseTransfer && cat != TransactionCategory.expenseTransferToCash) {
+                  catMap[cat.displayName] = (catMap[cat.displayName] ?? 0.0) + t.amount.abs();
+                }
+              }
+
+              final qEndCash = runningBegCash + newCashPos + netCash;
+
               columns.add({
-                'label': config['label'], 'salary': 0.0, 'passive': 0.0, 'other': 0.0,
-                'totalInc': totalInc, 'totalExp': totalExp, 'netCash': totalInc - totalExp,
-                'newCashPos': 0.0, 'begCash': 0.0, 'endCash': currentLiquidCash, 'catMap': <String, double>{},
+                'label': config['label'],
+                'salary': salary,
+                'passive': passive,
+                'other': otherInc,
+                'totalInc': totalInc,
+                'totalExp': totalExp,
+                'netCash': netCash,
+                'newCashPos': newCashPos,
+                'begCash': runningBegCash,
+                'endCash': qEndCash,
+                'catMap': catMap,
               });
+
+              runningBegCash = qEndCash;
             }
           } else if (_periodType == 'YTD') {
+            final selectedYear = selectedMonth.year;
+            final endMonth = selectedMonth.month;
+            final lastDay = DateTime(selectedYear, endMonth + 1, 0).day;
+            final ytdLabel = 'YTD\n$lastDay ${DateFormat('MMM yyyy').format(selectedMonth)}';
+
             final periodTxs = txs.where((t) {
               final d = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
-              return d.year == selectedMonth.year && d.month <= selectedMonth.month;
+              return d.year == selectedYear && d.month <= endMonth;
             }).toList();
 
+            final salary = periodTxs.where((t) => t.category == TransactionCategory.incomeSalary.value).fold<double>(0.0, (s, t) => s + t.amount);
+            final passive = periodTxs.where((t) => t.category == TransactionCategory.incomeInterest.value || t.category == TransactionCategory.incomeInvestments.value || t.category == TransactionCategory.incomeDividends.value).fold<double>(0.0, (s, t) => s + t.amount);
             final totalInc = periodTxs.where((t) => TransactionCategory.fromValue(t.category).isIncome && t.category != TransactionCategory.incomeTransfer.value).fold<double>(0.0, (s, t) => s + t.amount);
+            final otherInc = totalInc - salary - passive;
             final totalExp = periodTxs.where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value).fold<double>(0.0, (s, t) => s + t.amount.abs());
+            final netCash = totalInc - totalExp;
+
+            double newCashPos = 0.0;
+            final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
+            final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
+            final statementsList = state.statements;
+
+            for (final acc in allUserAccounts) {
+              if (acc.id == 'manual_cash_account') continue;
+              DateTime? stmtDate;
+              if (acc.sourceStatementId != null) {
+                final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
+                if (matchedStmt != null) {
+                  final pEnd = matchedStmt.periodEnd ?? matchedStmt.periodStart ?? matchedStmt.uploadedAt;
+                  stmtDate = DateTime.fromMillisecondsSinceEpoch(pEnd * 1000);
+                }
+              }
+              if (stmtDate == null && acc.createdAt > 0) {
+                stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
+              }
+
+              if (stmtDate != null && stmtDate.year == selectedYear && stmtDate.month <= endMonth) {
+                final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
+                final currencyStr = acc.currency.trim().toUpperCase();
+                if (currencyStr == 'SGD') {
+                  newCashPos += baseBal;
+                } else {
+                  final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+                  newCashPos += baseBal * rate;
+                }
+              }
+            }
+
+            final catMap = <String, double>{};
+            for (final t in periodTxs) {
+              final cat = TransactionCategory.fromValue(t.category);
+              if (cat.isExpense && cat != TransactionCategory.expenseTransfer && cat != TransactionCategory.expenseTransferToCash) {
+                catMap[cat.displayName] = (catMap[cat.displayName] ?? 0.0) + t.amount.abs();
+              }
+            }
 
             columns.add({
-              'label': 'YTD', 'salary': 0.0, 'passive': 0.0, 'other': 0.0,
-              'totalInc': totalInc, 'totalExp': totalExp, 'netCash': totalInc - totalExp,
-              'newCashPos': 0.0, 'begCash': 0.0, 'endCash': currentLiquidCash, 'catMap': <String, double>{},
+              'label': ytdLabel,
+              'salary': salary,
+              'passive': passive,
+              'other': otherInc,
+              'totalInc': totalInc,
+              'totalExp': totalExp,
+              'netCash': netCash,
+              'newCashPos': newCashPos,
+              'begCash': 0.0,
+              'endCash': currentLiquidCash,
+              'catMap': catMap,
             });
           } else {
             final m0Date = selectedMonth;
             final m1Date = DateTime(selectedMonth.year, selectedMonth.month - 1);
             final m2Date = DateTime(selectedMonth.year, selectedMonth.month - 2);
             final twoMonthsAgoCash = cashPositionAsync.when(data: (pos) => pos.twoMonthsAgoBalance, loading: () => 0.0, error: (_, __) => 0.0);
-            
+
             columns = [
-              {..._calcMonthMetrics(m2Date, twoMonthsAgoCash, 0.0), 'label': DateFormat('MMM').format(m2Date)},
-              {..._calcMonthMetrics(m1Date, prevMonthCash, twoMonthsAgoCash), 'label': DateFormat('MMM').format(m1Date)},
-              {..._calcMonthMetrics(m0Date, currentLiquidCash, prevMonthCash), 'label': DateFormat('MMM').format(m0Date)},
+              {..._calcMonthMetrics(m2Date, twoMonthsAgoCash, 0.0), 'label': DateFormat('MMM yyyy').format(m2Date)},
+              {..._calcMonthMetrics(m1Date, prevMonthCash, twoMonthsAgoCash), 'label': DateFormat('MMM yyyy').format(m1Date)},
+              {..._calcMonthMetrics(m0Date, currentLiquidCash, prevMonthCash), 'label': DateFormat('MMM yyyy').format(m0Date)},
             ];
           }
 
