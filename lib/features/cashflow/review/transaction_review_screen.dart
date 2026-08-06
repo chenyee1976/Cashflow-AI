@@ -1029,8 +1029,9 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
               final targetBank = _normalize(acc.bankCtrl.text);
               final normName = _normalize(a.accountType);
               final targetName = _normalize(acc.nameCtrl.text);
+              final isSameStatement = a.sourceStatementId == statementId;
 
-              if (normBank == targetBank) {
+              if (isSameStatement && normBank == targetBank) {
                 if (targetAccNum.isNotEmpty && normAccNum == targetAccNum) return true;
                 if (targetAccNum.isEmpty && normName == targetName) return true;
               }

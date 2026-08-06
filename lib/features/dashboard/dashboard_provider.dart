@@ -117,37 +117,45 @@ Map<String, double> _calculateIndividualBalancesAsOf(
       continue;
     }
 
-    // Statement-driven evaluation: check for statements matching or preceding target month
-    final matchedStmt = statements.where((s) => s.id == acc.sourceStatementId).firstOrNull;
-    
-    // If account has a source statement ID but that statement is missing from active statements, evaluate to 0.0
-    if (acc.sourceStatementId != null && matchedStmt == null) {
-      balances[acc.id] = 0.0;
-      continue;
-    }
+    // Find all bank account snapshot records matching this physical bank/account number
+    final sameAccountSnapshots = consolidatedAccounts.where((a) =>
+      _normalize(a.bankName) == _normalize(acc.bankName) &&
+      _normalize(a.accountNumber ?? '') == _normalize(acc.accountNumber ?? '')
+    ).toList();
 
-    // Determine the statement date month for this account
-    DateTime? stmtDate;
-    if (matchedStmt != null && matchedStmt.periodEnd != null) {
-      stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
-    } else if (acc.createdAt > 0) {
-      stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
-    }
-
-    if (stmtDate == null) {
-      balances[acc.id] = 0.0;
-      continue;
-    }
+    // Find the snapshot whose statement date is on or closest-before target month
+    BankAccount? bestMatchAccount;
+    DateTime? bestMatchDate;
 
     final targetMonthStart = DateTime(date.year, date.month, 1);
-    final stmtMonthStart = DateTime(stmtDate.year, stmtDate.month, 1);
 
-    // Rule 1 & 2: If target month is prior to statement month, balance is STRICTLY 0.00 (No Backtracking!)
-    if (targetMonthStart.isBefore(stmtMonthStart)) {
+    for (final snap in sameAccountSnapshots) {
+      final matchedStmt = statements.where((s) => s.id == snap.sourceStatementId).firstOrNull;
+      if (snap.sourceStatementId != null && matchedStmt == null) continue;
+
+      DateTime? stmtDate;
+      if (matchedStmt != null && matchedStmt.periodEnd != null) {
+        stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
+      } else if (snap.createdAt > 0) {
+        stmtDate = DateTime.fromMillisecondsSinceEpoch(snap.createdAt * 1000);
+      }
+
+      if (stmtDate == null) continue;
+      final snapMonthStart = DateTime(stmtDate.year, stmtDate.month, 1);
+
+      // Must be on or before target month
+      if (!snapMonthStart.isAfter(targetMonthStart)) {
+        if (bestMatchDate == null || snapMonthStart.isAfter(bestMatchDate)) {
+          bestMatchDate = snapMonthStart;
+          bestMatchAccount = snap;
+        }
+      }
+    }
+
+    if (bestMatchAccount == null) {
       balances[acc.id] = 0.0;
     } else {
-      // Rule 3, 4 & 5: If target month is on or after statement month, use the verified statement balance (Forward Carry)
-      balances[acc.id] = acc.currentBalance;
+      balances[acc.id] = bestMatchAccount.currentBalance;
     }
   }
   return balances;
