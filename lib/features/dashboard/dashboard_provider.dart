@@ -113,63 +113,32 @@ Map<String, double> _calculateIndividualBalancesAsOf(
       continue;
     }
 
-    // Check if a statement exists for this account family that covers or precedes the target month
-    final key = '${_normalize(acc.bankName)}_${_normalize(acc.accountNumber ?? '')}';
-    final familyAccIds = allAccounts
-        .where((a) => '${_normalize(a.bankName)}_${_normalize(a.accountNumber ?? '')}' == key)
-        .map((a) => a.id)
-        .toSet();
-
-    // Check if target month is prior to this specific account's statement / creation month
-    int accStart = acc.createdAt > 0 ? acc.createdAt : 9999999999;
-    if (acc.sourceStatementId != null) {
-      final matchedStmt = statements.where((s) => s.id == acc.sourceStatementId).firstOrNull;
-      if (matchedStmt != null) {
-        final pStart = matchedStmt.periodStart ?? matchedStmt.periodEnd ?? matchedStmt.uploadedAt;
-        if (pStart < accStart) accStart = pStart;
-      }
+    // Statement-driven evaluation: check for statements matching or preceding target month
+    final matchedStmt = statements.where((s) => s.id == acc.sourceStatementId).firstOrNull;
+    
+    // Determine the statement date month for this account
+    DateTime? stmtDate;
+    if (matchedStmt != null && matchedStmt.periodEnd != null) {
+      stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
+    } else if (acc.createdAt > 0) {
+      stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
     }
 
-    // Also check any statements linked by bank name
-    final matchingStmts = statements.where((s) => s.bankOrCard != null && _normalize(s.bankOrCard!) == _normalize(acc.bankName));
-    for (final s in matchingStmts) {
-      final pStart = s.periodStart ?? s.periodEnd ?? s.uploadedAt;
-      if (pStart < accStart) accStart = pStart;
-    }
-
-    final familyTxs = transactions.where((t) => t.accountId == acc.id);
-    final validTxs = familyTxs.where((t) => t.date > 946684800);
-    if (validTxs.isNotEmpty) {
-      final earliestTxDate = validTxs.map((t) => t.date).reduce((a, b) => a < b ? a : b);
-      if (earliestTxDate < accStart) accStart = earliestTxDate;
-    }
-
-    if (accStart < 9999999999) {
-      final accStartDate = DateTime.fromMillisecondsSinceEpoch(accStart * 1000);
-      final targetMonthStart = DateTime(date.year, date.month, 1);
-      final accStartMonth = DateTime(accStartDate.year, accStartDate.month, 1);
-      if (targetMonthStart.isBefore(accStartMonth)) {
-        balances[acc.id] = 0.0;
-        continue;
-      }
-    } else {
+    if (stmtDate == null) {
       balances[acc.id] = 0.0;
       continue;
     }
 
-    double accBalance = acc.currentBalance;
-    if (validTxs.isEmpty) {
-      balances[acc.id] = accBalance;
-      continue;
-    }
+    final targetMonthStart = DateTime(date.year, date.month, 1);
+    final stmtMonthStart = DateTime(stmtDate.year, stmtDate.month, 1);
 
-    // Find transactions for this account family that occurred AFTER the target date
-    final afterTxs = validTxs.where((t) => t.date > targetTimestamp);
-    for (final tx in afterTxs) {
-      // Subtract incoming amount, add outgoing amount to backtrack
-      accBalance -= tx.amount;
+    // Rule 1 & 2: If target month is prior to statement month, balance is STRICTLY 0.00 (No Backtracking!)
+    if (targetMonthStart.isBefore(stmtMonthStart)) {
+      balances[acc.id] = 0.0;
+    } else {
+      // Rule 3, 4 & 5: If target month is on or after statement month, use the verified statement balance (Forward Carry)
+      balances[acc.id] = acc.currentBalance;
     }
-    balances[acc.id] = accBalance;
   }
   return balances;
 }
