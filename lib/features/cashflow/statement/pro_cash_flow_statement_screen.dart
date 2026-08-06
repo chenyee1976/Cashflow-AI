@@ -152,20 +152,36 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             double newCashPos = 0.0;
             final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
             final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
+            final statementsList = state.statements;
+
             for (final acc in allUserAccounts) {
               if (acc.id == 'manual_cash_account') continue;
 
-              final createdDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
-              final isFromTargetMonth = createdDate.year == targetMonth.year && createdDate.month == targetMonth.month;
+              // Determine the verified statement date for this account
+              DateTime? stmtDate;
+              if (acc.sourceStatementId != null) {
+                final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
+                if (matchedStmt != null) {
+                  final pEnd = matchedStmt.periodEnd ?? matchedStmt.periodStart ?? matchedStmt.uploadedAt;
+                  stmtDate = DateTime.fromMillisecondsSinceEpoch(pEnd * 1000);
+                }
+              }
+              if (stmtDate == null && acc.createdAt > 0) {
+                stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
+              }
 
-              if (isFromTargetMonth) {
-                final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
-                final currencyStr = acc.currency.trim().toUpperCase();
-                if (currencyStr == 'SGD') {
-                  newCashPos += baseBal;
-                } else {
-                  final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
-                  newCashPos += baseBal * rate;
+              if (stmtDate != null) {
+                final isFromTargetMonth = stmtDate.year == targetMonth.year && stmtDate.month == targetMonth.month;
+
+                if (isFromTargetMonth) {
+                  final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
+                  final currencyStr = acc.currency.trim().toUpperCase();
+                  if (currencyStr == 'SGD') {
+                    newCashPos += baseBal;
+                  } else {
+                    final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+                    newCashPos += baseBal * rate;
+                  }
                 }
               }
             }
