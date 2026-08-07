@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/services/notification_service.dart';
 import '../../features/notifications/notification_dialog.dart';
+import '../../features/support/beta_analytics_dialog.dart';
 
 class AppHeaderBrand extends ConsumerWidget {
   final bool showNotificationIcon;
@@ -41,21 +42,35 @@ class AppHeaderBrand extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-          ),
-          child: const Text(
-            'Beta',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-          ),
+        StatefulBuilder(
+          builder: (context, setState) {
+            int tapCount = 0;
+            return GestureDetector(
+              onTap: () {
+                tapCount++;
+                if (tapCount >= 5) {
+                  tapCount = 0;
+                  BetaAnalyticsDialog.show(context);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                ),
+                child: const Text(
+                  'Beta',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
         if (showNotificationIcon) ...[
           const Spacer(),

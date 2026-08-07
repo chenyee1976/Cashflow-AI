@@ -114,10 +114,14 @@ class AnalyticsService {
       final savedEmail = prefs.getString('tester_email');
       if (savedEmail != null && savedEmail.contains('@')) {
         _currentUserEmail = savedEmail.trim();
+      } else {
+        _currentUserEmail = 'chenwallpaper@gmail.com';
       }
       final savedUserId = prefs.getString('user_id');
       if (savedUserId != null && savedUserId.isNotEmpty) {
         _currentUserId = savedUserId.trim();
+      } else {
+        _currentUserId = 'chenyee_user';
       }
     } catch (_) {}
   }
@@ -317,6 +321,7 @@ class AnalyticsService {
     ));
 
     // 1. Try Vercel Serverless Function
+    // 1. Query Vercel Serverless Endpoint
     try {
       final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
       final res = await dio.get('$baseUrl/api/feedback');
@@ -330,26 +335,12 @@ class AnalyticsService {
       }
     } catch (_) {}
 
-    // 2. Query Direct Cloud REST Storage to guarantee complete multi-device coverage
-    try {
-      final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fcb0d-a129-7247-a603-e4411cb9c647', options: Options(headers: {'Accept': 'application/json'}));
-      if (resCloud.statusCode == 200 && resCloud.data != null) {
-        final itemsList = resCloud.data['items'] as List<dynamic>?;
-        if (itemsList != null) {
-          for (final item in itemsList) {
-            final entry = BetaFeedbackEntry.fromJson(item as Map<String, dynamic>);
-            map[entry.id] = entry;
-          }
-        }
-      }
-    } catch (_) {}
-
     final merged = map.values.toList();
     merged.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return merged;
   }
 
-  /// Get stored event/error logs from local + Vercel + Direct Cloud REST
+  /// Get stored event/error logs from local + Vercel
   Future<List<BetaLogEntry>> getLogs() async {
     final prefs = await SharedPreferences.getInstance();
     final rawList = prefs.getStringList(_logsKey) ?? [];
@@ -367,7 +358,7 @@ class AnalyticsService {
       receiveTimeout: const Duration(seconds: 10),
     ));
 
-    // 1. Try Vercel Serverless Function
+    // 1. Query Vercel Serverless Endpoint
     try {
       final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
       final res = await dio.get('$baseUrl/api/logs');
@@ -377,20 +368,6 @@ class AnalyticsService {
             .toList();
         for (final item in serverList) {
           map['${item.name}_${item.timestamp.toIso8601String()}'] = item;
-        }
-      }
-    } catch (_) {}
-
-    // 2. Query Direct Cloud REST Storage to guarantee complete multi-device coverage
-    try {
-      final resCloud = await dio.get('https://jsonblob.com/api/jsonBlob/019fcb0d-da70-7e5c-abc3-3c0cebee615a', options: Options(headers: {'Accept': 'application/json'}));
-      if (resCloud.statusCode == 200 && resCloud.data != null) {
-        final itemsList = resCloud.data['items'] as List<dynamic>?;
-        if (itemsList != null) {
-          for (final item in itemsList) {
-            final entry = BetaLogEntry.fromJson(item as Map<String, dynamic>);
-            map['${entry.name}_${entry.timestamp.toIso8601String()}'] = entry;
-          }
         }
       }
     } catch (_) {}

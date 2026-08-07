@@ -424,12 +424,25 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                                           ],
                                         ),
                                         if (log.details != null && log.details!.isNotEmpty) ...[
-                                          const SizedBox(height: 4),
+                                          const SizedBox(height: 6),
+                                          if (log.details!['ipAddress'] != null) ...[
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              margin: const EdgeInsets.only(bottom: 4),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                                              ),
+                                              child: Text(
+                                                '🌐 Client IP: ${log.details!['ipAddress']}',
+                                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                              ),
+                                            ),
+                                          ],
                                           Text(
                                             log.details.toString(),
                                             style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                                            maxLines: 3,
-                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ],
                                       ],
