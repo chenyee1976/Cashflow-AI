@@ -118,7 +118,7 @@ Map<String, double> _calculateIndividualBalancesAsOf(
     }
 
     // Find all bank account snapshot records matching this physical bank/account number
-    final sameAccountSnapshots = consolidatedAccounts.where((a) =>
+    final sameAccountSnapshots = allAccounts.where((a) =>
       _normalize(a.bankName) == _normalize(acc.bankName) &&
       _normalize(a.accountNumber ?? '') == _normalize(acc.accountNumber ?? '')
     ).toList();
