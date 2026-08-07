@@ -125,7 +125,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             }
 
               double newCashPos = 0.0;
-              final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
+              final allUserAccounts = state.bankAccounts;
               final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
               final statementsList = state.statements;
 
@@ -189,7 +189,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               final netCash = totalInc - totalExp;
 
               double newCashPos = 0.0;
-              final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
+              final allUserAccounts = state.bankAccounts;
               final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
               final statementsList = state.statements;
 

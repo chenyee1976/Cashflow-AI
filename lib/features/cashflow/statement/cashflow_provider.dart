@@ -16,6 +16,7 @@ class CashFlowMonthData {
   final List<Transaction> allTransactions;
   final Map<String, String> accountNamesMap;
   final List<Statement> statements;
+  final List<BankAccount> bankAccounts;
 
   const CashFlowMonthData({
     required this.totalIncome,
@@ -27,6 +28,7 @@ class CashFlowMonthData {
     required this.allTransactions,
     required this.accountNamesMap,
     this.statements = const [],
+    this.bankAccounts = const [],
   });
 }
 
@@ -192,6 +194,7 @@ final cashFlowScreenProvider = FutureProvider.autoDispose<CashFlowMonthData>((re
       allTransactions: allTxs,
       accountNamesMap: accountNames,
       statements: statementsList,
+      bankAccounts: bankAccounts,
     );
 });
 
