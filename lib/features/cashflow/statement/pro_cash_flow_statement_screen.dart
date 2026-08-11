@@ -264,8 +264,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 }
               }
 
-              // Evaluate exact ending cash accumulated from all statements up to endM
+              // Evaluate exact ending cash as of the quarter end month (endM)
               double cumulativeCash = 0.0;
+              final endMonthStart = DateTime(selectedYear, endM, 1);
+
+              final latestBalancePerIdentity = <String, double>{};
+              final latestDatePerIdentity = <String, DateTime>{};
+
+              String _normIdentity(BankAccount a) => '${a.bankName.trim()}_${(a.accountNumber ?? '').trim()}'.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
 
               for (final acc in allUserAccounts) {
                 if (acc.id == 'manual_cash_account') continue;
@@ -284,20 +290,27 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                   }
                 }
 
-                // If account statement date is on or before endM month, include its balance
                 if (stmtDate != null) {
                   final stmtMonthStart = DateTime(stmtDate.year, stmtDate.month, 1);
-                  final endMonthStart = DateTime(selectedYear, endM, 1);
                   if (!stmtMonthStart.isAfter(endMonthStart)) {
-                    final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
-                    final currencyStr = acc.currency.trim().toUpperCase();
-                    if (currencyStr == 'SGD') {
-                      cumulativeCash += baseBal;
-                    } else {
-                      final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
-                      cumulativeCash += baseBal * rate;
+                    final identity = _normIdentity(acc);
+                    if (!latestDatePerIdentity.containsKey(identity) || stmtDate.isAfter(latestDatePerIdentity[identity]!)) {
+                      latestDatePerIdentity[identity] = stmtDate;
+                      latestBalancePerIdentity[identity] = acc.currentBalance;
                     }
                   }
+                }
+              }
+
+              for (final identity in latestBalancePerIdentity.keys) {
+                final baseBal = latestBalancePerIdentity[identity]!;
+                final sampleAcc = allUserAccounts.firstWhere((a) => _normIdentity(a) == identity);
+                final currencyStr = sampleAcc.currency.trim().toUpperCase();
+                if (currencyStr == 'SGD') {
+                  cumulativeCash += baseBal;
+                } else {
+                  final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+                  cumulativeCash += baseBal * rate;
                 }
               }
 
