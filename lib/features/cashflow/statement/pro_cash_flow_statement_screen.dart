@@ -137,10 +137,13 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                   if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
                     stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
                   }
-                }
-                // If statement date not explicitly set on statement row, infer from account's balanceAsOf (createdAt) timestamp
-                if (stmtDate == null && acc.createdAt > 0) {
-                  stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
+                  if (stmtDate == null) {
+                    final stmtTxs = txs.where((t) => t.statementId == acc.sourceStatementId).toList();
+                    if (stmtTxs.isNotEmpty) {
+                      stmtTxs.sort((a, b) => b.date.compareTo(a.date));
+                      stmtDate = DateTime.fromMillisecondsSinceEpoch(stmtTxs.first.date * 1000);
+                    }
+                  }
                 }
 
                 if (stmtDate != null && stmtDate.year == targetMonth.year && stmtDate.month == targetMonth.month) {
@@ -201,9 +204,13 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                   if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
                     stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
                   }
-                }
-                if (stmtDate == null && acc.createdAt > 0) {
-                  stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
+                  if (stmtDate == null) {
+                    final stmtTxs = txs.where((t) => t.statementId == acc.sourceStatementId).toList();
+                    if (stmtTxs.isNotEmpty) {
+                      stmtTxs.sort((a, b) => b.date.compareTo(a.date));
+                      stmtDate = DateTime.fromMillisecondsSinceEpoch(stmtTxs.first.date * 1000);
+                    }
+                  }
                 }
 
                 if (stmtDate != null && stmtDate.year == selectedYear && stmtDate.month >= startM && stmtDate.month <= endM) {
@@ -237,9 +244,13 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                   if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
                     stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
                   }
-                }
-                if (stmtDate == null && acc.createdAt > 0) {
-                  stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
+                  if (stmtDate == null) {
+                    final stmtTxs = txs.where((t) => t.statementId == acc.sourceStatementId).toList();
+                    if (stmtTxs.isNotEmpty) {
+                      stmtTxs.sort((a, b) => b.date.compareTo(a.date));
+                      stmtDate = DateTime.fromMillisecondsSinceEpoch(stmtTxs.first.date * 1000);
+                    }
+                  }
                 }
 
                 // If account statement date is on or before endM month, include its balance
