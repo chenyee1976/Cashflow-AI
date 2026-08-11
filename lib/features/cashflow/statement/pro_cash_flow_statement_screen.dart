@@ -134,11 +134,11 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 DateTime? stmtDate;
                 if (acc.sourceStatementId != null) {
                   final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
-                  if (matchedStmt != null) {
-                    final pEnd = matchedStmt.periodEnd ?? matchedStmt.periodStart ?? matchedStmt.uploadedAt;
-                    stmtDate = DateTime.fromMillisecondsSinceEpoch(pEnd * 1000);
+                  if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
+                    stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
                   }
                 }
+                // If statement date not explicitly set on statement row, infer from account's balanceAsOf (createdAt) timestamp
                 if (stmtDate == null && acc.createdAt > 0) {
                   stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
                 }
@@ -198,9 +198,8 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 DateTime? stmtDate;
                 if (acc.sourceStatementId != null) {
                   final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
-                  if (matchedStmt != null) {
-                    final pEnd = matchedStmt.periodEnd ?? matchedStmt.periodStart ?? matchedStmt.uploadedAt;
-                    stmtDate = DateTime.fromMillisecondsSinceEpoch(pEnd * 1000);
+                  if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
+                    stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
                   }
                 }
                 if (stmtDate == null && acc.createdAt > 0) {
@@ -235,9 +234,8 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 DateTime? stmtDate;
                 if (acc.sourceStatementId != null) {
                   final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
-                  if (matchedStmt != null) {
-                    final pEnd = matchedStmt.periodEnd ?? matchedStmt.periodStart ?? matchedStmt.uploadedAt;
-                    stmtDate = DateTime.fromMillisecondsSinceEpoch(pEnd * 1000);
+                  if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
+                    stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
                   }
                 }
                 if (stmtDate == null && acc.createdAt > 0) {

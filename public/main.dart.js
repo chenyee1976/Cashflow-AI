@@ -59716,7 +59716,7 @@ l=s.x
 if(l==="Quarter"){e8=d6.b
 k=A.at(e8)
 j=B.i.b2(A.av(e8)-1,3)+1
-for(l=t.N,i=t.z,h=e9.x,g=e9.y,f=J.cd(e7),e=J.cd(g),d=J.cd(h),c=0,b=0;b<j;b=a,c=c4){a=b+1
+for(l=t.N,i=t.z,h=e9.x,g=e9.y,f=J.cd(e7),e=J.cd(g),d=J.cd(h),c=0,b=0;b<j;b=a,c=c3){a=b+1
 a0=(a-1)*3+1
 a1=a===j?A.av(e8):a*3
 a2=A.bb(k,a1+1,0,0,0,0,0)
@@ -59736,47 +59736,51 @@ if(b2.a===d9)continue
 b3=d7
 if(b2.x!=null){b4=A.BL(d.bD(h,new A.aWF(b2)))
 if(b4!=null){b5=b4.z
-b6=b5==null?b4.y:b5
-b3=new A.aM(A.cT((b6==null?b4.ax:b6)*1000,0,!1),0,!1)}}if(b3==null&&b2.y>0)b3=new A.aM(A.cT(b2.y*1000,0,!1),0,!1)
-if(b3!=null&&A.at(b3)===k&&A.av(b3)>=a0&&A.av(b3)<=a1){b7=b2.f
-b7=b7>0?b7:b2.r
-b8=B.b.ap(b2.w).toUpperCase()
-if(b8==="SGD")b1+=b7
-else{b9=b0.i(0,b8)
-if(b9==null)if(b8==="USD")b9=1.3
-else{b2=b8==="JPY"?0.008:1
-b9=b2}b1+=b7*b9}}}c0=A.z(l,p)
-for(a4=a5.length,c1=0;c1<a5.length;a5.length===a4||(0,A.F)(a5),++c1){c2=a5[c1]
-c3=A.ff(c2.y)
-if(!c3.e&&c3!==B.hW&&c3!==B.jP){b2=c3.d
-b5=c0.i(0,b2)
+b5=b5!=null&&b5>0}else b5=!1
+if(b5){b5=b4.z
+b5.toString
+b3=new A.aM(A.cT(b5*1000,0,!1),0,!1)}}if(b3==null&&b2.y>0)b3=new A.aM(A.cT(b2.y*1000,0,!1),0,!1)
+if(b3!=null&&A.at(b3)===k&&A.av(b3)>=a0&&A.av(b3)<=a1){b6=b2.f
+b6=b6>0?b6:b2.r
+b7=B.b.ap(b2.w).toUpperCase()
+if(b7==="SGD")b1+=b6
+else{b8=b0.i(0,b7)
+if(b8==null)if(b7==="USD")b8=1.3
+else{b2=b7==="JPY"?0.008:1
+b8=b2}b1+=b6*b8}}}b9=A.z(l,p)
+for(a4=a5.length,c0=0;c0<a5.length;a5.length===a4||(0,A.F)(a5),++c0){c1=a5[c0]
+c2=A.ff(c1.y)
+if(!c2.e&&c2!==B.hW&&c2!==B.jP){b2=c2.d
+b5=b9.i(0,b2)
 if(b5==null)b5=0
-c0.l(0,b2,b5+Math.abs(c2.w))}}for(a4=e.gad(g),c4=0;a4.u();){b2=a4.gH(a4)
+b9.l(0,b2,b5+Math.abs(c1.w))}}for(a4=e.gad(g),c3=0;a4.u();){b2=a4.gH(a4)
 if(b2.a===d9)continue
 b3=d7
 if(b2.x!=null){b4=A.BL(d.bD(h,new A.aWG(b2)))
 if(b4!=null){b5=b4.z
-b6=b5==null?b4.y:b5
-b3=new A.aM(A.cT((b6==null?b4.ax:b6)*1000,0,!1),0,!1)}}if(b3==null&&b2.y>0)b3=new A.aM(A.cT(b2.y*1000,0,!1),0,!1)
-if(b3!=null){c5=A.bb(A.at(b3),A.av(b3),1,0,0,0,0)
-c6=A.bb(k,a1,1,0,0,0,0)
-b5=c5.a
-c7=c6.a
-if(b5<=c7)b5=b5===c7&&c5.b>c6.b
+b5=b5!=null&&b5>0}else b5=!1
+if(b5){b5=b4.z
+b5.toString
+b3=new A.aM(A.cT(b5*1000,0,!1),0,!1)}}if(b3==null&&b2.y>0)b3=new A.aM(A.cT(b2.y*1000,0,!1),0,!1)
+if(b3!=null){c4=A.bb(A.at(b3),A.av(b3),1,0,0,0,0)
+c5=A.bb(k,a1,1,0,0,0,0)
+b5=c4.a
+c6=c5.a
+if(b5<=c6)b5=b5===c6&&c4.b>c5.b
 else b5=!0
-if(!b5){b7=b2.f
-b7=b7>0?b7:b2.r
-b8=B.b.ap(b2.w).toUpperCase()
-if(b8==="SGD")c4+=b7
-else{b9=b0.i(0,b8)
-if(b9==null)if(b8==="USD")b9=1.3
-else{b2=b8==="JPY"?0.008:1
-b9=b2}c4+=b7*b9}}}}e6.a.push(A.am(["label","Q"+a+"\n"+A.cN(a2)+" "+a3,"salary",a6,"passive",a7,"other",a8-a6-a7,"totalInc",a8,"totalExp",a9,"netCash",a8-a9,"newCashPos",b1,"begCash",c,"endCash",c4,"catMap",c0],l,i))}}else{i=d6.b
+if(!b5){b6=b2.f
+b6=b6>0?b6:b2.r
+b7=B.b.ap(b2.w).toUpperCase()
+if(b7==="SGD")c3+=b6
+else{b8=b0.i(0,b7)
+if(b8==null)if(b7==="USD")b8=1.3
+else{b2=b7==="JPY"?0.008:1
+b8=b2}c3+=b6*b8}}}}e6.a.push(A.am(["label","Q"+a+"\n"+A.cN(a2)+" "+a3,"salary",a6,"passive",a7,"other",a8-a6-a7,"totalInc",a8,"totalExp",a9,"netCash",a8-a9,"newCashPos",b1,"begCash",c,"endCash",c3,"catMap",b9],l,i))}}else{i=d6.b
 if(l==="YTD"){k=A.at(i)
-c8=A.av(i)
-e8=A.bb(k,c8+1,0,0,0,0,0)
+c7=A.av(i)
+e8=A.bb(k,c7+1,0,0,0,0,0)
 i=A.cS(d8).ai(i)
-l=J.fv(e7,new A.aWH(k,c8))
+l=J.fv(e7,new A.aWH(k,c7))
 a5=A.Q(l,l.$ti.h("x.E"))
 l=A.T(a5).h("aD<1>")
 a6=new A.aD(a5,new A.aWI(),l).cF(0,0,new A.aWJ())
@@ -59790,28 +59794,28 @@ q=A.ahk(r,q)
 b0=q==null?d7:q.a.at
 if(b0==null)b0=A.z(t.N,p)
 h=e9.x
-for(q=g.length,l=J.cd(h),b1=0,c1=0;c1<g.length;g.length===q||(0,A.F)(g),++c1){c9=g[c1]
-if(c9.a===d9)continue
+for(q=g.length,l=J.cd(h),b1=0,c0=0;c0<g.length;g.length===q||(0,A.F)(g),++c0){c8=g[c0]
+if(c8.a===d9)continue
 b3=d7
-if(c9.x!=null){b4=A.BL(l.bD(h,new A.aWR(c9)))
+if(c8.x!=null){b4=A.BL(l.bD(h,new A.aWR(c8)))
 if(b4!=null){f=b4.z
-b6=f==null?b4.y:f
-b3=new A.aM(A.cT((b6==null?b4.ax:b6)*1000,0,!1),0,!1)}}if(b3==null&&c9.y>0)b3=new A.aM(A.cT(c9.y*1000,0,!1),0,!1)
-if(b3!=null&&A.at(b3)===k&&A.av(b3)<=c8){b7=c9.f
-b7=b7>0?b7:c9.r
-b8=B.b.ap(c9.w).toUpperCase()
-if(b8==="SGD")b1+=b7
-else{b9=b0.i(0,b8)
-if(b9==null)if(b8==="USD")b9=1.3
-else{f=b8==="JPY"?0.008:1
-b9=f}b1+=b7*b9}}}q=t.N
-c0=A.z(q,p)
-for(p=a5.length,c1=0;c1<a5.length;a5.length===p||(0,A.F)(a5),++c1){c2=a5[c1]
-c3=A.ff(c2.y)
-if(!c3.e&&c3!==B.hW&&c3!==B.jP){l=c3.d
-f=c0.i(0,l)
+c9=f==null?b4.y:f
+b3=new A.aM(A.cT((c9==null?b4.ax:c9)*1000,0,!1),0,!1)}}if(b3==null&&c8.y>0)b3=new A.aM(A.cT(c8.y*1000,0,!1),0,!1)
+if(b3!=null&&A.at(b3)===k&&A.av(b3)<=c7){b6=c8.f
+b6=b6>0?b6:c8.r
+b7=B.b.ap(c8.w).toUpperCase()
+if(b7==="SGD")b1+=b6
+else{b8=b0.i(0,b7)
+if(b8==null)if(b7==="USD")b8=1.3
+else{f=b7==="JPY"?0.008:1
+b8=f}b1+=b6*b8}}}q=t.N
+b9=A.z(q,p)
+for(p=a5.length,c0=0;c0<a5.length;a5.length===p||(0,A.F)(a5),++c0){c1=a5[c0]
+c2=A.ff(c1.y)
+if(!c2.e&&c2!==B.hW&&c2!==B.jP){l=c2.d
+f=b9.i(0,l)
 if(f==null)f=0
-c0.l(0,l,f+Math.abs(c2.w))}}e6.a.push(A.am(["label","YTD\n"+A.cN(e8)+" "+i,"salary",a6,"passive",a7,"other",a8-a6-a7,"totalInc",a8,"totalExp",a9,"netCash",a8-a9,"newCashPos",b1,"begCash",0,"endCash",o,"catMap",c0],q,t.z))}else{d0=A.bb(A.at(i),A.av(i)-1,1,0,0,0,0)
+b9.l(0,l,f+Math.abs(c1.w))}}e6.a.push(A.am(["label","YTD\n"+A.cN(e8)+" "+i,"salary",a6,"passive",a7,"other",a8-a6-a7,"totalInc",a8,"totalExp",a9,"netCash",a8-a9,"newCashPos",b1,"begCash",0,"endCash",o,"catMap",b9],q,t.z))}else{d0=A.bb(A.at(i),A.av(i)-1,1,0,0,0,0)
 d1=A.bb(A.at(i),A.av(i)-2,1,0,0,0,0)
 d2=A.hP(r,new A.aWS(),new A.aWT(),new A.aWU(),q,p)
 l=t.N
@@ -59823,7 +59827,7 @@ q.l(0,e0,A.cS(d8).ai(d0))
 f=A.m5(m.$3(i,o,n),l,f)
 f.l(0,e0,A.cS(d8).ai(i))
 e6.a=A.a([p,q,f],e8)}}d3=A.b3(t.N)
-for(e8=e6.a,q=e8.length,p=t.V0,c1=0;c1<e8.length;e8.length===q||(0,A.F)(e8),++c1)d3.G(0,J.o3(p.a(e8[c1].i(0,"catMap"))))
+for(e8=e6.a,q=e8.length,p=t.V0,c0=0;c0<e8.length;e8.length===q||(0,A.F)(e8),++c0)d3.G(0,J.o3(p.a(e8[c0].i(0,"catMap"))))
 d4=A.Q(d3,d3.$ti.c)
 B.c.j3(d4)
 e8=t.rc
@@ -59883,16 +59887,16 @@ A.aWW.prototype={
 $2(a,b){return 0},
 $S:88}
 A.aXa.prototype={
-$3(a4,a5,a6){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2=J.fv(this.a,new A.aWo(a4)),a3=A.Q(a2,a2.$ti.h("x.E"))
-a2=A.T(a3).h("aD<1>")
-s=new A.aD(a3,new A.aWp(),a2).cF(0,0,new A.aWq())
-r=new A.aD(a3,new A.aWr(),a2).cF(0,0,new A.aWs())
-q=new A.aD(a3,new A.aWt(),a2).cF(0,0,new A.aWu())
-p=new A.aD(a3,new A.aWv(),a2).cF(0,0,new A.aWw())
-a2=t.N
+$3(a3,a4,a5){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1=J.fv(this.a,new A.aWo(a3)),a2=A.Q(a1,a1.$ti.h("x.E"))
+a1=A.T(a2).h("aD<1>")
+s=new A.aD(a2,new A.aWp(),a1).cF(0,0,new A.aWq())
+r=new A.aD(a2,new A.aWr(),a1).cF(0,0,new A.aWs())
+q=new A.aD(a2,new A.aWt(),a1).cF(0,0,new A.aWu())
+p=new A.aD(a2,new A.aWv(),a1).cF(0,0,new A.aWw())
+a1=t.N
 o=t.i
-n=A.z(a2,o)
-for(m=a3.length,l=0;l<a3.length;a3.length===m||(0,A.F)(a3),++l){k=a3[l]
+n=A.z(a1,o)
+for(m=a2.length,l=0;l<a2.length;a2.length===m||(0,A.F)(a2),++l){k=a2[l]
 j=A.ff(k.y)
 if(!j.e&&j!==B.hW&&j!==B.jP){i=j.d
 h=n.i(0,i)
@@ -59900,23 +59904,25 @@ if(h==null)h=0
 n.l(0,i,h+Math.abs(k.w))}}m=this.b
 i=A.ahk(this.c,t.SS)
 g=i==null?null:i.a.at
-if(g==null)g=A.z(a2,o)
+if(g==null)g=A.z(a1,o)
 f=m.x
 for(o=J.aJ(m.y),m=J.cd(f),e=0;o.u();){i=o.gH(o)
 if(i.a==="manual_cash_account")continue
 d=null
 if(i.x!=null){c=A.BL(m.bD(f,new A.aWx(i)))
 if(c!=null){h=c.z
-b=h==null?c.y:h
-d=new A.aM(A.cT((b==null?c.ax:b)*1000,0,!1),0,!1)}}if(d==null&&i.y>0)d=new A.aM(A.cT(i.y*1000,0,!1),0,!1)
-if(d!=null&&A.at(d)===A.at(a4)&&A.av(d)===A.av(a4)){a=i.f
-a=a>0?a:i.r
-a0=B.b.ap(i.w).toUpperCase()
-if(a0==="SGD")e+=a
-else{a1=g.i(0,a0)
-if(a1==null)if(a0==="USD")a1=1.3
-else{i=a0==="JPY"?0.008:1
-a1=i}e+=a*a1}}}return A.am(["salary",s,"passive",r,"other",q-s-r,"totalInc",q,"totalExp",p,"netCash",q-p,"newCashPos",e,"begCash",a6,"endCash",a5,"catMap",n],a2,t.z)},
+h=h!=null&&h>0}else h=!1
+if(h){h=c.z
+h.toString
+d=new A.aM(A.cT(h*1000,0,!1),0,!1)}}if(d==null&&i.y>0)d=new A.aM(A.cT(i.y*1000,0,!1),0,!1)
+if(d!=null&&A.at(d)===A.at(a3)&&A.av(d)===A.av(a3)){b=i.f
+b=b>0?b:i.r
+a=B.b.ap(i.w).toUpperCase()
+if(a==="SGD")e+=b
+else{a0=g.i(0,a)
+if(a0==null)if(a==="USD")a0=1.3
+else{i=a==="JPY"?0.008:1
+a0=i}e+=b*a0}}}return A.am(["salary",s,"passive",r,"other",q-s-r,"totalInc",q,"totalExp",p,"netCash",q-p,"newCashPos",e,"begCash",a5,"endCash",a4,"catMap",n],a1,t.z)},
 $S:361}
 A.aWo.prototype={
 $1(a){var s=new A.aM(A.cT(a.e*1000,0,!1),0,!1),r=this.a
