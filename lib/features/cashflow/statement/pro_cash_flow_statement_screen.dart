@@ -543,15 +543,18 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   }
 
   Widget _buildDynamicHeader(List<Map<String, dynamic>> columns) {
+    final isMobile = MediaQuery.of(context).size.width < 480;
+    final fontSize = isMobile ? 10.0 : 11.0;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Expanded(
+        Expanded(
           flex: 4,
-          child: Text('Line Item', style: TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.bold)),
+          child: Text('Line Item', style: TextStyle(color: Colors.white54, fontSize: fontSize, fontWeight: FontWeight.bold)),
         ),
         ...columns.map((col) => Expanded(
           flex: 3,
-          child: Text(col['label'] as String, textAlign: TextAlign.right, style: const TextStyle(color: AppColors.proGold, fontSize: 11, fontWeight: FontWeight.bold)),
+          child: Text(col['label'] as String, textAlign: TextAlign.right, style: TextStyle(color: AppColors.proGold, fontSize: fontSize, fontWeight: FontWeight.bold)),
         )),
       ],
     );
@@ -559,9 +562,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
   Widget _buildDynamicRow(String label, List<Map<String, dynamic>> columns, String key, NumberFormat fmt, {bool isPositive = true, bool isBold = false, bool negate = false}) {
     final activeColor = isPositive ? const Color(0xFF60A5FA) : const Color(0xFFF87171);
+    final isMobile = MediaQuery.of(context).size.width < 480;
+    final labelSize = isMobile ? (isBold ? 12.0 : 11.0) : (isBold ? 13.5 : 12.5);
+    final valSize = isMobile ? (isBold ? 11.5 : 10.5) : (isBold ? 13.5 : 12.0);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             flex: 4,
@@ -569,7 +577,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               label,
               style: TextStyle(
                 color: isBold ? Colors.white : Colors.white70,
-                fontSize: isBold ? 13.5 : 12.5,
+                fontSize: labelSize,
                 fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -583,7 +591,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               child: Text(
                 fmt.format(val),
                 textAlign: TextAlign.right,
-                style: TextStyle(color: c, fontSize: isBold ? 13.5 : 12, fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
+                style: TextStyle(color: c, fontSize: valSize, fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
               ),
             );
           }),
@@ -594,15 +602,19 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
   Widget _buildDynamicCategoryRow(String label, List<Map<String, dynamic>> columns, String catName, NumberFormat fmt) {
     final activeColor = const Color(0xFFF87171);
+    final isMobile = MediaQuery.of(context).size.width < 480;
+    final fontSize = isMobile ? 10.5 : 12.0;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             flex: 4,
             child: Text(
               label,
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
+              style: TextStyle(color: Colors.white70, fontSize: fontSize),
             ),
           ),
           ...columns.map((col) {
@@ -614,7 +626,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               child: Text(
                 fmt.format(val),
                 textAlign: TextAlign.right,
-                style: TextStyle(color: c, fontSize: 12),
+                style: TextStyle(color: c, fontSize: fontSize),
               ),
             );
           }),
@@ -624,18 +636,23 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   }
 
   Widget _buildDynamicSubtotalRow(String label, List<Map<String, dynamic>> columns, String key, NumberFormat fmt) {
+    final isMobile = MediaQuery.of(context).size.width < 480;
+    final labelSize = isMobile ? 11.0 : 12.0;
+    final valSize = isMobile ? 11.0 : 12.0;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 10, vertical: isMobile ? 8 : 10),
       decoration: BoxDecoration(
         color: AppColors.proBackground,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.proPrimary.withOpacity(0.5)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             flex: 4,
-            child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
+            child: Text(label, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: labelSize)),
           ),
           ...columns.map((col) {
             final val = col[key] as double? ?? 0.0;
@@ -644,7 +661,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               child: Text(
                 fmt.format(val),
                 textAlign: TextAlign.right,
-                style: TextStyle(color: val >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.bold, fontSize: 12),
+                style: TextStyle(color: val >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.bold, fontSize: valSize),
               ),
             );
           }),
@@ -664,13 +681,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('TOTAL ENDING CASH', style: TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.8)),
-              Text('Sum of Bank Balances + Physical Cash on Hand', style: TextStyle(color: Colors.white54, fontSize: 11)),
-            ],
-          ),
+          const Text('TOTAL ENDING CASH', style: TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.8)),
+          const SizedBox(height: 4),
+          const Text('Sum of Bank Balances + Physical Cash on Hand', style: TextStyle(color: Colors.white54, fontSize: 11)),
           const SizedBox(height: 12),
           _buildDynamicSubtotalRow('TOTAL ENDING CASH', columns, 'endCash', fmt),
         ],
@@ -679,6 +692,8 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   }
 
   Widget _buildHeaderControls() {
+    final isMobile = MediaQuery.of(context).size.width < 480;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -687,12 +702,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         border: Border.all(color: AppColors.proPrimary.withOpacity(0.4)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Period Horizon', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-              SegmentedButton<String>(
+          if (isMobile) ...[
+            const Text('Period Horizon', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(value: 'Month', label: Text('Month')),
                   ButtonSegment(value: 'Quarter', label: Text('Quarter')),
@@ -708,23 +725,54 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     return Colors.transparent;
                   }),
                   foregroundColor: WidgetStateProperty.all(AppColors.white),
+                  padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 4)),
                 ),
               ),
-            ],
-          ),
+            ),
+          ] else ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Period Horizon', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'Month', label: Text('Month')),
+                    ButtonSegment(value: 'Quarter', label: Text('Quarter')),
+                    ButtonSegment(value: 'YTD', label: Text('YTD')),
+                  ],
+                  selected: {_periodType},
+                  onSelectionChanged: (val) => setState(() => _periodType = val.first),
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return AppColors.proPrimary;
+                      }
+                      return Colors.transparent;
+                    }),
+                    foregroundColor: WidgetStateProperty.all(AppColors.white),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const Divider(color: Colors.white12, height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
-                children: [
-                  Icon(Icons.storefront_outlined, color: AppColors.proGold, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Include Business & Capital Module',
-                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                ],
+              const Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.storefront_outlined, color: AppColors.proGold, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Include Business & Capital Module',
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Switch(
                 value: _includeBusiness,
@@ -740,6 +788,39 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
   Widget _buildExecutiveSummary(double netCash, double grossIn, double grossOut, double netTransfers, NumberFormat fmt, String monthLabel) {
     final savingsRatio = grossIn > 0 ? ((netCash / grossIn) * 100).clamp(0.0, 100.0) : 0.0;
+    final isMobile = MediaQuery.of(context).size.width < 480;
+
+    Widget buildMetricColumn(String title, String valStr, Color valColor, {Widget? extraTitleWidget}) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(title, style: const TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold)),
+              if (extraTitleWidget != null) extraTitleWidget,
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(valStr, style: TextStyle(color: valColor, fontWeight: FontWeight.bold, fontSize: isMobile ? 12 : 13)),
+        ],
+      );
+    }
+
+    final savingsRateTooltip = Tooltip(
+      message: 'Formula: (Net Cash Flow / Total Income) × 100%\n\nMeasures the percentage of total income retained as net savings after deducting total expenses.',
+      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: AppColors.proCardBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.proGold),
+      ),
+      textStyle: const TextStyle(color: Colors.white, fontSize: 11, height: 1.3),
+      child: const Padding(
+        padding: EdgeInsets.only(left: 3.0),
+        child: Icon(Icons.info_outline, color: Colors.white54, size: 11),
+      ),
+    );
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -767,74 +848,39 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           const SizedBox(height: 6),
           Text(
             fmt.format(netCash),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.white,
-              fontSize: 30,
+              fontSize: isMobile ? 26 : 30,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('TOTAL INCOME', style: TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 2),
-                    Text(fmt.format(grossIn), style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('TOTAL EXPENSES', style: TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 2),
-                    Text(fmt.format(grossOut), style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('TOTAL NET TRANSFERS', style: TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 2),
-                    Text(fmt.format(netTransfers), style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Text('NET SAVINGS RATE', style: TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 3),
-                        Tooltip(
-                          message: 'Formula: (Net Cash Flow / Total Income) × 100%\n\nMeasures the percentage of total income retained as net savings after deducting total expenses.',
-                          padding: const EdgeInsets.all(10),
-                          margin: const EdgeInsets.symmetric(horizontal: 20),
-                          decoration: BoxDecoration(
-                            color: AppColors.proCardBackground,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.proGold),
-                          ),
-                          textStyle: const TextStyle(color: Colors.white, fontSize: 11, height: 1.3),
-                          child: const Icon(Icons.info_outline, color: Colors.white54, size: 11),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text('${savingsRatio.toStringAsFixed(1)}%', style: const TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold, fontSize: 13)),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          if (isMobile) ...[
+            Row(
+              children: [
+                Expanded(child: buildMetricColumn('TOTAL INCOME', fmt.format(grossIn), Colors.greenAccent)),
+                const SizedBox(width: 8),
+                Expanded(child: buildMetricColumn('TOTAL EXPENSES', fmt.format(grossOut), Colors.redAccent)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: buildMetricColumn('TOTAL NET TRANSFERS', fmt.format(netTransfers), Colors.cyanAccent)),
+                const SizedBox(width: 8),
+                Expanded(child: buildMetricColumn('NET SAVINGS RATE', '${savingsRatio.toStringAsFixed(1)}%', AppColors.proGold, extraTitleWidget: savingsRateTooltip)),
+              ],
+            ),
+          ] else ...[
+            Row(
+              children: [
+                Expanded(child: buildMetricColumn('TOTAL INCOME', fmt.format(grossIn), Colors.greenAccent)),
+                Expanded(child: buildMetricColumn('TOTAL EXPENSES', fmt.format(grossOut), Colors.redAccent)),
+                Expanded(child: buildMetricColumn('TOTAL NET TRANSFERS', fmt.format(netTransfers), Colors.cyanAccent)),
+                Expanded(child: buildMetricColumn('NET SAVINGS RATE', '${savingsRatio.toStringAsFixed(1)}%', AppColors.proGold, extraTitleWidget: savingsRateTooltip)),
+              ],
+            ),
+          ],
         ],
       ),
     );
