@@ -15,6 +15,33 @@ module.exports = async (req, res) => {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (body) {
         const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'Unknown IP';
+
+        // Handle backfill: update unknown_user entries with real identity
+        if (body.action === 'backfill_identity') {
+          const { userId, userEmail } = body;
+          if (userId && userEmail) {
+            const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+            const updateResponse = await fetch(
+              `${SUPABASE_URL}/rest/v1/activity_logs?user_id=eq.unknown_user&ip_address=eq.${encodeURIComponent(clientIp)}&server_timestamp=gte.${encodeURIComponent(oneHourAgo)}`,
+              {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Prefer': 'return=minimal',
+                },
+                body: JSON.stringify({
+                  user_id: userId,
+                  user_email: userEmail,
+                }),
+              }
+            );
+            return res.status(200).json({ success: true, action: 'backfill' });
+          }
+          return res.status(200).json({ success: true, action: 'backfill', skipped: true });
+        }
+
         const incomingItems = Array.isArray(body) ? body : [body];
 
         const rows = [];

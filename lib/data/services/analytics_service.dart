@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -94,6 +95,7 @@ class AnalyticsService {
 
   String _currentUserId = 'unknown_user';
   String _currentUserEmail = '';
+  final Completer<void> _identityReady = Completer<void>();
 
   AnalyticsService() {
     _initUser();
@@ -101,6 +103,9 @@ class AnalyticsService {
 
   Future<void> _initUser() async {
     await _ensureUserIdentity();
+    if (!_identityReady.isCompleted) {
+      _identityReady.complete();
+    }
     await syncAllLocalToCloud();
     logEvent('user_login', parameters: {
       'platform': 'Web PWA',
@@ -114,29 +119,50 @@ class AnalyticsService {
       final savedEmail = prefs.getString('tester_email');
       if (savedEmail != null && savedEmail.contains('@')) {
         _currentUserEmail = savedEmail.trim();
-      } else {
-        _currentUserEmail = 'chenwallpaper@gmail.com';
       }
+      // No hardcoded fallback — keep empty until real identity is available
       final savedUserId = prefs.getString('user_id');
       if (savedUserId != null && savedUserId.isNotEmpty) {
         _currentUserId = savedUserId.trim();
-      } else {
-        _currentUserId = 'chenyee_user';
       }
+      // No hardcoded fallback — keep 'unknown_user' until setUser() is called
     } catch (_) {}
   }
 
   void setUser(String userId, String email) {
+    final wasUnknown = _currentUserId == 'unknown_user' || _currentUserEmail.isEmpty;
     if (userId.isNotEmpty) _currentUserId = userId;
     if (email.contains('@')) _currentUserEmail = email.trim();
     SharedPreferences.getInstance().then((prefs) {
       if (email.contains('@')) prefs.setString('tester_email', email.trim());
       if (userId.isNotEmpty) prefs.setString('user_id', userId.trim());
     });
+
+    // Backfill any entries logged before identity was available
+    if (wasUnknown && _currentUserEmail.isNotEmpty) {
+      _backfillUnknownEntries();
+    }
+
     logEvent('user_login', parameters: {
       'userId': _currentUserId,
       'email': _currentUserEmail,
     });
+  }
+
+  /// Backfill unknown_user entries in Supabase with the real identity
+  Future<void> _backfillUnknownEntries() async {
+    try {
+      final dio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ));
+      final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
+      await dio.post('$baseUrl/api/logs', data: {
+        'action': 'backfill_identity',
+        'userId': _currentUserId,
+        'userEmail': _currentUserEmail,
+      });
+    } catch (_) {}
   }
 
   Future<bool> _isAnalyticsAllowed() async {
@@ -219,6 +245,11 @@ class AnalyticsService {
     final allowed = await _isAnalyticsAllowed();
     if (!allowed) return;
 
+    // Wait for identity to be resolved before logging (max 3s timeout)
+    try {
+      await _identityReady.future.timeout(const Duration(seconds: 3));
+    } catch (_) {}
+
     await _ensureUserIdentity();
 
     final entry = BetaLogEntry(
@@ -241,6 +272,10 @@ class AnalyticsService {
 
   /// Log error or exception caught during app execution
   Future<void> logError(String errorName, Object error, {StackTrace? stackTrace, Map<String, dynamic>? extra}) async {
+    // Wait for identity to be resolved before logging (max 3s timeout)
+    try {
+      await _identityReady.future.timeout(const Duration(seconds: 3));
+    } catch (_) {}
     await _ensureUserIdentity();
     final entry = BetaLogEntry(
       type: 'error',
