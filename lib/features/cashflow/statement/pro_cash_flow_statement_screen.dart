@@ -129,6 +129,13 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
               final statementsList = state.statements;
 
+              // Step 1: Identify statement date & current balance for each account snapshot
+              final accountDateMap = <String, DateTime>{};
+              final accountBalanceMap = <String, double>{};
+              final accountIdentityMap = <String, String>{}; // snapshotId -> normIdentity
+
+              String _normKey(BankAccount a) => '${a.bankName.trim()}_${(a.accountNumber ?? '').trim()}'.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+
               for (final acc in allUserAccounts) {
                 if (acc.id == 'manual_cash_account') continue;
                 DateTime? stmtDate;
@@ -145,9 +152,33 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     }
                   }
                 }
+                if (stmtDate != null) {
+                  accountDateMap[acc.id] = stmtDate;
+                  accountBalanceMap[acc.id] = acc.currentBalance;
+                  accountIdentityMap[acc.id] = _normKey(acc);
+                }
+              }
 
-                if (stmtDate != null && stmtDate.year == targetMonth.year && stmtDate.month == targetMonth.month) {
-                  final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
+              // Step 2: Find earliest statement date per unique bank account identity
+              final earliestDatePerIdentity = <String, DateTime>{};
+              final earliestSnapshotPerIdentity = <String, String>{};
+
+              for (final accId in accountDateMap.keys) {
+                final date = accountDateMap[accId]!;
+                final identity = accountIdentityMap[accId]!;
+                if (!earliestDatePerIdentity.containsKey(identity) || date.isBefore(earliestDatePerIdentity[identity]!)) {
+                  earliestDatePerIdentity[identity] = date;
+                  earliestSnapshotPerIdentity[identity] = accId;
+                }
+              }
+
+              // Step 3: Add to newCashPos ONLY if this snapshot is the earliest statement for that unique account, and occurs in targetMonth
+              for (final identity in earliestSnapshotPerIdentity.keys) {
+                final earliestDate = earliestDatePerIdentity[identity]!;
+                if (earliestDate.year == targetMonth.year && earliestDate.month == targetMonth.month) {
+                  final snapshotId = earliestSnapshotPerIdentity[identity]!;
+                  final acc = allUserAccounts.firstWhere((a) => a.id == snapshotId);
+                  final baseBal = acc.currentBalance;
                   final currencyStr = acc.currency.trim().toUpperCase();
                   if (currencyStr == 'SGD') {
                     newCashPos += baseBal;
