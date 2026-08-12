@@ -37,20 +37,24 @@
   <style>
     @media print {
       @page {
-        size: A4 portrait;
-        margin: 10mm;
+        size: auto;
+        margin: 5mm;
       }
       html, body {
-        width: 100% !important;
+        width: 100vw !important;
         height: auto !important;
         overflow: visible !important;
-        background: #0B132B !important;
+        background: #0F172A !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
       flutter-view {
         width: 100% !important;
         height: auto !important;
+        max-width: 100% !important;
+      }
+      * {
+        box-sizing: border-box !important;
       }
     }
   </style>

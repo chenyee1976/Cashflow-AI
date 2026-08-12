@@ -80,11 +80,15 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             tooltip: 'Export Statement PDF',
             onPressed: () {
               if (kIsWeb) {
-                try {
-                  html.window.print();
-                } catch (_) {}
+                // Defer print call asynchronously so touch event listener completes safely without locking main UI looper on mobile browsers
+                Future.delayed(const Duration(milliseconds: 150), () {
+                  try {
+                    html.window.print();
+                  } catch (e) {
+                    debugPrint('Print error: $e');
+                  }
+                });
 
-                // On mobile Web browsers, if window.print() is restricted by popup block, provide clear dialog tip:
                 final isMobile = MediaQuery.of(context).size.width < 480;
                 if (isMobile) {
                   showDialog(
@@ -108,20 +112,17 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                       ),
                       actions: [
                         TextButton(
-                          onPressed: () => Navigator.pop(ctx),
+                          onPressed: () {
+                            if (Navigator.canPop(ctx)) {
+                              Navigator.pop(ctx);
+                            }
+                          },
                           child: const Text('Got it', style: TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
                   );
                 }
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Preparing PDF Export... Press Ctrl+P or use browser menu to Print/Save as PDF.'),
-                    backgroundColor: AppColors.proPrimary,
-                  ),
-                );
               }
             },
           ),
