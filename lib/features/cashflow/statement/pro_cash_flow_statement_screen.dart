@@ -77,51 +77,34 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         actions: [
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.proGold, size: 24),
-            tooltip: 'Export Statement PDF',
+            tooltip: 'Download PDF Statement',
             onPressed: () {
-              if (kIsWeb) {
-                // Defer print call asynchronously so touch event listener completes safely without locking main UI looper on mobile browsers
-                Future.delayed(const Duration(milliseconds: 150), () {
-                  try {
-                    html.window.print();
-                  } catch (e) {
-                    debugPrint('Print error: $e');
-                  }
-                });
+              final filename = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.pdf';
 
-                final isMobile = MediaQuery.of(context).size.width < 480;
-                if (isMobile) {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      backgroundColor: AppColors.proCardBackground,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: const BorderSide(color: AppColors.proGold),
+              if (kIsWeb) {
+                try {
+                  cashFlowAsync.whenData((state) {
+                    final savingsRate = state.totalIncome > 0 ? (state.netCashFlow / state.totalIncome) * 100 : 0.0;
+                    final htmlContent = _generatePrintableHtmlDoc(_periodType, selectedMonth, state.netCashFlow, state.totalIncome, state.totalExpenses, savingsRate);
+                    final blob = html.Blob([htmlContent], 'text/html');
+                    final url = html.Url.createObjectUrlFromBlob(blob);
+                    
+                    final anchor = html.AnchorElement(href: url)
+                      ..target = '_blank'
+                      ..download = filename;
+                    anchor.click();
+                    html.Url.revokeObjectUrl(url);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Statement PDF downloaded as $filename!'),
+                        backgroundColor: AppColors.proPrimary,
+                        duration: const Duration(seconds: 3),
                       ),
-                      title: const Row(
-                        children: [
-                          Icon(Icons.print_outlined, color: AppColors.proGold, size: 22),
-                          SizedBox(width: 8),
-                          Text('Exporting PDF', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      content: const Text(
-                        'Print dialog requested!\n\nIf the print preview didn\'t automatically open on your mobile browser, tap your browser menu (⋮ or Share icon) → select "Print" or "Share as PDF".',
-                        style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            if (Navigator.canPop(ctx)) {
-                              Navigator.pop(ctx);
-                            }
-                          },
-                          child: const Text('Got it', style: TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  );
+                    );
+                  });
+                } catch (e) {
+                  html.window.print();
                 }
               }
             },
@@ -1354,5 +1337,78 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         ],
       ),
     );
+  }
+
+  String _generatePrintableHtmlDoc(
+    String horizonName,
+    DateTime selectedMonth,
+    double netCashFlow,
+    double totalIncome,
+    double totalExpenses,
+    double netSavingsRate,
+  ) {
+    final currencyFmt = NumberFormat.currency(symbol: 'S\$', decimalDigits: 2);
+    final month2 = DateTime(selectedMonth.year, selectedMonth.month - 2);
+    final month1 = DateTime(selectedMonth.year, selectedMonth.month - 1);
+    final month0 = selectedMonth;
+
+    final m2Label = DateFormat('MMM yyyy').format(month2);
+    final m1Label = DateFormat('MMM yyyy').format(month1);
+    final m0Label = DateFormat('MMM yyyy').format(month0);
+
+    return '''<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>CashFlow AI - $horizonName Statement (${DateFormat('yyyy-MM').format(selectedMonth)})</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0F172A; color: #FFFFFF; padding: 20px; font-size: 12px; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #7C3AED; padding-bottom: 12px; margin-bottom: 20px; }
+    .title { font-size: 22px; font-weight: bold; color: #F59E0B; }
+    .badge { background: #7C3AED; color: #FFF; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+    .summary-card { background: #1E293B; border: 1px solid #7C3AED; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; background: #1E293B; border-radius: 10px; overflow: hidden; }
+    th { background: #0F172A; color: #94A3B8; font-size: 11px; text-transform: uppercase; padding: 10px; text-align: right; border-bottom: 1px solid #334155; }
+    th:first-child { text-align: left; }
+    td { padding: 10px; text-align: right; border-bottom: 1px solid #1E293B; color: #E2E8F0; }
+    td:first-child { text-align: left; font-weight: 500; }
+    .subtotal { background: #0F172A; font-weight: bold; color: #FFF; }
+    .net-cash { background: #7C3AED; font-weight: bold; font-size: 14px; color: #FFF; }
+    .footer { text-align: center; color: #64748B; font-size: 10px; margin-top: 30px; }
+    @media print {
+      body { background: #0F172A !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="title">PRO Cash Flow Statement</div>
+      <div style="color: #94A3B8; font-size: 12px; margin-top: 4px;">Horizon: $horizonName View</div>
+    </div>
+    <div class="badge">${DateFormat('MMMM yyyy').format(selectedMonth)}</div>
+  </div>
+
+  <div class="summary-card">
+    <div style="font-size: 11px; color: #94A3B8; text-transform: uppercase; font-weight: bold;">Net Cash Flow (${DateFormat('MMM yyyy').format(selectedMonth)})</div>
+    <div style="font-size: 24px; font-weight: bold; color: #F59E0B; margin: 6px 0;">${currencyFmt.format(netCashFlow)}</div>
+    <div style="display: flex; gap: 20px; font-size: 11px; color: #E2E8F0; margin-top: 10px;">
+      <div>Total Income: <span style="color: #4ADE80; font-weight: bold;">${currencyFmt.format(totalIncome)}</span></div>
+      <div>Total Expenses: <span style="color: #F87171; font-weight: bold;">${currencyFmt.format(totalExpenses)}</span></div>
+      <div>Net Savings Rate: <span style="color: #38BDF8; font-weight: bold;">${netSavingsRate.toStringAsFixed(1)}%</span></div>
+    </div>
+  </div>
+
+  <div class="footer">Generated by CashFlow AI™ • ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}</div>
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 300);
+    };
+  </script>
+</body>
+</html>''';
   }
 }
