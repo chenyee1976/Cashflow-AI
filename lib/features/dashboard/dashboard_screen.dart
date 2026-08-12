@@ -217,9 +217,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.proCardBg,
+                    color: AppColors.proCardBackground,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.proBorder, width: 1),
+                    border: Border.all(color: AppColors.proPrimary.withOpacity(0.3), width: 1),
                     gradient: const LinearGradient(
                       colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
                       begin: Alignment.topLeft,
@@ -275,7 +275,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             const SizedBox(height: 4),
                             const Text(
                               'View 6-month trends, income donut charts & expense variance',
-                              style: TextStyle(color: AppColors.proSubtext, fontSize: 11),
+                              style: TextStyle(color: Colors.white70, fontSize: 11),
                             ),
                           ],
                         ),
