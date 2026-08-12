@@ -660,87 +660,88 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  // Header (Row 1: Title & Month Badge on right; Row 2: Subtitle & Month Navigation controls)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    title,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: color.withOpacity(0.12),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    monthStr,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: color,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              title == 'Monthly Income' ? 'Breakdown by income sources' : 'Breakdown by expense categories',
-                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ),
+                      // Row 1: Title (left) & Month Badge (right)
                       Row(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.chevron_left_rounded, color: AppColors.primary, size: 24),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            tooltip: 'Previous Month',
-                            onPressed: () {
-                              final current = ref.read(selectedMonthProvider);
-                              ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month - 1);
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 24),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            tooltip: 'Next Month',
-                            onPressed: () {
-                              final current = ref.read(selectedMonthProvider);
-                              ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month + 1);
-                            },
-                          ),
-                          const SizedBox(width: 12),
-                          GestureDetector(
-                            onTap: () => Navigator.pop(ctx),
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryLight.withOpacity(0.5),
-                                shape: BoxShape.circle,
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
                               ),
-                              child: const Icon(Icons.close, color: AppColors.primary, size: 16),
+                              overflow: TextOverflow.ellipsis,
                             ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              monthStr,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: color,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      // Row 2: Subtitle (left) & Month Controls + Close (right)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            title == 'Monthly Income' ? 'Breakdown by income sources' : 'Breakdown by expense categories',
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.chevron_left_rounded, color: AppColors.primary, size: 24),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'Previous Month',
+                                onPressed: () {
+                                  final current = ref.read(selectedMonthProvider);
+                                  ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month - 1);
+                                },
+                              ),
+                              const SizedBox(width: 12),
+                              IconButton(
+                                icon: const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 24),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'Next Month',
+                                onPressed: () {
+                                  final current = ref.read(selectedMonthProvider);
+                                  ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month + 1);
+                                },
+                              ),
+                              const SizedBox(width: 16),
+                              GestureDetector(
+                                onTap: () => Navigator.pop(ctx),
+                                child: Container(
+                                  padding: const EdgeInsets.all(5),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryLight.withOpacity(0.5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.close, size: 16, color: AppColors.primary),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -1057,83 +1058,91 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header with Month Navigation Controls
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      // Header (Row 1: Title & Month Badge on right; Row 2: Subtitle & Month Navigation controls)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      title,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryLight,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        monthStr,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'Breakdown by bank account balance',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          // Row 1: Title (left) & Month Badge (right)
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // Month Navigation Controls (Previous / Next)
-                              IconButton(
-                                icon: const Icon(Icons.chevron_left_rounded, color: AppColors.primary, size: 28),
-                                tooltip: 'Previous Month',
-                                onPressed: () {
-                                  final current = ref.read(selectedMonthProvider);
-                                  ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month - 1);
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 28),
-                                tooltip: 'Next Month',
-                                onPressed: () {
-                                  final current = ref.read(selectedMonthProvider);
-                                  ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month + 1);
-                                },
-                              ),
-                              const SizedBox(width: 4),
-                              GestureDetector(
-                                onTap: () => Navigator.pop(context),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primaryLight.withOpacity(0.5),
-                                    shape: BoxShape.circle,
+                              Expanded(
+                                child: Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
                                   ),
-                                  child: const Icon(Icons.close, size: 18, color: AppColors.primary),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryLight,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  monthStr,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          // Row 2: Subtitle (left) & Month Controls + Close (right)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Breakdown by bank account balance',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.chevron_left_rounded, color: AppColors.primary, size: 24),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    tooltip: 'Previous Month',
+                                    onPressed: () {
+                                      final current = ref.read(selectedMonthProvider);
+                                      ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month - 1);
+                                    },
+                                  ),
+                                  const SizedBox(width: 12),
+                                  IconButton(
+                                    icon: const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 24),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    tooltip: 'Next Month',
+                                    onPressed: () {
+                                      final current = ref.read(selectedMonthProvider);
+                                      ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month + 1);
+                                    },
+                                  ),
+                                  const SizedBox(width: 16),
+                                  GestureDetector(
+                                    onTap: () => Navigator.pop(context),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(5),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryLight.withOpacity(0.5),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.close, size: 16, color: AppColors.primary),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),

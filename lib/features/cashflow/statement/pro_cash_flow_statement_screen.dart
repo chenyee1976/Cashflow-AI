@@ -76,11 +76,45 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.proGold),
+            icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.proGold, size: 24),
             tooltip: 'Export Statement PDF',
             onPressed: () {
               if (kIsWeb) {
-                html.window.print();
+                try {
+                  html.window.print();
+                } catch (_) {}
+
+                // On mobile Web browsers, if window.print() is restricted by popup block, provide clear dialog tip:
+                final isMobile = MediaQuery.of(context).size.width < 480;
+                if (isMobile) {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: AppColors.proCardBackground,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(color: AppColors.proGold),
+                      ),
+                      title: const Row(
+                        children: [
+                          Icon(Icons.print_outlined, color: AppColors.proGold, size: 22),
+                          SizedBox(width: 8),
+                          Text('Exporting PDF', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      content: const Text(
+                        'Print dialog requested!\n\nIf the print preview didn\'t automatically open on your mobile browser, tap your browser menu (⋮ or Share icon) → select "Print" or "Share as PDF".',
+                        style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Got it', style: TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  );
+                }
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
