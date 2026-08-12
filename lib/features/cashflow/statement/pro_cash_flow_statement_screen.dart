@@ -79,27 +79,34 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.proGold, size: 24),
             tooltip: 'Download PDF Statement',
             onPressed: () {
-              final filename = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.pdf';
-
               if (kIsWeb) {
                 try {
                   cashFlowAsync.whenData((state) {
-                    final savingsRate = state.totalIncome > 0 ? (state.netCashFlow / state.totalIncome) * 100 : 0.0;
-                    final htmlContent = _generatePrintableHtmlDoc(_periodType, selectedMonth, state.netCashFlow, state.totalIncome, state.totalExpenses, savingsRate);
+                    final htmlContent = _generatePrintableHtmlDoc(_periodType, selectedMonth, columns, sortedCatNames);
+                    
+                    // Create a blob with HTML content
                     final blob = html.Blob([htmlContent], 'text/html');
                     final url = html.Url.createObjectUrlFromBlob(blob);
                     
-                    final anchor = html.AnchorElement(href: url)
-                      ..target = '_blank'
-                      ..download = filename;
-                    anchor.click();
-                    html.Url.revokeObjectUrl(url);
+                    // Open in new tab which automatically triggers window.print() (Save as PDF)
+                    final win = html.window.open(url, '_blank');
+                    if (win == null) {
+                      // Fallback if popup blocked: direct download link
+                      final anchor = html.AnchorElement(href: url)
+                        ..target = '_blank'
+                        ..download = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.html';
+                      anchor.click();
+                    }
+                    
+                    Future.delayed(const Duration(seconds: 10), () {
+                      html.Url.revokeObjectUrl(url);
+                    });
 
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Statement PDF downloaded as $filename!'),
+                      const SnackBar(
+                        content: Text('Opening PDF Print/Save View...'),
                         backgroundColor: AppColors.proPrimary,
-                        duration: const Duration(seconds: 3),
+                        duration: Duration(seconds: 3),
                       ),
                     );
                   });
@@ -1342,19 +1349,41 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   String _generatePrintableHtmlDoc(
     String horizonName,
     DateTime selectedMonth,
-    double netCashFlow,
-    double totalIncome,
-    double totalExpenses,
-    double netSavingsRate,
+    List<Map<String, dynamic>> columns,
+    List<String> sortedCatNames,
   ) {
     final currencyFmt = NumberFormat.currency(symbol: 'S\$', decimalDigits: 2);
-    final month2 = DateTime(selectedMonth.year, selectedMonth.month - 2);
-    final month1 = DateTime(selectedMonth.year, selectedMonth.month - 1);
-    final month0 = selectedMonth;
+    final lastCol = columns.last;
+    final netCashFlow = lastCol['netCash'] as double;
+    final totalIncome = lastCol['totalInc'] as double;
+    final totalExpenses = lastCol['totalExp'] as double;
+    final savingsRate = totalIncome > 0 ? ((netCashFlow / totalIncome) * 100).clamp(0.0, 100.0) : 0.0;
 
-    final m2Label = DateFormat('MMM yyyy').format(month2);
-    final m1Label = DateFormat('MMM yyyy').format(month1);
-    final m0Label = DateFormat('MMM yyyy').format(month0);
+    final headerColsHtml = columns.map((col) => '<th style="color: #F59E0B; text-align: right;">${col['label'].toString().replaceAll('\n', '<br/>')}</th>').join('');
+
+    String _buildHtmlRow(String label, String key, {bool isBold = false, bool isPositive = true, bool negate = false}) {
+      final cells = columns.map((col) {
+        final val = (col[key] as double? ?? 0.0) * (negate ? -1.0 : 1.0);
+        final color = val == 0 ? '#94A3B8' : (val > 0 ? '#60A5FA' : '#F87171');
+        final weight = isBold ? 'bold' : 'normal';
+        return '<td style="text-align: right; color: $color; font-weight: $weight;">${currencyFmt.format(val)}</td>';
+      }).join('');
+
+      final rowStyle = isBold ? 'background: #0F172A; font-weight: bold;' : '';
+      return '<tr style="$rowStyle"><td>$label</td>$cells</tr>';
+    }
+
+    String _buildHtmlCategoryRow(String label, String catName) {
+      final cells = columns.map((col) {
+        final catMap = col['catMap'] as Map<String, double>? ?? {};
+        final val = -(catMap[catName] ?? 0.0);
+        final color = val == 0 ? '#94A3B8' : '#F87171';
+        return '<td style="text-align: right; color: $color;">${currencyFmt.format(val)}</td>';
+      }).join('');
+      return '<tr><td style="padding-left: 20px; color: #CBD5E1;">• $label</td>$cells</tr>';
+    }
+
+    final categoryRowsHtml = sortedCatNames.map((cat) => _buildHtmlCategoryRow(cat, cat)).join('');
 
     return '''<!DOCTYPE html>
 <html>
@@ -1362,20 +1391,19 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   <meta charset="utf-8">
   <title>CashFlow AI - $horizonName Statement (${DateFormat('yyyy-MM').format(selectedMonth)})</title>
   <style>
-    @page { size: A4 landscape; margin: 12mm; }
+    @page { size: A4 landscape; margin: 10mm; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0F172A; color: #FFFFFF; padding: 20px; font-size: 12px; }
     .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #7C3AED; padding-bottom: 12px; margin-bottom: 20px; }
     .title { font-size: 22px; font-weight: bold; color: #F59E0B; }
     .badge { background: #7C3AED; color: #FFF; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
     .summary-card { background: #1E293B; border: 1px solid #7C3AED; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; background: #1E293B; border-radius: 10px; overflow: hidden; }
-    th { background: #0F172A; color: #94A3B8; font-size: 11px; text-transform: uppercase; padding: 10px; text-align: right; border-bottom: 1px solid #334155; }
+    .section-title { color: #A78BFA; font-size: 14px; font-weight: bold; margin: 16px 0 8px 0; border-bottom: 1px solid #334155; padding-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #1E293B; border-radius: 10px; overflow: hidden; }
+    th { background: #0F172A; color: #94A3B8; font-size: 11px; text-transform: uppercase; padding: 10px; border-bottom: 1px solid #334155; }
     th:first-child { text-align: left; }
-    td { padding: 10px; text-align: right; border-bottom: 1px solid #1E293B; color: #E2E8F0; }
+    td { padding: 8px 10px; border-bottom: 1px solid #334155; color: #E2E8F0; }
     td:first-child { text-align: left; font-weight: 500; }
-    .subtotal { background: #0F172A; font-weight: bold; color: #FFF; }
-    .net-cash { background: #7C3AED; font-weight: bold; font-size: 14px; color: #FFF; }
-    .footer { text-align: center; color: #64748B; font-size: 10px; margin-top: 30px; }
+    .footer { text-align: center; color: #64748B; font-size: 10px; margin-top: 24px; }
     @media print {
       body { background: #0F172A !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
@@ -1385,30 +1413,67 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   <div class="header">
     <div>
       <div class="title">PRO Cash Flow Statement</div>
-      <div style="color: #94A3B8; font-size: 12px; margin-top: 4px;">Horizon: $horizonName View</div>
+      <div style="color: #94A3B8; font-size: 12px; margin-top: 4px;">Period Horizon: $horizonName View</div>
     </div>
     <div class="badge">${DateFormat('MMMM yyyy').format(selectedMonth)}</div>
   </div>
 
   <div class="summary-card">
-    <div style="font-size: 11px; color: #94A3B8; text-transform: uppercase; font-weight: bold;">Net Cash Flow (${DateFormat('MMM yyyy').format(selectedMonth)})</div>
+    <div style="font-size: 11px; color: #94A3B8; text-transform: uppercase; font-weight: bold;">NET CASH FLOW (${lastCol['label'].toString().replaceAll('\n', ' ')})</div>
     <div style="font-size: 24px; font-weight: bold; color: #F59E0B; margin: 6px 0;">${currencyFmt.format(netCashFlow)}</div>
-    <div style="display: flex; gap: 20px; font-size: 11px; color: #E2E8F0; margin-top: 10px;">
+    <div style="display: flex; gap: 24px; font-size: 11px; color: #E2E8F0; margin-top: 10px;">
       <div>Total Income: <span style="color: #4ADE80; font-weight: bold;">${currencyFmt.format(totalIncome)}</span></div>
       <div>Total Expenses: <span style="color: #F87171; font-weight: bold;">${currencyFmt.format(totalExpenses)}</span></div>
-      <div>Net Savings Rate: <span style="color: #38BDF8; font-weight: bold;">${netSavingsRate.toStringAsFixed(1)}%</span></div>
+      <div>Net Savings Rate: <span style="color: #38BDF8; font-weight: bold;">${savingsRate.toStringAsFixed(1)}%</span></div>
     </div>
   </div>
+
+  <div class="section-title">PART I: OPERATING CASH FLOWS (PERSONAL)</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Line Item</th>
+        $headerColsHtml
+      </tr>
+    </thead>
+    <tbody>
+      ${_buildHtmlRow('Salary & Earned Income', 'salary')}
+      ${_buildHtmlRow('Interest & Investment Returns', 'passive')}
+      ${_buildHtmlRow('Other Inflows', 'other')}
+      ${_buildHtmlRow('Total Income', 'totalInc', isBold: true)}
+      $categoryRowsHtml
+      ${_buildHtmlRow('Total Expenses', 'totalExp', isBold: true, negate: true)}
+      ${_buildHtmlRow('NET CASH FLOW', 'netCash', isBold: true)}
+    </tbody>
+  </table>
+
+  <div class="section-title">TOTAL CASH POSITIONS</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Line Item</th>
+        $headerColsHtml
+      </tr>
+    </thead>
+    <tbody>
+      ${_buildHtmlRow('Beginning cash', 'begCash')}
+      ${_buildHtmlRow('New cash positions added', 'newCashPos')}
+      ${_buildHtmlRow('Total Income', 'totalInc')}
+      ${_buildHtmlRow('Total Expenses', 'totalExp', negate: true)}
+      ${_buildHtmlRow('Ending cash balance', 'endCash', isBold: true)}
+    </tbody>
+  </table>
 
   <div class="footer">Generated by CashFlow AI™ • ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}</div>
   <script>
     window.onload = function() {
       setTimeout(function() {
         window.print();
-      }, 300);
+      }, 500);
     };
   </script>
 </body>
 </html>''';
   }
 }
+

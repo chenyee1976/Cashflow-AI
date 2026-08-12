@@ -10,6 +10,7 @@ import '../../features/cashflow/upload/upload_screen.dart';
 import '../../features/cashflow/review/transaction_review_screen.dart';
 import '../../features/cashflow/statement/cash_flow_screen.dart';
 import '../../features/cashflow/statement/pro_cash_flow_statement_screen.dart';
+import '../../features/dashboard/pro_financial_dashboard_screen.dart';
 
 import '../../features/rewards/rewards_screen.dart';
 import '../../features/rewards/miles_screen.dart';
@@ -81,6 +82,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/home/support',
             builder: (context, state) => const SupportScreen(),
+          ),
+          GoRoute(
+            path: '/home/pro-dashboard',
+            builder: (context, state) => const ProFinancialDashboardScreen(),
           ),
           GoRoute(
             path: '/home/account',

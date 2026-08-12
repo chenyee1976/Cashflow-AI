@@ -61,4 +61,10 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
+  // Pro Theme Aliases
+  static const Color proCardBg = Color(0xFF1E293B);
+  static const Color proBorder = Color(0xFF334155);
+  static const Color proSurface = Color(0xFF1E293B);
+  static const Color proSubtext = Color(0xFF94A3B8);
 }
