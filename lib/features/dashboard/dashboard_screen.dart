@@ -209,6 +209,82 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
               // 2b. AI Quick Voice & Cash Expense Logger
               _VoiceExpenseCard(ref: ref),
+              const SizedBox(height: 16),
+
+              // Pro Analytics Banner
+              GestureDetector(
+                onTap: () => context.push('/home/pro-dashboard'),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.proCardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.proBorder, width: 1),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3)),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          gradient: AppColors.proGoldGradient,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.analytics_outlined, color: AppColors.proBackground, size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    gradient: AppColors.proGoldGradient,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'PRO',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.proBackground,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'Pro Analytics Dashboard',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'View 6-month trends, income donut charts & expense variance',
+                              style: TextStyle(color: AppColors.proSubtext, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: AppColors.proGold),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
 
               // 3. Upload a Statement Title
@@ -585,39 +661,88 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(color == AppColors.primary ? Icons.trending_up : Icons.history_toggle_off, color: color, size: 22),
-                      const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          '$title ($monthStr)',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    title,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: color.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    monthStr,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: color,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              title == 'Monthly Income' ? 'Breakdown by income sources' : 'Breakdown by expense categories',
+                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                            ),
+                          ],
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.chevron_left_rounded, color: AppColors.primary, size: 28),
-                        tooltip: 'Previous Month',
-                        onPressed: () {
-                          final current = ref.read(selectedMonthProvider);
-                          ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month - 1);
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 28),
-                        tooltip: 'Next Month',
-                        onPressed: () {
-                          final current = ref.read(selectedMonthProvider);
-                          ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month + 1);
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: AppColors.textHint, size: 20),
-                        onPressed: () => Navigator.pop(ctx),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left_rounded, color: AppColors.primary, size: 24),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Previous Month',
+                            onPressed: () {
+                              final current = ref.read(selectedMonthProvider);
+                              ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month - 1);
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 24),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Next Month',
+                            onPressed: () {
+                              final current = ref.read(selectedMonthProvider);
+                              ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month + 1);
+                            },
+                          ),
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(ctx),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight.withOpacity(0.5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close, color: AppColors.primary, size: 16),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

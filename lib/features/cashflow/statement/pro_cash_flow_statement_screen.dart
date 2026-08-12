@@ -806,8 +806,10 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       );
     }
 
+    const tooltipMessage = 'Formula: (Net Cash Flow / Total Income) × 100%\n\nMeasures the percentage of total income retained as net savings after deducting total expenses.';
+
     final savingsRateTooltip = Tooltip(
-      message: 'Formula: (Net Cash Flow / Total Income) × 100%\n\nMeasures the percentage of total income retained as net savings after deducting total expenses.',
+      message: tooltipMessage,
       padding: const EdgeInsets.all(10),
       margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
@@ -816,9 +818,40 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         border: Border.all(color: AppColors.proGold),
       ),
       textStyle: const TextStyle(color: Colors.white, fontSize: 11, height: 1.3),
-      child: const Padding(
-        padding: EdgeInsets.only(left: 3.0),
-        child: Icon(Icons.info_outline, color: Colors.white54, size: 11),
+      child: InkWell(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppColors.proCardBackground,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: AppColors.proGold.withOpacity(0.6)),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: AppColors.proGold, size: 20),
+                  SizedBox(width: 8),
+                  Text('Net Savings Rate', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: const Text(
+                tooltipMessage,
+                style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK', style: TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          );
+        },
+        child: const Padding(
+          padding: EdgeInsets.all(4.0),
+          child: Icon(Icons.info_outline, color: Colors.white54, size: 14),
+        ),
       ),
     );
 
