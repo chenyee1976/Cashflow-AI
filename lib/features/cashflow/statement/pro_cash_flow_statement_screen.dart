@@ -1,4 +1,6 @@
 // Updated Pro Cash Flow Statement Screen with Net Savings Rate Tooltip
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -77,12 +79,16 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.proGold),
             tooltip: 'Export Statement PDF',
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Generating Pro Statement PDF export...'),
-                  backgroundColor: AppColors.proPrimary,
-                ),
-              );
+              if (kIsWeb) {
+                html.window.print();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Preparing PDF Export... Press Ctrl+P or use browser menu to Print/Save as PDF.'),
+                    backgroundColor: AppColors.proPrimary,
+                  ),
+                );
+              }
             },
           ),
         ],
@@ -459,10 +465,6 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     ),
                     const SizedBox(height: 20),
 
-                    // Statement Banner Info
-                    _buildAccountingNoticeBanner(),
-                    const SizedBox(height: 20),
-
                     // Part I: Operating Cash Flows (Personal)
                     _buildStatementSection(
                       title: 'PART I: OPERATING CASH FLOWS (PERSONAL)',
@@ -530,7 +532,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     ],
 
                     // Ending Reconciliation Section
-                    _buildDynamicEndingCard(columns, currencyFormat),
+                    _buildDynamicEndingCard(columns, currencyFormat, state.bankAccounts, state.statements, txs, selectedMonth.year, cashPositionAsync.asData?.value.fxRates ?? {}),
                     const SizedBox(height: 30),
                   ],
                 ),
@@ -670,7 +672,122 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     );
   }
 
-  Widget _buildDynamicEndingCard(List<Map<String, dynamic>> columns, NumberFormat fmt) {
+  Widget _buildDynamicEndingCard(
+    List<Map<String, dynamic>> columns,
+    NumberFormat fmt,
+    List<BankAccount> allUserAccounts,
+    List<Statement> statementsList,
+    List<Transaction> txs,
+    int selectedYear,
+    Map<String, double> fxRates,
+  ) {
+    final isMobile = MediaQuery.of(context).size.width < 480;
+    final labelSize = isMobile ? 11.0 : 12.0;
+    final valSize = isMobile ? 10.5 : 12.0;
+
+    String _normIdentity(BankAccount a) => '${a.bankName.trim()}_${(a.accountNumber ?? '').trim()}'.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+
+    // Map column index to month end date
+    List<DateTime> endMonthDates = [];
+    for (int colIdx = 0; colIdx < columns.length; colIdx++) {
+      final col = columns[colIdx];
+      final label = col['label'] as String;
+      if (_periodType == 'Month') {
+        final m0Date = ref.watch(selectedMonthProvider);
+        if (colIdx == 0) {
+          endMonthDates.add(DateTime(m0Date.year, m0Date.month - 2));
+        } else if (colIdx == 1) {
+          endMonthDates.add(DateTime(m0Date.year, m0Date.month - 1));
+        } else {
+          endMonthDates.add(m0Date);
+        }
+      } else if (_periodType == 'Quarter') {
+        int endM = 3;
+        if (label.contains('Q1')) endM = 3;
+        if (label.contains('Q2')) endM = 6;
+        if (label.contains('Q3')) endM = 9;
+        if (label.contains('Q4')) endM = 12;
+        endMonthDates.add(DateTime(selectedYear, endM));
+      } else {
+        endMonthDates.add(DateTime(selectedYear, 12));
+      }
+    }
+
+    // Collect all unique account identities
+    final Map<String, BankAccount> uniqueAccountSamples = {};
+    for (final acc in allUserAccounts) {
+      final key = _normIdentity(acc);
+      if (!uniqueAccountSamples.containsKey(key)) {
+        uniqueAccountSamples[key] = acc;
+      }
+    }
+
+    // Build per-account row values across columns
+    final List<Map<String, dynamic>> accountRows = [];
+    for (final identity in uniqueAccountSamples.keys) {
+      final sampleAcc = uniqueAccountSamples[identity]!;
+      final accLabel = sampleAcc.id == 'manual_cash_account'
+          ? 'Physical Cash on Hand'
+          : '${sampleAcc.bankName} (${sampleAcc.accountNumber ?? ""})'.trim();
+
+      final List<double> colValues = [];
+
+      for (int i = 0; i < columns.length; i++) {
+        final targetEndMonth = endMonthDates[i];
+        final targetEndMonthStart = DateTime(targetEndMonth.year, targetEndMonth.month, 1);
+
+        if (sampleAcc.id == 'manual_cash_account') {
+          colValues.add(sampleAcc.currentBalance);
+          continue;
+        }
+
+        DateTime? latestDate;
+        double latestBal = 0.0;
+
+        for (final acc in allUserAccounts) {
+          if (_normIdentity(acc) != identity) continue;
+
+          DateTime? stmtDate;
+          if (acc.sourceStatementId != null) {
+            final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
+            if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
+              stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
+            }
+            if (stmtDate == null) {
+              final stmtTxs = txs.where((t) => t.statementId == acc.sourceStatementId).toList();
+              if (stmtTxs.isNotEmpty) {
+                stmtTxs.sort((a, b) => b.date.compareTo(a.date));
+                stmtDate = DateTime.fromMillisecondsSinceEpoch(stmtTxs.first.date * 1000);
+              }
+            }
+          }
+
+          if (stmtDate != null) {
+            final stmtMonthStart = DateTime(stmtDate.year, stmtDate.month, 1);
+            if (!stmtMonthStart.isAfter(targetEndMonthStart)) {
+              if (latestDate == null || stmtDate.isAfter(latestDate)) {
+                latestDate = stmtDate;
+                latestBal = acc.currentBalance;
+              }
+            }
+          }
+        }
+
+        final currencyStr = sampleAcc.currency.trim().toUpperCase();
+        if (currencyStr != 'SGD') {
+          final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+          colValues.add(latestBal * rate);
+        } else {
+          colValues.add(latestBal);
+        }
+      }
+
+      accountRows.add({
+        'label': accLabel,
+        'values': colValues,
+      });
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -684,7 +801,43 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           const Text('TOTAL ENDING CASH', style: TextStyle(color: AppColors.proGold, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.8)),
           const SizedBox(height: 4),
           const Text('Sum of Bank Balances + Physical Cash on Hand', style: TextStyle(color: Colors.white54, fontSize: 11)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+
+          // Account Breakdown Sub-Header
+          if (accountRows.isNotEmpty) ...[
+            const Text('Account Breakdown:', style: TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            ...accountRows.map((row) {
+              final rowLabel = row['label'] as String;
+              final values = row['values'] as List<double>;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        '• $rowLabel',
+                        style: TextStyle(color: Colors.white70, fontSize: labelSize),
+                      ),
+                    ),
+                    ...values.map((v) => Expanded(
+                      flex: 3,
+                      child: Text(
+                        fmt.format(v),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(color: v == 0 ? Colors.white38 : const Color(0xFF60A5FA), fontSize: valSize),
+                      ),
+                    )),
+                  ],
+                ),
+              );
+            }),
+            const Divider(color: Colors.white24, height: 16),
+          ],
+
           _buildDynamicSubtotalRow('TOTAL ENDING CASH', columns, 'endCash', fmt),
         ],
       ),
@@ -755,32 +908,6 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               ],
             ),
           ],
-          const Divider(color: Colors.white12, height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Row(
-                  children: [
-                    Icon(Icons.storefront_outlined, color: AppColors.proGold, size: 18),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Include Business & Capital Module',
-                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Switch(
-                value: _includeBusiness,
-                activeColor: AppColors.proGold,
-                onChanged: (val) => setState(() => _includeBusiness = val),
-              ),
-            ],
-          ),
         ],
       ),
     );
