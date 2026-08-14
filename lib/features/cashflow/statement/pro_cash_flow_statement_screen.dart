@@ -1,6 +1,7 @@
 // Updated Pro Cash Flow Statement Screen with Net Savings Rate Tooltip
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data' show Uint8List;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
@@ -38,9 +39,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     final cashFlowAsync = ref.watch(cashFlowScreenProvider);
     final currencyFormat = NumberFormat.currency(locale: 'en_SG', symbol: 'S\$');
 
-    return Scaffold(
-      backgroundColor: AppColors.proBackground,
-      appBar: AppBar(
+    // Helper to build the common AppBar (with or without PDF button)
+    Widget buildAppBar({List<Widget>? actions}) {
+      return AppBar(
         backgroundColor: AppColors.proBackground,
         elevation: 0,
         leading: IconButton(
@@ -76,55 +77,26 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.proGold, size: 24),
-            tooltip: 'Download PDF Statement',
-            onPressed: () async {
-              if (kIsWeb) {
-                try {
-                  final pdfBytes = await _generateBinaryPdfBytes(_periodType, selectedMonth, columns, sortedCatNames);
-                  final blob = html.Blob([pdfBytes], 'application/pdf');
-                  final url = html.Url.createObjectUrlFromBlob(blob);
-                  final filename = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.pdf';
+        actions: actions,
+      );
+    }
 
-                  final anchor = html.AnchorElement(href: url)
-                    ..target = '_blank'
-                    ..download = filename;
-                  anchor.click();
-
-                  Future.delayed(const Duration(seconds: 10), () {
-                    html.Url.revokeObjectUrl(url);
-                  });
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Downloading PDF Statement as $filename...'),
-                      backgroundColor: AppColors.proPrimary,
-                      duration: const Duration(seconds: 3),
-                    ),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('PDF Export Error: $e'),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-        ],
-      ),
-      body: cashFlowAsync.when(
-        loading: () => const Center(
+    return cashFlowAsync.when(
+      loading: () => Scaffold(
+        backgroundColor: AppColors.proBackground,
+        appBar: buildAppBar() as AppBar,
+        body: const Center(
           child: CircularProgressIndicator(color: AppColors.proPrimary),
         ),
-        error: (err, stack) => Center(
+      ),
+      error: (err, stack) => Scaffold(
+        backgroundColor: AppColors.proBackground,
+        appBar: buildAppBar() as AppBar,
+        body: Center(
           child: Text('Error: $err', style: const TextStyle(color: Colors.redAccent)),
         ),
-        data: (state) {
+      ),
+      data: (state) {
           final txs = state.allTransactions;
           
           // Column configuration based on _periodType: 'Month', 'Quarter', 'YTD'
@@ -452,25 +424,70 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           }
           final sortedCatNames = allCatNames.toList()..sort();
 
-          return Theme(
-            data: Theme.of(context).copyWith(
-              scrollbarTheme: ScrollbarThemeData(
-                thumbColor: WidgetStateProperty.all(Colors.white),
-                trackColor: WidgetStateProperty.all(Colors.white24),
-                trackBorderColor: WidgetStateProperty.all(Colors.white38),
-                radius: const Radius.circular(8),
-                thickness: WidgetStateProperty.all(12.0),
-                thumbVisibility: WidgetStateProperty.all(true),
-                interactive: true,
+          return Scaffold(
+            backgroundColor: AppColors.proBackground,
+            appBar: buildAppBar(
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.proGold, size: 24),
+                  tooltip: 'Download PDF Statement',
+                  onPressed: () async {
+                    if (kIsWeb) {
+                      try {
+                        final pdfBytes = await _generateBinaryPdfBytes(_periodType, selectedMonth, columns, sortedCatNames);
+                        final bytes = Uint8List.fromList(pdfBytes);
+                        final blob = html.Blob([bytes], 'application/pdf');
+                        final url = html.Url.createObjectUrlFromBlob(blob);
+                        final filename = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.pdf';
+
+                        final anchor = html.AnchorElement(href: url)
+                          ..target = '_blank'
+                          ..download = filename;
+                        anchor.click();
+
+                        Future.delayed(const Duration(seconds: 10), () {
+                          html.Url.revokeObjectUrl(url);
+                        });
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Downloading PDF Statement as $filename...'),
+                            backgroundColor: AppColors.proPrimary,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('PDF Export Error: $e'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ],
+            ) as AppBar,
+            body: Theme(
+              data: Theme.of(context).copyWith(
+                scrollbarTheme: ScrollbarThemeData(
+                  thumbColor: WidgetStateProperty.all(Colors.white),
+                  trackColor: WidgetStateProperty.all(Colors.white24),
+                  trackBorderColor: WidgetStateProperty.all(Colors.white38),
+                  radius: const Radius.circular(8),
+                  thickness: WidgetStateProperty.all(12.0),
+                  thumbVisibility: WidgetStateProperty.all(true),
+                  interactive: true,
+                ),
               ),
-            ),
-            child: Scrollbar(
-              controller: _scrollController,
-              thumbVisibility: true,
-              interactive: true,
-              child: SingleChildScrollView(
+              child: Scrollbar(
                 controller: _scrollController,
-                padding: const EdgeInsets.all(16.0),
+                thumbVisibility: true,
+                interactive: true,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -554,7 +571,6 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                       ),
                       const SizedBox(height: 20),
                     ],
-
                     // Ending Reconciliation Section
                     _buildDynamicEndingCard(columns, currencyFormat, state.bankAccounts, state.statements, txs, selectedMonth.year, cashPositionAsync.asData?.value.fxRates ?? {}),
                     const SizedBox(height: 30),
@@ -562,10 +578,10 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 ),
               ),
             ),
+          ),
           );
         },
-      ),
-    );
+      );
   }
 
   Widget _buildDynamicHeader(List<Map<String, dynamic>> columns) {
@@ -1499,10 +1515,10 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     final redColor = PdfColor.fromHex('F87171');
     final cyanColor = PdfColor.fromHex('38BDF8');
 
-    List<pw.Widget> buildTableRows(String title, List<Map<String, String>> rowDefs) {
+    List<pw.Widget> buildTableSection(String title, List<Map<String, String>> rowDefs) {
       return [
         pw.Container(
-          margin: const pw.EdgeInsets.only(top: 12, bottom: 6),
+          margin: const pw.EdgeInsets.only(top: 14, bottom: 6),
           child: pw.Text(
             title,
             style: pw.TextStyle(color: primaryColor, fontSize: 11, fontWeight: pw.FontWeight.bold),
@@ -1511,25 +1527,25 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         pw.Table(
           border: pw.TableBorder.all(color: PdfColor.fromHex('334155'), width: 0.5),
           children: [
-            // Header
+            // Header row
             pw.TableRow(
               decoration: pw.BoxDecoration(color: darkBg),
               children: [
                 pw.Padding(
-                  padding: const pw.EdgeInsets.all(6),
-                  child: pw.Text('Line Item', style: pw.TextStyle(color: textMuted, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  padding: const pw.EdgeInsets.all(5),
+                  child: pw.Text('Line Item', style: pw.TextStyle(color: textMuted, fontSize: 8, fontWeight: pw.FontWeight.bold)),
                 ),
                 ...columns.map((col) => pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
+                      padding: const pw.EdgeInsets.all(5),
                       child: pw.Text(
                         col['label'].toString().replaceAll('\n', ' '),
                         textAlign: pw.TextAlign.right,
-                        style: pw.TextStyle(color: goldColor, fontSize: 9, fontWeight: pw.FontWeight.bold),
+                        style: pw.TextStyle(color: goldColor, fontSize: 8, fontWeight: pw.FontWeight.bold),
                       ),
                     )),
               ],
             ),
-            // Rows
+            // Data rows
             ...rowDefs.map((def) {
               final label = def['label']!;
               final key = def['key']!;
@@ -1540,12 +1556,12 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 decoration: pw.BoxDecoration(color: isBold ? darkBg : cardBg),
                 children: [
                   pw.Padding(
-                    padding: const pw.EdgeInsets.all(6),
+                    padding: const pw.EdgeInsets.all(5),
                     child: pw.Text(
                       label,
                       style: pw.TextStyle(
                         color: textWhite,
-                        fontSize: 8.5,
+                        fontSize: 7.5,
                         fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
                       ),
                     ),
@@ -1561,13 +1577,13 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     }
                     final color = val == 0 ? textMuted : (val > 0 ? cyanColor : redColor);
                     return pw.Padding(
-                      padding: const pw.EdgeInsets.all(6),
+                      padding: const pw.EdgeInsets.all(5),
                       child: pw.Text(
                         currencyFmt.format(val),
                         textAlign: pw.TextAlign.right,
                         style: pw.TextStyle(
                           color: color,
-                          fontSize: 8.5,
+                          fontSize: 7.5,
                           fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
                         ),
                       ),
@@ -1581,8 +1597,8 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       ];
     }
 
-    // Category detail rows for Part I
-    final part1Rows = [
+    // Build Part I row definitions
+    final part1Rows = <Map<String, String>>[
       {'label': 'Salary & Earned Income', 'key': 'salary'},
       {'label': 'Interest & Investment Returns', 'key': 'passive'},
       {'label': 'Other Inflows', 'key': 'other'},
@@ -1595,88 +1611,85 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     part1Rows.add({'label': 'Total Expenses', 'key': 'totalExp', 'isBold': 'true', 'negate': 'true'});
     part1Rows.add({'label': 'NET CASH FLOW', 'key': 'netCash', 'isBold': 'true'});
 
+    // Part II row definitions
+    final part2Rows = <Map<String, String>>[
+      {'label': 'Beginning cash', 'key': 'begCash'},
+      {'label': 'New cash positions added', 'key': 'newCashPos'},
+      {'label': 'Total Income', 'key': 'totalInc'},
+      {'label': 'Total Expenses', 'key': 'totalExp', 'negate': 'true'},
+      {'label': 'Ending cash balance', 'key': 'endCash', 'isBold': 'true'},
+    ];
+
+    // Use MultiPage so content flows across pages automatically
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(20),
+        margin: const pw.EdgeInsets.all(24),
         build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // Header
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          return [
+            // Header
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('PRO Cash Flow Statement', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: goldColor)),
+                    pw.SizedBox(height: 2),
+                    pw.Text('Period Horizon: $horizonName View', style: pw.TextStyle(fontSize: 9, color: textMuted)),
+                  ],
+                ),
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: pw.BoxDecoration(color: primaryColor, borderRadius: pw.BorderRadius.circular(4)),
+                  child: pw.Text(DateFormat('MMMM yyyy').format(selectedMonth), style: pw.TextStyle(color: textWhite, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 12),
+
+            // Executive Summary box
+            pw.Container(
+              padding: const pw.EdgeInsets.all(10),
+              decoration: pw.BoxDecoration(
+                color: cardBg,
+                borderRadius: pw.BorderRadius.circular(6),
+                border: pw.Border.all(color: primaryColor, width: 1),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  pw.Text('NET CASH FLOW', style: pw.TextStyle(color: textMuted, fontSize: 7, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 2),
+                  pw.Text(currencyFmt.format(netCashFlow), style: pw.TextStyle(color: goldColor, fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 6),
+                  pw.Row(
                     children: [
-                      pw.Text('PRO Cash Flow Statement', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: goldColor)),
-                      pw.SizedBox(height: 2),
-                      pw.Text('Period Horizon: $horizonName View', style: pw.TextStyle(fontSize: 10, color: textMuted)),
+                      pw.Text('Total Income: ', style: pw.TextStyle(color: textMuted, fontSize: 8)),
+                      pw.Text(currencyFmt.format(totalIncome), style: pw.TextStyle(color: greenColor, fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(width: 16),
+                      pw.Text('Total Expenses: ', style: pw.TextStyle(color: textMuted, fontSize: 8)),
+                      pw.Text(currencyFmt.format(totalExpenses), style: pw.TextStyle(color: redColor, fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(width: 16),
+                      pw.Text('Net Savings Rate: ', style: pw.TextStyle(color: textMuted, fontSize: 8)),
+                      pw.Text('${savingsRate.toStringAsFixed(1)}%', style: pw.TextStyle(color: cyanColor, fontSize: 8, fontWeight: pw.FontWeight.bold)),
                     ],
-                  ),
-                  pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: pw.BoxDecoration(color: primaryColor, borderRadius: pw.BorderRadius.circular(4)),
-                    child: pw.Text(DateFormat('MMMM yyyy').format(selectedMonth), style: pw.TextStyle(color: textWhite, fontSize: 10, fontWeight: pw.FontWeight.bold)),
                   ),
                 ],
               ),
-              pw.SizedBox(height: 10),
+            ),
 
-              // Executive Summary
-              pw.Container(
-                padding: const pw.EdgeInsets.all(10),
-                decoration: pw.BoxDecoration(
-                  color: cardBg,
-                  borderRadius: pw.BorderRadius.circular(8),
-                  border: pw.Border.all(color: primaryColor, width: 1),
-                ),
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('NET CASH FLOW', style: pw.TextStyle(color: textMuted, fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                        pw.SizedBox(height: 2),
-                        pw.Text(currencyFmt.format(netCashFlow), style: pw.TextStyle(color: goldColor, fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                      ],
-                    ),
-                    pw.Row(
-                      children: [
-                        pw.Text('Total Income: ', style: pw.TextStyle(color: textMuted, fontSize: 9)),
-                        pw.Text(currencyFmt.format(totalIncome), style: pw.TextStyle(color: greenColor, fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                        pw.SizedBox(width: 12),
-                        pw.Text('Total Expenses: ', style: pw.TextStyle(color: textMuted, fontSize: 9)),
-                        pw.Text(currencyFmt.format(totalExpenses), style: pw.TextStyle(color: redColor, fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                        pw.SizedBox(width: 12),
-                        pw.Text('Net Savings Rate: ', style: pw.TextStyle(color: textMuted, fontSize: 9)),
-                        pw.Text('${savingsRate.toStringAsFixed(1)}%', style: pw.TextStyle(color: cyanColor, fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+            // Part I Table
+            ...buildTableSection('PART I: OPERATING CASH FLOWS (PERSONAL)', part1Rows),
 
-              // Part I Table
-              ...buildTableRows('PART I: OPERATING CASH FLOWS (PERSONAL)', part1Rows),
+            // Part II Table
+            ...buildTableSection('TOTAL CASH POSITIONS', part2Rows),
 
-              // Part II Table (Total Cash Positions)
-              ...buildTableRows('TOTAL CASH POSITIONS', [
-                {'label': 'Beginning cash', 'key': 'begCash'},
-                {'label': 'New cash positions added', 'key': 'newCashPos'},
-                {'label': 'Total Income', 'key': 'totalInc'},
-                {'label': 'Total Expenses', 'key': 'totalExp', 'negate': 'true'},
-                {'label': 'Ending cash balance', 'key': 'endCash', 'isBold': 'true'},
-              ]),
-
-              pw.Spacer(),
-              pw.Center(
-                child: pw.Text('Generated by CashFlow AI™ • ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}', style: pw.TextStyle(color: textMuted, fontSize: 8)),
-              ),
-            ],
-          );
+            pw.SizedBox(height: 20),
+            pw.Center(
+              child: pw.Text('Generated by CashFlow AI\u2122 \u2022 ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}', style: pw.TextStyle(color: textMuted, fontSize: 7)),
+            ),
+          ];
         },
       ),
     );
@@ -1684,5 +1697,3 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     return pdf.save();
   }
 }
-
-
