@@ -56,6 +56,9 @@ dependencies:
   shared_preferences: ^2.2.3
   url_launcher: ^6.2.5
 
+  # PDF generation
+  pdf: ^3.10.8
+
   # Image
   cached_network_image: ^3.3.1
 

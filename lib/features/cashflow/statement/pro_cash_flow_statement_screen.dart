@@ -1,10 +1,12 @@
 // Updated Pro Cash Flow Statement Screen with Net Savings Rate Tooltip
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:html' as html;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/category_enum.dart';
 import '../../../data/database/app_database.dart';
@@ -78,40 +80,37 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.proGold, size: 24),
             tooltip: 'Download PDF Statement',
-            onPressed: () {
+            onPressed: () async {
               if (kIsWeb) {
                 try {
-                  cashFlowAsync.whenData((state) {
-                    final htmlContent = _generatePrintableHtmlDoc(_periodType, selectedMonth, columns, sortedCatNames);
-                    
-                    // Create a blob with HTML content
-                    final blob = html.Blob([htmlContent], 'text/html');
-                    final url = html.Url.createObjectUrlFromBlob(blob);
-                    
-                    // Open in new tab which automatically triggers window.print() (Save as PDF)
-                    final win = html.window.open(url, '_blank');
-                    if (win == null) {
-                      // Fallback if popup blocked: direct download link
-                      final anchor = html.AnchorElement(href: url)
-                        ..target = '_blank'
-                        ..download = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.html';
-                      anchor.click();
-                    }
-                    
-                    Future.delayed(const Duration(seconds: 10), () {
-                      html.Url.revokeObjectUrl(url);
-                    });
+                  final pdfBytes = await _generateBinaryPdfBytes(_periodType, selectedMonth, columns, sortedCatNames);
+                  final blob = html.Blob([pdfBytes], 'application/pdf');
+                  final url = html.Url.createObjectUrlFromBlob(blob);
+                  final filename = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.pdf';
 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening PDF Print/Save View...'),
-                        backgroundColor: AppColors.proPrimary,
-                        duration: Duration(seconds: 3),
-                      ),
-                    );
+                  final anchor = html.AnchorElement(href: url)
+                    ..target = '_blank'
+                    ..download = filename;
+                  anchor.click();
+
+                  Future.delayed(const Duration(seconds: 10), () {
+                    html.Url.revokeObjectUrl(url);
                   });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Downloading PDF Statement as $filename...'),
+                      backgroundColor: AppColors.proPrimary,
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
                 } catch (e) {
-                  html.window.print();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('PDF Export Error: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
                 }
               }
             },
@@ -1474,6 +1473,217 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   </script>
 </body>
 </html>''';
+  Future<List<int>> _generateBinaryPdfBytes(
+    String horizonName,
+    DateTime selectedMonth,
+    List<Map<String, dynamic>> columns,
+    List<String> sortedCatNames,
+  ) async {
+    final pdf = pw.Document();
+    final currencyFmt = NumberFormat.currency(symbol: 'S\$', decimalDigits: 2);
+    final lastCol = columns.last;
+    final netCashFlow = lastCol['netCash'] as double;
+    final totalIncome = lastCol['totalInc'] as double;
+    final totalExpenses = lastCol['totalExp'] as double;
+    final savingsRate = totalIncome > 0 ? ((netCashFlow / totalIncome) * 100).clamp(0.0, 100.0) : 0.0;
+
+    final primaryColor = PdfColor.fromHex('7C3AED');
+    final darkBg = PdfColor.fromHex('0F172A');
+    final cardBg = PdfColor.fromHex('1E293B');
+    final goldColor = PdfColor.fromHex('F59E0B');
+    final textWhite = PdfColor.fromHex('FFFFFF');
+    final textMuted = PdfColor.fromHex('94A3B8');
+    final greenColor = PdfColor.fromHex('4ADE80');
+    final redColor = PdfColor.fromHex('F87171');
+    final cyanColor = PdfColor.fromHex('38BDF8');
+
+    List<pw.Widget> buildTableRows(String title, List<Map<String, String>> rowDefs) {
+      return [
+        pw.Container(
+          margin: const pw.EdgeInsets.only(top: 12, bottom: 6),
+          child: pw.Text(
+            title,
+            style: pw.TextStyle(color: primaryColor, fontSize: 11, fontWeight: pw.FontWeight.bold),
+          ),
+        ),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColor.fromHex('334155'), width: 0.5),
+          children: [
+            // Header
+            pw.TableRow(
+              decoration: pw.BoxDecoration(color: darkBg),
+              children: [
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(6),
+                  child: pw.Text('Line Item', style: pw.TextStyle(color: textMuted, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                ),
+                ...columns.map((col) => pw.Padding(
+                      padding: const pw.EdgeInsets.all(6),
+                      child: pw.Text(
+                        col['label'].toString().replaceAll('\n', ' '),
+                        textAlign: pw.TextAlign.right,
+                        style: pw.TextStyle(color: goldColor, fontSize: 9, fontWeight: pw.FontWeight.bold),
+                      ),
+                    )),
+              ],
+            ),
+            // Rows
+            ...rowDefs.map((def) {
+              final label = def['label']!;
+              final key = def['key']!;
+              final isBold = def['isBold'] == 'true';
+              final negate = def['negate'] == 'true';
+
+              return pw.TableRow(
+                decoration: pw.BoxDecoration(color: isBold ? darkBg : cardBg),
+                children: [
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(6),
+                    child: pw.Text(
+                      label,
+                      style: pw.TextStyle(
+                        color: textWhite,
+                        fontSize: 8.5,
+                        fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                  ...columns.map((col) {
+                    final val = (col[key] as double? ?? 0.0) * (negate ? -1.0 : 1.0);
+                    final color = val == 0 ? textMuted : (val > 0 ? cyanColor : redColor);
+                    return pw.Padding(
+                      padding: const pw.EdgeInsets.all(6),
+                      child: pw.Text(
+                        currencyFmt.format(val),
+                        textAlign: pw.TextAlign.right,
+                        style: pw.TextStyle(
+                          color: color,
+                          fontSize: 8.5,
+                          fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              );
+            }),
+          ],
+        ),
+      ];
+    }
+
+    // Category detail rows for Part I
+    final part1Rows = [
+      {'label': 'Salary & Earned Income', 'key': 'salary'},
+      {'label': 'Interest & Investment Returns', 'key': 'passive'},
+      {'label': 'Other Inflows', 'key': 'other'},
+      {'label': 'Total Income', 'key': 'totalInc', 'isBold': 'true'},
+    ];
+
+    for (final cat in sortedCatNames) {
+      part1Rows.add({'label': '  • $cat', 'key': 'cat_$cat', 'negate': 'true'});
+    }
+    part1Rows.add({'label': 'Total Expenses', 'key': 'totalExp', 'isBold': 'true', 'negate': 'true'});
+    part1Rows.add({'label': 'NET CASH FLOW', 'key': 'netCash', 'isBold': 'true'});
+
+    // Helper map for category values inside columns
+    final normalizedCols = columns.map((col) {
+      final newCol = Map<String, dynamic>.from(col);
+      final catMap = col['catMap'] as Map<String, double>? ?? {};
+      for (final cat in sortedCatNames) {
+        newCol['cat_$cat'] = -(catMap[cat] ?? 0.0);
+      }
+      return newCol;
+    }).toList();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(20),
+        build: (pw.Context context) {
+          return pw.Column(
+            cross pw.CrossAxisAlignment.start,
+            children: [
+              // Header
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('PRO Cash Flow Statement', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: goldColor)),
+                      pw.SizedBox(height: 2),
+                      pw.Text('Period Horizon: $horizonName View', style: pw.TextStyle(fontSize: 10, color: textMuted)),
+                    ],
+                  ),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: pw.BoxDecoration(color: primaryColor, borderRadius: pw.BorderRadius.circular(4)),
+                    child: pw.Text(DateFormat('MMMM yyyy').format(selectedMonth), style: pw.TextStyle(color: textWhite, fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 10),
+
+              // Executive Summary
+              pw.Container(
+                padding: const pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(
+                  color: cardBg,
+                  borderRadius: pw.BorderRadius.circular(8),
+                  border: pw.Border.all(color: primaryColor, width: 1),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('NET CASH FLOW', style: pw.TextStyle(color: textMuted, fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        pw.SizedBox(height: 2),
+                        pw.Text(currencyFmt.format(netCashFlow), style: pw.TextStyle(color: goldColor, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.Row(
+                      children: [
+                        pw.Text('Total Income: ', style: pw.TextStyle(color: textMuted, fontSize: 9)),
+                        pw.Text(currencyFmt.format(totalIncome), style: pw.TextStyle(color: greenColor, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        pw.SizedBox(width: 12),
+                        pw.Text('Total Expenses: ', style: pw.TextStyle(color: textMuted, fontSize: 9)),
+                        pw.Text(currencyFmt.format(totalExpenses), style: pw.TextStyle(color: redColor, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        pw.SizedBox(width: 12),
+                        pw.Text('Net Savings Rate: ', style: pw.TextStyle(color: textMuted, fontSize: 9)),
+                        pw.Text('${savingsRate.toStringAsFixed(1)}%', style: pw.TextStyle(color: cyanColor, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Part I Table
+              ...buildTableRows('PART I: OPERATING CASH FLOWS (PERSONAL)', part1Rows),
+
+              // Part II Table (Total Cash Positions)
+              ...buildTableRows('TOTAL CASH POSITIONS', [
+                {'label': 'Beginning cash', 'key': 'begCash'},
+                {'label': 'New cash positions added', 'key': 'newCashPos'},
+                {'label': 'Total Income', 'key': 'totalInc'},
+                {'label': 'Total Expenses', 'key': 'totalExp', 'negate': 'true'},
+                {'label': 'Ending cash balance', 'key': 'endCash', 'isBold': 'true'},
+              ]),
+
+              pw.Spacer(),
+              pw.Center(
+                child: pw.Text('Generated by CashFlow AI™ • ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}', style: pw.TextStyle(color: textMuted, fontSize: 8)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return pdf.save();
   }
 }
+
 
