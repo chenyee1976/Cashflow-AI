@@ -1473,6 +1473,8 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   </script>
 </body>
 </html>''';
+  }
+
   Future<List<int>> _generateBinaryPdfBytes(
     String horizonName,
     DateTime selectedMonth,
@@ -1549,7 +1551,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     ),
                   ),
                   ...columns.map((col) {
-                    final val = (col[key] as double? ?? 0.0) * (negate ? -1.0 : 1.0);
+                    double val = 0.0;
+                    if (key.startsWith('cat_')) {
+                      final catName = key.replaceFirst('cat_', '');
+                      final catMap = col['catMap'] as Map<String, double>? ?? {};
+                      val = -(catMap[catName] ?? 0.0);
+                    } else {
+                      val = (col[key] as double? ?? 0.0) * (negate ? -1.0 : 1.0);
+                    }
                     final color = val == 0 ? textMuted : (val > 0 ? cyanColor : redColor);
                     return pw.Padding(
                       padding: const pw.EdgeInsets.all(6),
@@ -1586,23 +1595,13 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     part1Rows.add({'label': 'Total Expenses', 'key': 'totalExp', 'isBold': 'true', 'negate': 'true'});
     part1Rows.add({'label': 'NET CASH FLOW', 'key': 'netCash', 'isBold': 'true'});
 
-    // Helper map for category values inside columns
-    final normalizedCols = columns.map((col) {
-      final newCol = Map<String, dynamic>.from(col);
-      final catMap = col['catMap'] as Map<String, double>? ?? {};
-      for (final cat in sortedCatNames) {
-        newCol['cat_$cat'] = -(catMap[cat] ?? 0.0);
-      }
-      return newCol;
-    }).toList();
-
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(20),
         build: (pw.Context context) {
           return pw.Column(
-            cross pw.CrossAxisAlignment.start,
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               // Header
               pw.Row(
