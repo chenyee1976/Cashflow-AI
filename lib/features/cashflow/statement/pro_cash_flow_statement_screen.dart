@@ -435,6 +435,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     if (kIsWeb) {
                       try {
                         final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
+                        final realCashAcc = ref.read(cashPositionProvider).asData?.value.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull;
+                        final realCashBal = realCashAcc?.currentBalance ?? 0.0;
+
                         final pdfBytes = await _generatePdfDocument(
                           _periodType,
                           selectedMonth,
