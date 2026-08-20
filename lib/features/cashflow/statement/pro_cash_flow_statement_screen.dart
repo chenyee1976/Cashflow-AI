@@ -445,26 +445,23 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                           txs,
                           fxRates,
                         );
-                        final blob = html.Blob([htmlContent], 'text/html');
+                        final fileName = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.html';
+                        final blob = html.Blob([htmlContent], 'text/html;charset=utf-8');
                         final url = html.Url.createObjectUrlFromBlob(blob);
 
-                        final win = html.window.open(url, '_blank');
-                        if (win == null) {
-                          final anchor = html.AnchorElement(href: url)
-                            ..target = '_blank'
-                            ..download = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.html';
-                          anchor.click();
-                        }
+                        final anchor = html.AnchorElement(href: url)
+                          ..setAttribute('download', fileName)
+                          ..click();
 
-                        Future.delayed(const Duration(seconds: 10), () {
+                        Future.delayed(const Duration(seconds: 2), () {
                           html.Url.revokeObjectUrl(url);
                         });
 
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Opening Printable PDF View...'),
+                          SnackBar(
+                            content: Text('Statement downloaded: $fileName'),
                             backgroundColor: AppColors.proPrimary,
-                            duration: Duration(seconds: 3),
+                            duration: const Duration(seconds: 3),
                           ),
                         );
                       } catch (e) {
@@ -760,12 +757,33 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     }
 
     // Collect all unique account identities
+    final combinedAccounts = <BankAccount>[
+      ...?ref.watch(cashPositionProvider).asData?.value.accounts,
+      ...allUserAccounts,
+    ];
+
     final Map<String, BankAccount> uniqueAccountSamples = {};
-    for (final acc in allUserAccounts) {
+    for (final acc in combinedAccounts) {
       final key = _normIdentity(acc);
       if (!uniqueAccountSamples.containsKey(key)) {
         uniqueAccountSamples[key] = acc;
       }
+    }
+
+    if (!uniqueAccountSamples.containsKey('physicalcashonhand_cash') &&
+        !uniqueAccountSamples.values.any((a) => a.id == 'manual_cash_account')) {
+      uniqueAccountSamples['physicalcashonhand_cash'] = BankAccount(
+        id: 'manual_cash_account',
+        userId: 'chenyee_user',
+        bankName: 'Physical Cash on Hand',
+        accountType: 'Physical Cash',
+        accountNumber: 'Cash',
+        currentBalance: 0.0,
+        openingBalance: 0.0,
+        currency: 'SGD',
+        sourceStatementId: null,
+        createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      );
     }
 
     // Build per-account row values across columns
@@ -1443,6 +1461,22 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       if (!uniqueAccountSamples.containsKey(key)) {
         uniqueAccountSamples[key] = acc;
       }
+    }
+
+    if (!uniqueAccountSamples.containsKey('physicalcashonhand_cash') &&
+        !uniqueAccountSamples.values.any((a) => a.id == 'manual_cash_account')) {
+      uniqueAccountSamples['physicalcashonhand_cash'] = BankAccount(
+        id: 'manual_cash_account',
+        userId: 'chenyee_user',
+        bankName: 'Physical Cash on Hand',
+        accountType: 'Physical Cash',
+        accountNumber: 'Cash',
+        currentBalance: 0.0,
+        openingBalance: 0.0,
+        currency: 'SGD',
+        sourceStatementId: null,
+        createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      );
     }
 
     String accountBreakdownRowsHtml = '';
