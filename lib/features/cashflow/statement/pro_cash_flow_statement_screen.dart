@@ -1474,10 +1474,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(20),
-        pageTheme: pw.PageTheme(
+        pageTheme: const pw.PageTheme(
           pageFormat: PdfPageFormat.a4,
-          backgroundColor: bgDark,
-          margin: const pw.EdgeInsets.all(20),
+          margin: pw.EdgeInsets.all(20),
         ),
         build: (pw.Context context) {
           return [
