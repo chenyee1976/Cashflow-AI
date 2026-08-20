@@ -1373,8 +1373,8 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     List<Map<String, dynamic>> columns,
     List<String> sortedCatNames,
     List<BankAccount> bankAccounts,
-    List<StatementModel> statements,
-    List<TransactionModel> txs,
+    List<Statement> statements,
+    List<Transaction> txs,
     Map<String, double> fxRates,
   ) {
     final currencyFmt = NumberFormat.currency(symbol: 'S\$', decimalDigits: 2);
