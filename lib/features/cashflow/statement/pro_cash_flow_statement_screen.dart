@@ -431,38 +431,44 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 IconButton(
                   icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.proGold, size: 24),
                   tooltip: 'Download PDF Statement',
-                  onPressed: () async {
+                  onPressed: () {
                     if (kIsWeb) {
                       try {
-                        final pdfBytes = await _generateBinaryPdfBytes(_periodType, selectedMonth, columns, sortedCatNames);
-                        final bytes = Uint8List.fromList(pdfBytes);
-                        final blob = html.Blob([bytes], 'application/pdf');
+                        final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
+                        final htmlContent = _generatePrintableHtmlDoc(
+                          _periodType,
+                          selectedMonth,
+                          columns,
+                          sortedCatNames,
+                          state.bankAccounts,
+                          state.statements,
+                          txs,
+                          fxRates,
+                        );
+                        final blob = html.Blob([htmlContent], 'text/html');
                         final url = html.Url.createObjectUrlFromBlob(blob);
-                        final filename = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.pdf';
 
-                        final anchor = html.AnchorElement(href: url)
-                          ..target = '_blank'
-                          ..download = filename;
-                        anchor.click();
+                        final win = html.window.open(url, '_blank');
+                        if (win == null) {
+                          final anchor = html.AnchorElement(href: url)
+                            ..target = '_blank'
+                            ..download = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.html';
+                          anchor.click();
+                        }
 
                         Future.delayed(const Duration(seconds: 10), () {
                           html.Url.revokeObjectUrl(url);
                         });
 
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Downloading PDF Statement as $filename...'),
+                          const SnackBar(
+                            content: Text('Opening Printable PDF View...'),
                             backgroundColor: AppColors.proPrimary,
-                            duration: const Duration(seconds: 3),
+                            duration: Duration(seconds: 3),
                           ),
                         );
                       } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('PDF Export Error: $e'),
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        );
+                        html.window.print();
                       }
                     }
                   },
@@ -1366,6 +1372,10 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     DateTime selectedMonth,
     List<Map<String, dynamic>> columns,
     List<String> sortedCatNames,
+    List<BankAccount> bankAccounts,
+    List<StatementModel> statements,
+    List<TransactionModel> txs,
+    Map<String, double> fxRates,
   ) {
     final currencyFmt = NumberFormat.currency(symbol: 'S\$', decimalDigits: 2);
     final lastCol = columns.last;
@@ -1388,17 +1398,115 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       return '<tr style="$rowStyle"><td>$label</td>$cells</tr>';
     }
 
-    String _buildHtmlCategoryRow(String label, String catName) {
+    String _buildHtmlCategoryRow(String catName) {
       final cells = columns.map((col) {
         final catMap = col['catMap'] as Map<String, double>? ?? {};
         final val = -(catMap[catName] ?? 0.0);
         final color = val == 0 ? '#94A3B8' : '#F87171';
         return '<td style="text-align: right; color: $color;">${currencyFmt.format(val)}</td>';
       }).join('');
-      return '<tr><td style="padding-left: 20px; color: #CBD5E1;">• $label</td>$cells</tr>';
+      return '<tr><td style="padding-left: 20px; color: #CBD5E1;">&bull; $catName</td>$cells</tr>';
     }
 
-    final categoryRowsHtml = sortedCatNames.map((cat) => _buildHtmlCategoryRow(cat, cat)).join('');
+    final categoryRowsHtml = sortedCatNames.map((cat) => _buildHtmlCategoryRow(cat)).join('');
+
+    // Compute Account Breakdown for Total Ending Cash Section
+    final selectedYear = selectedMonth.year;
+    final List<DateTime> endMonthDates = [];
+    for (int colIdx = 0; colIdx < columns.length; colIdx++) {
+      final label = columns[colIdx]['label'] as String;
+      if (_periodType == 'Month') {
+        if (colIdx == 0) {
+          endMonthDates.add(DateTime(selectedMonth.year, selectedMonth.month - 2));
+        } else if (colIdx == 1) {
+          endMonthDates.add(DateTime(selectedMonth.year, selectedMonth.month - 1));
+        } else {
+          endMonthDates.add(selectedMonth);
+        }
+      } else if (_periodType == 'Quarter') {
+        int endM = 3;
+        if (label.contains('Q1')) endM = 3;
+        if (label.contains('Q2')) endM = 6;
+        if (label.contains('Q3')) endM = 9;
+        if (label.contains('Q4')) endM = 12;
+        endMonthDates.add(DateTime(selectedYear, endM));
+      } else {
+        endMonthDates.add(DateTime(selectedYear, 12));
+      }
+    }
+
+    String _normIdentity(BankAccount a) => '${a.bankName.trim()}_${(a.accountNumber ?? '').trim()}'.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+
+    final Map<String, BankAccount> uniqueAccountSamples = {};
+    for (final acc in bankAccounts) {
+      final key = _normIdentity(acc);
+      if (!uniqueAccountSamples.containsKey(key)) {
+        uniqueAccountSamples[key] = acc;
+      }
+    }
+
+    String accountBreakdownRowsHtml = '';
+    for (final identity in uniqueAccountSamples.keys) {
+      final sampleAcc = uniqueAccountSamples[identity]!;
+      final accLabel = sampleAcc.id == 'manual_cash_account'
+          ? 'Physical Cash on Hand'
+          : '${sampleAcc.bankName} (${sampleAcc.accountNumber ?? ""})'.trim();
+
+      final cells = columns.asMap().entries.map((entry) {
+        final i = entry.key;
+        final targetEndMonth = endMonthDates[i];
+        final targetEndMonthStart = DateTime(targetEndMonth.year, targetEndMonth.month, 1);
+
+        double latestBal = 0.0;
+        if (sampleAcc.id == 'manual_cash_account') {
+          latestBal = sampleAcc.currentBalance;
+        } else {
+          DateTime? latestDate;
+          for (final acc in bankAccounts) {
+            if (_normIdentity(acc) != identity) continue;
+            DateTime? stmtDate;
+            if (acc.sourceStatementId != null) {
+              final matchedStmt = statements.where((s) => s.id == acc.sourceStatementId).firstOrNull;
+              if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
+                stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
+              }
+              if (stmtDate == null) {
+                final stmtTxs = txs.where((t) => t.statementId == acc.sourceStatementId).toList();
+                if (stmtTxs.isNotEmpty) {
+                  stmtTxs.sort((a, b) => b.date.compareTo(a.date));
+                  stmtDate = DateTime.fromMillisecondsSinceEpoch(stmtTxs.first.date * 1000);
+                }
+              }
+            }
+            if (stmtDate != null) {
+              final stmtMonthStart = DateTime(stmtDate.year, stmtDate.month, 1);
+              if (!stmtMonthStart.isAfter(targetEndMonthStart)) {
+                if (latestDate == null || stmtDate.isAfter(latestDate)) {
+                  latestDate = stmtDate;
+                  latestBal = acc.currentBalance;
+                }
+              }
+            }
+          }
+        }
+
+        final currencyStr = sampleAcc.currency.trim().toUpperCase();
+        double val = latestBal;
+        if (currencyStr != 'SGD') {
+          final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+          val = latestBal * rate;
+        }
+        final color = val == 0 ? '#94A3B8' : '#60A5FA';
+        return '<td style="text-align: right; color: $color;">${currencyFmt.format(val)}</td>';
+      }).join('');
+
+      accountBreakdownRowsHtml += '<tr><td style="padding-left: 20px; color: #CBD5E1;">&bull; $accLabel</td>$cells</tr>';
+    }
+
+    final totalEndingCashCells = columns.map((col) {
+      final val = col['endCash'] as double? ?? 0.0;
+      return '<td style="text-align: right; color: #60A5FA; font-weight: bold;">${currencyFmt.format(val)}</td>';
+    }).join('');
 
     return '''<!DOCTYPE html>
 <html>
@@ -1406,19 +1514,19 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   <meta charset="utf-8">
   <title>CashFlow AI - $horizonName Statement (${DateFormat('yyyy-MM').format(selectedMonth)})</title>
   <style>
-    @page { size: A4 landscape; margin: 10mm; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0F172A; color: #FFFFFF; padding: 20px; font-size: 12px; }
-    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #7C3AED; padding-bottom: 12px; margin-bottom: 20px; }
-    .title { font-size: 22px; font-weight: bold; color: #F59E0B; }
+    @page { size: A4 landscape; margin: 8mm; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0F172A; color: #FFFFFF; padding: 16px; font-size: 11px; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #7C3AED; padding-bottom: 10px; margin-bottom: 16px; }
+    .title { font-size: 20px; font-weight: bold; color: #F59E0B; }
     .badge { background: #7C3AED; color: #FFF; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
-    .summary-card { background: #1E293B; border: 1px solid #7C3AED; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
-    .section-title { color: #A78BFA; font-size: 14px; font-weight: bold; margin: 16px 0 8px 0; border-bottom: 1px solid #334155; padding-bottom: 4px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #1E293B; border-radius: 10px; overflow: hidden; }
-    th { background: #0F172A; color: #94A3B8; font-size: 11px; text-transform: uppercase; padding: 10px; border-bottom: 1px solid #334155; }
+    .summary-card { background: #1E293B; border: 1px solid #7C3AED; border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+    .section-title { color: #A78BFA; font-size: 13px; font-weight: bold; margin: 14px 0 6px 0; border-bottom: 1px solid #334155; padding-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; background: #1E293B; border-radius: 8px; overflow: hidden; }
+    th { background: #0F172A; color: #94A3B8; font-size: 10px; text-transform: uppercase; padding: 8px; border-bottom: 1px solid #334155; }
     th:first-child { text-align: left; }
-    td { padding: 8px 10px; border-bottom: 1px solid #334155; color: #E2E8F0; }
+    td { padding: 6px 8px; border-bottom: 1px solid #334155; color: #E2E8F0; }
     td:first-child { text-align: left; font-weight: 500; }
-    .footer { text-align: center; color: #64748B; font-size: 10px; margin-top: 24px; }
+    .footer { text-align: center; color: #64748B; font-size: 9px; margin-top: 16px; }
     @media print {
       body { background: #0F172A !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
@@ -1428,17 +1536,18 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   <div class="header">
     <div>
       <div class="title">PRO Cash Flow Statement</div>
-      <div style="color: #94A3B8; font-size: 12px; margin-top: 4px;">Period Horizon: $horizonName View</div>
+      <div style="color: #94A3B8; font-size: 11px; margin-top: 2px;">Period Horizon: $horizonName View</div>
     </div>
     <div class="badge">${DateFormat('MMMM yyyy').format(selectedMonth)}</div>
   </div>
 
   <div class="summary-card">
-    <div style="font-size: 11px; color: #94A3B8; text-transform: uppercase; font-weight: bold;">NET CASH FLOW (${lastCol['label'].toString().replaceAll('\n', ' ')})</div>
-    <div style="font-size: 24px; font-weight: bold; color: #F59E0B; margin: 6px 0;">${currencyFmt.format(netCashFlow)}</div>
-    <div style="display: flex; gap: 24px; font-size: 11px; color: #E2E8F0; margin-top: 10px;">
+    <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase; font-weight: bold;">NET CASH FLOW (${lastCol['label'].toString().replaceAll('\n', ' ')})</div>
+    <div style="font-size: 22px; font-weight: bold; color: #F59E0B; margin: 4px 0;">${currencyFmt.format(netCashFlow)}</div>
+    <div style="display: flex; gap: 20px; font-size: 10.5px; color: #E2E8F0; margin-top: 8px; flex-wrap: wrap;">
       <div>Total Income: <span style="color: #4ADE80; font-weight: bold;">${currencyFmt.format(totalIncome)}</span></div>
       <div>Total Expenses: <span style="color: #F87171; font-weight: bold;">${currencyFmt.format(totalExpenses)}</span></div>
+      <div>Total Net Transfers: <span style="color: #60A5FA; font-weight: bold;">S\$0.00</span></div>
       <div>Net Savings Rate: <span style="color: #38BDF8; font-weight: bold;">${savingsRate.toStringAsFixed(1)}%</span></div>
     </div>
   </div>
@@ -1479,7 +1588,25 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     </tbody>
   </table>
 
-  <div class="footer">Generated by CashFlow AI™ • ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}</div>
+  <div class="section-title">TOTAL ENDING CASH</div>
+  <div style="font-size: 10px; color: #94A3B8; margin-bottom: 6px;">Sum of Bank Balances + Physical Cash on Hand</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Line Item</th>
+        $headerColsHtml
+      </tr>
+    </thead>
+    <tbody>
+      ${accountBreakdownRowsHtml.isNotEmpty ? '<tr><td colspan="${columns.length + 1}" style="font-weight: bold; color: #94A3B8; background: #0F172A;">Account Breakdown:</td></tr>' + accountBreakdownRowsHtml : ''}
+      <tr style="background: #0F172A; font-weight: bold;">
+        <td style="color: #F59E0B;">TOTAL ENDING CASH</td>
+        $totalEndingCashCells
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">Generated by CashFlow AI™ &bull; ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}</div>
   <script>
     window.onload = function() {
       setTimeout(function() {
