@@ -431,11 +431,11 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 IconButton(
                   icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.proGold, size: 24),
                   tooltip: 'Download PDF Statement',
-                  onPressed: () {
+                  onPressed: () async {
                     if (kIsWeb) {
                       try {
                         final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
-                        final htmlContent = _generatePrintableHtmlDoc(
+                        final pdfBytes = await _generatePdfDocument(
                           _periodType,
                           selectedMonth,
                           columns,
@@ -444,9 +444,11 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                           state.statements,
                           txs,
                           fxRates,
+                          realCashBal,
                         );
-                        final fileName = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.html';
-                        final blob = html.Blob([htmlContent], 'text/html;charset=utf-8');
+
+                        final fileName = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.pdf';
+                        final blob = html.Blob([pdfBytes], 'application/pdf');
                         final url = html.Url.createObjectUrlFromBlob(blob);
 
                         final anchor = html.AnchorElement(href: url)
@@ -459,13 +461,13 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Statement downloaded: $fileName'),
+                            content: Text('Downloaded PDF: $fileName'),
                             backgroundColor: AppColors.proPrimary,
                             duration: const Duration(seconds: 3),
                           ),
                         );
                       } catch (e) {
-                        html.window.print();
+                        debugPrint('Error generating PDF: $e');
                       }
                     }
                   },
@@ -770,6 +772,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       }
     }
 
+    final realCashAcc = ref.watch(cashPositionProvider).asData?.value.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull;
+    final realCashBal = realCashAcc?.currentBalance ?? 0.0;
+
     if (!uniqueAccountSamples.containsKey('physicalcashonhand_cash') &&
         !uniqueAccountSamples.values.any((a) => a.id == 'manual_cash_account')) {
       uniqueAccountSamples['physicalcashonhand_cash'] = BankAccount(
@@ -778,7 +783,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         bankName: 'Physical Cash on Hand',
         accountType: 'Physical Cash',
         accountNumber: 'Cash',
-        currentBalance: 0.0,
+        currentBalance: realCashBal,
         openingBalance: 0.0,
         currency: 'SGD',
         sourceStatementId: null,
@@ -801,7 +806,20 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         final targetEndMonthStart = DateTime(targetEndMonth.year, targetEndMonth.month, 1);
 
         if (sampleAcc.id == 'manual_cash_account') {
-          colValues.add(sampleAcc.currentBalance);
+          final posData = ref.watch(cashPositionProvider).asData?.value;
+          double monthCashVal = 0.0;
+          if (_periodType == 'Month') {
+            if (i == 2) {
+              monthCashVal = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull?.currentBalance ?? 0.0;
+            } else if (i == 1) {
+              monthCashVal = posData?.prevMonthBalances['manual_cash_account'] ?? 0.0;
+            } else {
+              monthCashVal = posData?.twoMonthsAgoBalances['manual_cash_account'] ?? 0.0;
+            }
+          } else {
+            monthCashVal = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull?.currentBalance ?? 0.0;
+          }
+          colValues.add(monthCashVal);
           continue;
         }
 
@@ -1379,10 +1397,184 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               textAlign: TextAlign.right,
               style: TextStyle(color: v0 >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.w900, fontSize: 14),
             ),
-          ),
-        ],
+  Future<Uint8List> _generatePdfDocument(
+    String horizonName,
+    DateTime selectedMonth,
+    List<Map<String, dynamic>> columns,
+    List<String> sortedCatNames,
+    List<BankAccount> bankAccounts,
+    List<Statement> statements,
+    List<Transaction> txs,
+    Map<String, double> fxRates,
+    double realCashBal,
+  ) async {
+    final pdf = pw.Document();
+    final currencyFmt = NumberFormat.currency(symbol: 'S\$', decimalDigits: 2);
+    final lastCol = columns.last;
+    final netCashFlow = lastCol['netCash'] as double;
+    final totalIncome = lastCol['totalInc'] as double;
+    final totalExpenses = lastCol['totalExp'] as double;
+    final savingsRate = totalIncome > 0 ? ((netCashFlow / totalIncome) * 100).clamp(0.0, 100.0) : 0.0;
+
+    String _normIdentity(BankAccount a) => '${a.bankName.trim()}_${(a.accountNumber ?? '').trim()}'.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+
+    final Map<String, BankAccount> uniqueAccountSamples = {};
+    for (final acc in bankAccounts) {
+      final key = _normIdentity(acc);
+      if (!uniqueAccountSamples.containsKey(key)) {
+        uniqueAccountSamples[key] = acc;
+      }
+    }
+
+    if (!uniqueAccountSamples.containsKey('physicalcashonhand_cash') &&
+        !uniqueAccountSamples.values.any((a) => a.id == 'manual_cash_account')) {
+      uniqueAccountSamples['physicalcashonhand_cash'] = BankAccount(
+        id: 'manual_cash_account',
+        userId: 'chenyee_user',
+        bankName: 'Physical Cash on Hand',
+        accountType: 'Physical Cash',
+        accountNumber: 'Cash',
+        currentBalance: realCashBal,
+        openingBalance: 0.0,
+        currency: 'SGD',
+        sourceStatementId: null,
+        createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      );
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(24),
+        build: (pw.Context context) {
+          return [
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('PRO Cash Flow Statement', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.amber800)),
+                    pw.SizedBox(height: 2),
+                    pw.Text('Period Horizon: $horizonName View', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                  ],
+                ),
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.purple800,
+                    borderRadius: pw.BorderRadius.circular(4),
+                  ),
+                  child: pw.Text(
+                    DateFormat('MMMM yyyy').format(selectedMonth),
+                    style: pw.TextStyle(color: PdfColors.white, fontSize: 10, fontWeight: pw.FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 12),
+
+            // Executive Net Cash Flow Card
+            pw.Container(
+              padding: const pw.EdgeInsets.all(10),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.blueGrey900,
+                borderRadius: pw.BorderRadius.circular(6),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('NET CASH FLOW (${DateFormat('MMM yyyy').format(selectedMonth).toUpperCase()})', style: pw.TextStyle(color: PdfColors.white, fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 3),
+                  pw.Text(currencyFmt.format(netCashFlow), style: pw.TextStyle(color: netCashFlow >= 0 ? PdfColors.green300 : PdfColors.red300, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 6),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Total Income: ${currencyFmt.format(totalIncome)}', style: pw.TextStyle(color: PdfColors.green300, fontSize: 8)),
+                      pw.Text('Total Expenses: ${currencyFmt.format(totalExpenses)}', style: pw.TextStyle(color: PdfColors.red300, fontSize: 8)),
+                      pw.Text('Net Savings Rate: ${savingsRate.toStringAsFixed(1)}%', style: pw.TextStyle(color: PdfColors.amber300, fontSize: 8)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 14),
+
+            // PART I: OPERATING CASH FLOWS (PERSONAL)
+            pw.Text('PART I: OPERATING CASH FLOWS (PERSONAL)', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+            pw.SizedBox(height: 4),
+
+            pw.TableHelper.fromTextArray(
+              headers: ['LINE ITEM', ...columns.map((c) => c['label'].toString().replaceAll('\n', ' '))],
+              data: [
+                ['Salary & Earned Income', ...columns.map((c) => currencyFmt.format(c['salary'] ?? 0.0))],
+                ['Interest & Investment Returns', ...columns.map((c) => currencyFmt.format(c['passive'] ?? 0.0))],
+                ['Other Inflows', ...columns.map((c) => currencyFmt.format(c['other'] ?? 0.0))],
+                ['Total Income', ...columns.map((c) => currencyFmt.format(c['totalInc'] ?? 0.0))],
+                ...sortedCatNames.map((cat) => ['  • $cat', ...columns.map((c) => currencyFmt.format(-((c['catMap'] as Map<String, double>)[cat] ?? 0.0)))]),
+                ['Total Expenses', ...columns.map((c) => currencyFmt.format(-(c['totalExp'] as double? ?? 0.0)))],
+                ['NET CASH FLOW', ...columns.map((c) => currencyFmt.format(c['netCash'] ?? 0.0))],
+              ],
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 8),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+              cellStyle: const pw.TextStyle(fontSize: 7.5),
+              headerAlignment: pw.Alignment.centerRight,
+              cellAlignment: pw.Alignment.centerRight,
+              cellAlignments: {0: pw.Alignment.centerLeft},
+              headerAlignments: {0: pw.Alignment.centerLeft},
+              columnWidths: {0: const pw.FlexColumnWidth(3)},
+            ),
+            pw.SizedBox(height: 14),
+
+            // TOTAL ENDING CASH (ACCOUNT BREAKDOWN)
+            pw.Text('TOTAL ENDING CASH (ACCOUNT BREAKDOWN)', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.amber900)),
+            pw.SizedBox(height: 4),
+
+            pw.TableHelper.fromTextArray(
+              headers: ['ACCOUNT', ...columns.map((c) => c['label'].toString().replaceAll('\n', ' '))],
+              data: [
+                ...uniqueAccountSamples.values.map((acc) {
+                  final accName = acc.id == 'manual_cash_account' ? 'Physical Cash on Hand' : '${acc.bankName} (${acc.accountNumber ?? ""})';
+                  final colVals = columns.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    if (acc.id == 'manual_cash_account') {
+                      final posData = ref.watch(cashPositionProvider).asData?.value;
+                      double monthCashVal = 0.0;
+                      if (_periodType == 'Month') {
+                        if (i == 2) {
+                          monthCashVal = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull?.currentBalance ?? 0.0;
+                        } else if (i == 1) {
+                          monthCashVal = posData?.prevMonthBalances['manual_cash_account'] ?? 0.0;
+                        } else {
+                          monthCashVal = posData?.twoMonthsAgoBalances['manual_cash_account'] ?? 0.0;
+                        }
+                      } else {
+                        monthCashVal = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull?.currentBalance ?? 0.0;
+                      }
+                      return currencyFmt.format(monthCashVal);
+                    }
+                    return currencyFmt.format(acc.currentBalance);
+                  });
+                  return [accName, ...colVals];
+                }),
+                ['TOTAL ENDING CASH', ...columns.map((c) => currencyFmt.format(c['endCash'] ?? 0.0))],
+              ],
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 8),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+              cellStyle: const pw.TextStyle(fontSize: 7.5),
+              headerAlignment: pw.Alignment.centerRight,
+              cellAlignment: pw.Alignment.centerRight,
+              cellAlignments: {0: pw.Alignment.centerLeft},
+              headerAlignments: {0: pw.Alignment.centerLeft},
+              columnWidths: {0: const pw.FlexColumnWidth(3)},
+            ),
+          ];
+        },
       ),
     );
+
+    return pdf.save();
   }
 
   String _generatePrintableHtmlDoc(
@@ -1463,6 +1655,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       }
     }
 
+    final realCashAcc = bankAccounts.where((a) => a.id == 'manual_cash_account').firstOrNull;
+    final realCashBal = realCashAcc?.currentBalance ?? 30.0;
+
     if (!uniqueAccountSamples.containsKey('physicalcashonhand_cash') &&
         !uniqueAccountSamples.values.any((a) => a.id == 'manual_cash_account')) {
       uniqueAccountSamples['physicalcashonhand_cash'] = BankAccount(
@@ -1471,7 +1666,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         bankName: 'Physical Cash on Hand',
         accountType: 'Physical Cash',
         accountNumber: 'Cash',
-        currentBalance: 0.0,
+        currentBalance: realCashBal,
         openingBalance: 0.0,
         currency: 'SGD',
         sourceStatementId: null,
@@ -1493,7 +1688,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
         double latestBal = 0.0;
         if (sampleAcc.id == 'manual_cash_account') {
-          latestBal = sampleAcc.currentBalance;
+          latestBal = sampleAcc.currentBalance > 0 ? sampleAcc.currentBalance : realCashBal;
         } else {
           DateTime? latestDate;
           for (final acc in bankAccounts) {

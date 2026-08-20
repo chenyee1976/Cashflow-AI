@@ -19,6 +19,7 @@ class CashPositionModel {
   final String prevYearDateStr;
   final List<BankAccount> accounts;
   final Map<String, double> prevMonthBalances;
+  final Map<String, double> twoMonthsAgoBalances;
   final Map<String, double> prevYearBalances;
   final Map<String, double> fxRates;
 
@@ -35,6 +36,7 @@ class CashPositionModel {
     required this.prevYearDateStr,
     this.accounts = const [],
     this.prevMonthBalances = const {},
+    this.twoMonthsAgoBalances = const {},
     this.prevYearBalances = const {},
     this.fxRates = const {},
   });
@@ -346,6 +348,7 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
     prevYearDateStr: _formatDate(endOfLastYear),
     accounts: updatedConsolidatedAccounts,
     prevMonthBalances: prevMonthBalances,
+    twoMonthsAgoBalances: twoMonthsAgoBalances,
     prevYearBalances: prevYearBalances,
     fxRates: fxRatesMap,
   );
