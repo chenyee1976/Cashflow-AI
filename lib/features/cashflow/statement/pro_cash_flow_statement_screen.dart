@@ -1457,11 +1457,12 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
     final bgDark = PdfColor.fromHex('#0F172A');
     final cardBg = PdfColor.fromHex('#1E293B');
-    final goldColor = PdfColor.fromHex('#F59E0B');
-    final cyanColor = PdfColor.fromHex('#06B6D4');
-    final blueColor = PdfColor.fromHex('#60A5FA');
-    final redColor = PdfColor.fromHex('#F87171');
-    final greenColor = PdfColor.fromHex('#34D399');
+    final goldColor = PdfColor.fromHex('#D97706');
+    final cyanColor = PdfColor.fromHex('#0891B2');
+    final blueColor = PdfColor.fromHex('#2563EB');
+    final redColor = PdfColor.fromHex('#DC2626');
+    final greenColor = PdfColor.fromHex('#059669');
+    final textDark = PdfColor.fromHex('#0F172A');
 
     final tableColWidths = <int, pw.TableColumnWidth>{
       0: const pw.FlexColumnWidth(4.0),
@@ -1492,10 +1493,10 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                         color: goldColor,
                         borderRadius: pw.BorderRadius.circular(3),
                       ),
-                      child: pw.Text('PRO', style: pw.TextStyle(color: bgDark, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      child: pw.Text('PRO', style: pw.TextStyle(color: PdfColors.white, fontSize: 9, fontWeight: pw.FontWeight.bold)),
                     ),
                     pw.SizedBox(width: 8),
-                    pw.Text('Cash Flow Statement', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+                    pw.Text('Cash Flow Statement', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: textDark)),
                   ],
                 ),
                 pw.Container(
@@ -1531,10 +1532,10 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('TOTAL INCOME: ${currencyFmt.format(totalIncome)}', style: pw.TextStyle(color: greenColor, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
-                      pw.Text('TOTAL EXPENSES: ${currencyFmt.format(totalExpenses)}', style: pw.TextStyle(color: redColor, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
-                      pw.Text('TOTAL NET TRANSFERS: ${currencyFmt.format(netTransfers)}', style: pw.TextStyle(color: cyanColor, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
-                      pw.Text('NET SAVINGS RATE: ${savingsRate.toStringAsFixed(1)}%', style: pw.TextStyle(color: goldColor, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('TOTAL INCOME: ${currencyFmt.format(totalIncome)}', style: pw.TextStyle(color: PdfColor.fromHex('#34D399'), fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('TOTAL EXPENSES: ${currencyFmt.format(totalExpenses)}', style: pw.TextStyle(color: PdfColor.fromHex('#F87171'), fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('TOTAL NET TRANSFERS: ${currencyFmt.format(netTransfers)}', style: pw.TextStyle(color: PdfColor.fromHex('#38BDF8'), fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('NET SAVINGS RATE: ${savingsRate.toStringAsFixed(1)}%', style: pw.TextStyle(color: PdfColor.fromHex('#FBBF24'), fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
                     ],
                   ),
                 ],
@@ -1558,9 +1559,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 ['Total Expenses', ...columns.map((c) => currencyFmt.format(-(c['totalExp'] as double? ?? 0.0)))],
                 ['NET CASH FLOW', ...columns.map((c) => currencyFmt.format(c['netCash'] ?? 0.0))],
               ],
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: goldColor, fontSize: 8),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.amber300, fontSize: 8),
               headerDecoration: pw.BoxDecoration(color: cardBg),
-              cellStyle: const pw.TextStyle(fontSize: 7.5, color: PdfColors.white),
+              cellStyle: pw.TextStyle(fontSize: 7.5, color: textDark, fontWeight: pw.FontWeight.bold),
               headerAlignment: pw.Alignment.centerRight,
               cellAlignment: pw.Alignment.centerRight,
               cellAlignments: {0: pw.Alignment.centerLeft},
@@ -1582,9 +1583,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 ['Total Expenses', ...columns.map((c) => currencyFmt.format(-(c['totalExp'] as double? ?? 0.0)))],
                 ['Ending Cash Balance', ...columns.map((c) => currencyFmt.format(c['endCash'] ?? 0.0))],
               ],
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: goldColor, fontSize: 8),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.amber300, fontSize: 8),
               headerDecoration: pw.BoxDecoration(color: cardBg),
-              cellStyle: const pw.TextStyle(fontSize: 7.5, color: PdfColors.white),
+              cellStyle: pw.TextStyle(fontSize: 7.5, color: textDark, fontWeight: pw.FontWeight.bold),
               headerAlignment: pw.Alignment.centerRight,
               cellAlignment: pw.Alignment.centerRight,
               cellAlignments: {0: pw.Alignment.centerLeft},
@@ -1625,9 +1626,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 }),
                 ['TOTAL ENDING CASH', ...columns.map((c) => currencyFmt.format(c['endCash'] ?? 0.0))],
               ],
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: goldColor, fontSize: 8),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.amber300, fontSize: 8),
               headerDecoration: pw.BoxDecoration(color: cardBg),
-              cellStyle: const pw.TextStyle(fontSize: 7.5, color: PdfColors.white),
+              cellStyle: pw.TextStyle(fontSize: 7.5, color: textDark, fontWeight: pw.FontWeight.bold),
               headerAlignment: pw.Alignment.centerRight,
               cellAlignment: pw.Alignment.centerRight,
               cellAlignments: {0: pw.Alignment.centerLeft},
