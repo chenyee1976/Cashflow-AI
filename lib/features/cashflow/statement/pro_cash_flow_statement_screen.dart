@@ -1397,6 +1397,12 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               textAlign: TextAlign.right,
               style: TextStyle(color: v0 >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.w900, fontSize: 14),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<Uint8List> _generatePdfDocument(
     String horizonName,
     DateTime selectedMonth,
