@@ -434,8 +434,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                   onPressed: () async {
                     if (kIsWeb) {
                       try {
-                        final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
-                        final realCashAcc = ref.read(cashPositionProvider).asData?.value.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull;
+                        final posData = cashPositionAsync.asData?.value;
+                        final fxRates = posData?.fxRates ?? {};
+                        final realCashAcc = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull;
                         final realCashBal = realCashAcc?.currentBalance ?? 0.0;
 
                         final pdfBytes = await _generatePdfDocument(
@@ -448,6 +449,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                           txs,
                           fxRates,
                           realCashBal,
+                          posData,
                         );
 
                         final fileName = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.pdf';
@@ -1416,6 +1418,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     List<Transaction> txs,
     Map<String, double> fxRates,
     double realCashBal,
+    CashPositionModel? posData,
   ) async {
     final pdf = pw.Document();
     final currencyFmt = NumberFormat.currency(symbol: 'S\$', decimalDigits: 2);
@@ -1424,6 +1427,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     final totalIncome = lastCol['totalInc'] as double;
     final totalExpenses = lastCol['totalExp'] as double;
     final savingsRate = totalIncome > 0 ? ((netCashFlow / totalIncome) * 100).clamp(0.0, 100.0) : 0.0;
+    const double netTransfers = 0.0;
 
     String _normIdentity(BankAccount a) => '${a.bankName.trim()}_${(a.accountNumber ?? '').trim()}'.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
 
@@ -1451,67 +1455,96 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       );
     }
 
+    final bgDark = PdfColor.fromHex('#0F172A');
+    final cardBg = PdfColor.fromHex('#1E293B');
+    final goldColor = PdfColor.fromHex('#F59E0B');
+    final cyanColor = PdfColor.fromHex('#06B6D4');
+    final blueColor = PdfColor.fromHex('#60A5FA');
+    final redColor = PdfColor.fromHex('#F87171');
+    final greenColor = PdfColor.fromHex('#34D399');
+
+    final tableColWidths = <int, pw.TableColumnWidth>{
+      0: const pw.FlexColumnWidth(4.0),
+      1: const pw.FlexColumnWidth(3.0),
+      2: const pw.FlexColumnWidth(3.0),
+      3: const pw.FlexColumnWidth(3.0),
+    };
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
+        margin: const pw.EdgeInsets.all(20),
+        pageTheme: pw.PageTheme(
+          pageFormat: PdfPageFormat.a4,
+          backgroundColor: bgDark,
+          margin: const pw.EdgeInsets.all(20),
+        ),
         build: (pw.Context context) {
           return [
+            // Title Bar
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                pw.Row(
                   children: [
-                    pw.Text('PRO Cash Flow Statement', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.amber800)),
-                    pw.SizedBox(height: 2),
-                    pw.Text('Period Horizon: $horizonName View', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: pw.BoxDecoration(
+                        color: goldColor,
+                        borderRadius: pw.BorderRadius.circular(3),
+                      ),
+                      child: pw.Text('PRO', style: pw.TextStyle(color: bgDark, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    ),
+                    pw.SizedBox(width: 8),
+                    pw.Text('Cash Flow Statement', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
                   ],
                 ),
                 pw.Container(
                   padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: pw.BoxDecoration(
-                    color: PdfColors.purple800,
+                    color: PdfColor.fromHex('#8B5CF6'),
                     borderRadius: pw.BorderRadius.circular(4),
                   ),
                   child: pw.Text(
                     DateFormat('MMMM yyyy').format(selectedMonth),
-                    style: pw.TextStyle(color: PdfColors.white, fontSize: 10, fontWeight: pw.FontWeight.bold),
+                    style: pw.TextStyle(color: PdfColors.white, fontSize: 9.5, fontWeight: pw.FontWeight.bold),
                   ),
                 ),
               ],
             ),
-            pw.SizedBox(height: 12),
+            pw.SizedBox(height: 10),
 
-            // Executive Net Cash Flow Card
+            // Executive Net Cash Flow Banner
             pw.Container(
               padding: const pw.EdgeInsets.all(10),
               decoration: pw.BoxDecoration(
-                color: PdfColors.blueGrey900,
+                color: cardBg,
                 borderRadius: pw.BorderRadius.circular(6),
+                border: pw.Border.all(color: goldColor, width: 0.8),
               ),
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text('NET CASH FLOW (${DateFormat('MMM yyyy').format(selectedMonth).toUpperCase()})', style: pw.TextStyle(color: PdfColors.white, fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 3),
-                  pw.Text(currencyFmt.format(netCashFlow), style: pw.TextStyle(color: netCashFlow >= 0 ? PdfColors.green300 : PdfColors.red300, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('NET CASH FLOW · ${columns.last['label'].toString().replaceAll('\n', ' ')}', style: pw.TextStyle(color: PdfColors.grey400, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 2),
+                  pw.Text(currencyFmt.format(netCashFlow), style: pw.TextStyle(color: PdfColors.white, fontSize: 16, fontWeight: pw.FontWeight.bold)),
                   pw.SizedBox(height: 6),
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('Total Income: ${currencyFmt.format(totalIncome)}', style: pw.TextStyle(color: PdfColors.green300, fontSize: 8)),
-                      pw.Text('Total Expenses: ${currencyFmt.format(totalExpenses)}', style: pw.TextStyle(color: PdfColors.red300, fontSize: 8)),
-                      pw.Text('Net Savings Rate: ${savingsRate.toStringAsFixed(1)}%', style: pw.TextStyle(color: PdfColors.amber300, fontSize: 8)),
+                      pw.Text('TOTAL INCOME: ${currencyFmt.format(totalIncome)}', style: pw.TextStyle(color: greenColor, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('TOTAL EXPENSES: ${currencyFmt.format(totalExpenses)}', style: pw.TextStyle(color: redColor, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('TOTAL NET TRANSFERS: ${currencyFmt.format(netTransfers)}', style: pw.TextStyle(color: cyanColor, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('NET SAVINGS RATE: ${savingsRate.toStringAsFixed(1)}%', style: pw.TextStyle(color: goldColor, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
                     ],
                   ),
                 ],
               ),
             ),
-            pw.SizedBox(height: 14),
+            pw.SizedBox(height: 12),
 
             // PART I: OPERATING CASH FLOWS (PERSONAL)
-            pw.Text('PART I: OPERATING CASH FLOWS (PERSONAL)', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+            pw.Text('PART I: OPERATING CASH FLOWS (PERSONAL)', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: blueColor)),
             pw.SizedBox(height: 4),
 
             pw.TableHelper.fromTextArray(
@@ -1521,23 +1554,48 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 ['Interest & Investment Returns', ...columns.map((c) => currencyFmt.format(c['passive'] ?? 0.0))],
                 ['Other Inflows', ...columns.map((c) => currencyFmt.format(c['other'] ?? 0.0))],
                 ['Total Income', ...columns.map((c) => currencyFmt.format(c['totalInc'] ?? 0.0))],
+                ['Expenses Category:', ...columns.map((_) => '')],
                 ...sortedCatNames.map((cat) => ['  • $cat', ...columns.map((c) => currencyFmt.format(-((c['catMap'] as Map<String, double>)[cat] ?? 0.0)))]),
                 ['Total Expenses', ...columns.map((c) => currencyFmt.format(-(c['totalExp'] as double? ?? 0.0)))],
                 ['NET CASH FLOW', ...columns.map((c) => currencyFmt.format(c['netCash'] ?? 0.0))],
               ],
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 8),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
-              cellStyle: const pw.TextStyle(fontSize: 7.5),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: goldColor, fontSize: 8),
+              headerDecoration: pw.BoxDecoration(color: cardBg),
+              cellStyle: const pw.TextStyle(fontSize: 7.5, color: PdfColors.white),
               headerAlignment: pw.Alignment.centerRight,
               cellAlignment: pw.Alignment.centerRight,
               cellAlignments: {0: pw.Alignment.centerLeft},
               headerAlignments: {0: pw.Alignment.centerLeft},
-              columnWidths: {0: const pw.FlexColumnWidth(3)},
+              columnWidths: tableColWidths,
             ),
-            pw.SizedBox(height: 14),
+            pw.SizedBox(height: 12),
+
+            // TOTAL CASH POSITIONS
+            pw.Text('TOTAL CASH POSITIONS', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: cyanColor)),
+            pw.SizedBox(height: 4),
+
+            pw.TableHelper.fromTextArray(
+              headers: ['LINE ITEM', ...columns.map((c) => c['label'].toString().replaceAll('\n', ' '))],
+              data: [
+                ['Beginning cash', ...columns.map((c) => currencyFmt.format(c['begCash'] ?? 0.0))],
+                ['New cash positions added', ...columns.map((c) => currencyFmt.format(c['newCashPos'] ?? 0.0))],
+                ['Total Income', ...columns.map((c) => currencyFmt.format(c['totalInc'] ?? 0.0))],
+                ['Total Expenses', ...columns.map((c) => currencyFmt.format(-(c['totalExp'] as double? ?? 0.0)))],
+                ['Ending Cash Balance', ...columns.map((c) => currencyFmt.format(c['endCash'] ?? 0.0))],
+              ],
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: goldColor, fontSize: 8),
+              headerDecoration: pw.BoxDecoration(color: cardBg),
+              cellStyle: const pw.TextStyle(fontSize: 7.5, color: PdfColors.white),
+              headerAlignment: pw.Alignment.centerRight,
+              cellAlignment: pw.Alignment.centerRight,
+              cellAlignments: {0: pw.Alignment.centerLeft},
+              headerAlignments: {0: pw.Alignment.centerLeft},
+              columnWidths: tableColWidths,
+            ),
+            pw.SizedBox(height: 12),
 
             // TOTAL ENDING CASH (ACCOUNT BREAKDOWN)
-            pw.Text('TOTAL ENDING CASH (ACCOUNT BREAKDOWN)', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.amber900)),
+            pw.Text('TOTAL ENDING CASH (ACCOUNT BREAKDOWN)', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: goldColor)),
             pw.SizedBox(height: 4),
 
             pw.TableHelper.fromTextArray(
@@ -1548,9 +1606,8 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                   final colVals = columns.asMap().entries.map((entry) {
                     final i = entry.key;
                     if (acc.id == 'manual_cash_account') {
-                      final posData = ref.watch(cashPositionProvider).asData?.value;
                       double monthCashVal = 0.0;
-                      if (_periodType == 'Month') {
+                      if (horizonName == 'Month') {
                         if (i == 2) {
                           monthCashVal = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull?.currentBalance ?? 0.0;
                         } else if (i == 1) {
@@ -1565,18 +1622,18 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     }
                     return currencyFmt.format(acc.currentBalance);
                   });
-                  return [accName, ...colVals];
+                  return ['  • $accName', ...colVals];
                 }),
                 ['TOTAL ENDING CASH', ...columns.map((c) => currencyFmt.format(c['endCash'] ?? 0.0))],
               ],
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 8),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
-              cellStyle: const pw.TextStyle(fontSize: 7.5),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: goldColor, fontSize: 8),
+              headerDecoration: pw.BoxDecoration(color: cardBg),
+              cellStyle: const pw.TextStyle(fontSize: 7.5, color: PdfColors.white),
               headerAlignment: pw.Alignment.centerRight,
               cellAlignment: pw.Alignment.centerRight,
               cellAlignments: {0: pw.Alignment.centerLeft},
               headerAlignments: {0: pw.Alignment.centerLeft},
-              columnWidths: {0: const pw.FlexColumnWidth(3)},
+              columnWidths: tableColWidths,
             ),
           ];
         },

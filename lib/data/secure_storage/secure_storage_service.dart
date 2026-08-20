@@ -197,9 +197,7 @@ class SecureStorageService {
   Future<double?> getCashOnHandBaseForMonth({required int year, required int month}) async {
     final val = await _safeRead('key_cash_on_hand_base_${year}_$month');
     if (val != null) return double.tryParse(val);
-    // Fallback to legacy global setting if month specific is unset
-    final fallback = await _safeRead('key_cash_on_hand_base');
-    return fallback != null ? double.tryParse(fallback) : null;
+    return null;
   }
 
   // ── Clear all (logout) ──────────────────────────────────
