@@ -37,4 +37,7 @@ class AppConstants {
   static const String keyOnboardingComplete = 'onboarding_complete';
   static const String keyRewardFocus = 'reward_focus';
   static const String keyGeminiApiKey = 'gemini_api_key';
+
+  // Feature Flags
+  static const bool showProFeatures = false;
 }

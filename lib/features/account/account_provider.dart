@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/database/app_database.dart';
 import '../../../data/secure_storage/secure_storage_service.dart';
+import '../../../data/services/google_auth_service.dart';
+import '../../../data/services/analytics_service.dart';
 import 'package:drift/drift.dart';
 import '../cashflow/statement/cashflow_provider.dart';
 import '../dashboard/dashboard_provider.dart';
@@ -173,7 +175,12 @@ class AccountOperations {
   }
 
   Future<void> signOut() async {
-    await _storage.clearAll();
+    try {
+      _ref.read(analyticsServiceProvider).logEvent('user_logout');
+      await _ref.read(googleAuthServiceProvider).signOut();
+    } catch (_) {
+      await _storage.clearAll();
+    }
   }
 }
 

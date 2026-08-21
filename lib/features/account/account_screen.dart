@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../data/secure_storage/secure_storage_service.dart';
 import '../../../shared/widgets/app_header_brand.dart';
@@ -660,10 +661,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  if (AppConstants.showProFeatures) ...[
+                    const SizedBox(height: 28),
 
-                  // Membership Section Header
-                  Row(
+                    // Membership Section Header
+                    Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
@@ -1135,6 +1137,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     ),
                     const SizedBox(height: 28),
                   ],
+                ],
 
                   // 5. Linked Finance Section
                   Row(

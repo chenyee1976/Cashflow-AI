@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:html' as html;
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/category_enum.dart';
 import '../../../shared/widgets/app_header_brand.dart';
 import '../../../shared/widgets/app_footer_brand.dart';
@@ -54,21 +55,23 @@ class CashFlowHomeScreen extends ConsumerWidget {
                   ),
                   Row(
                     children: [
-                      ElevatedButton.icon(
-                        onPressed: () => context.push('/home/cashflow/statement'),
-                        icon: const Icon(Icons.verified, size: 14, color: AppColors.proGold),
-                        label: const Text('Pro Statement', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.proBackground,
-                          minimumSize: const Size(100, 36),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: const BorderSide(color: AppColors.proPrimary, width: 1.5),
+                      if (AppConstants.showProFeatures) ...[
+                        ElevatedButton.icon(
+                          onPressed: () => context.push('/home/cashflow/statement'),
+                          icon: const Icon(Icons.verified, size: 14, color: AppColors.proGold),
+                          label: const Text('Pro Statement', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.proBackground,
+                            minimumSize: const Size(100, 36),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: const BorderSide(color: AppColors.proPrimary, width: 1.5),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
+                        const SizedBox(width: 8),
+                      ],
                       ElevatedButton.icon(
                         onPressed: () => _showAddTransactionBottomSheet(context, ref),
                         icon: const Icon(Icons.add, size: 16, color: AppColors.white),

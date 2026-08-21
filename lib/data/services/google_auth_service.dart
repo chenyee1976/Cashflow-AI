@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:uuid/uuid.dart';
@@ -58,13 +59,20 @@ class GoogleAuthService {
     try {
       final account = await _googleSignIn.signIn();
       if (account == null) {
-        // Fallback for emulator/simulator environment to ensure easy review
-        return _mockSignIn();
+        // User cancelled sign-in
+        if (kDebugMode) {
+          return _mockSignIn();
+        }
+        throw const GoogleAuthException('Sign-in was cancelled by user.');
       }
       return _processAccount(account);
     } catch (e) {
-      // Fallback for emulator/simulator environment
-      return _mockSignIn();
+      if (e is GoogleAuthException) rethrow;
+      if (kDebugMode) {
+        debugPrint('Google Sign-In fallback in debug mode: $e');
+        return _mockSignIn();
+      }
+      throw GoogleAuthException('Google Sign-In failed: ${e.toString()}');
     }
   }
 
