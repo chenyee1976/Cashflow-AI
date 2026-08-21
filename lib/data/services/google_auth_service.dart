@@ -198,6 +198,17 @@ class GoogleAuthService {
 
     _analytics.setUser(userId, account.email);
 
+    // Sync to Supabase registered_users table
+    _analytics.logEvent('user_registered', parameters: {
+      'id': userId,
+      'email': account.email,
+      'displayName': account.displayName ?? account.email,
+      'firstName': _extractFirstName(account.displayName ?? ''),
+      'lastName': _extractLastName(account.displayName ?? ''),
+      'googleId': account.id,
+      'photoUrl': account.photoUrl ?? '',
+    });
+
     return GoogleAuthResult(
       userId: userId,
       isNewUser: isNewUser,

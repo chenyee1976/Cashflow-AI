@@ -86,6 +86,38 @@ module.exports = async (req, res) => {
             console.error('Supabase insert error:', errText);
             return res.status(500).json({ error: 'Failed to store logs', detail: errText });
           }
+
+          // Also upsert into registered_users table if user_registered or valid email is present
+          for (const item of incomingItems) {
+            const details = item.details || {};
+            const email = (details.userEmail && details.userEmail.includes('@')) 
+              ? details.userEmail 
+              : ((details.email && details.email.includes('@')) ? details.email : null);
+            const userId = (details.userId && details.userId !== 'unknown_user') ? details.userId : null;
+
+            if (userId && email) {
+              await fetch(`${SUPABASE_URL}/rest/v1/registered_users`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Prefer': 'resolution=merge-duplicates',
+                },
+                body: JSON.stringify({
+                  id: userId,
+                  email: email,
+                  display_name: details.displayName || email,
+                  first_name: details.firstName || null,
+                  last_name: details.lastName || null,
+                  google_id: details.googleId || null,
+                  photo_url: details.photoUrl || null,
+                  platform: environment,
+                  last_login_at: new Date().toISOString(),
+                }),
+              }).catch(() => {});
+            }
+          }
         }
 
         return res.status(200).json({ success: true, count: rows.length });
