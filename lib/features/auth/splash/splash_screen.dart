@@ -68,11 +68,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
 
       if (!mounted) return;
 
-      if (isExistingAccount) {
-        await storage.setOnboardingComplete();
-        await storage.saveSessionExpiry(DateTime.now().add(const Duration(days: 30)));
+      if (sessionValid && onboardingComplete) {
         context.go('/home/dashboard');
-      } else if (sessionValid) {
+      } else if (sessionValid && !onboardingComplete) {
         context.go('/onboarding');
       } else {
         context.go('/login');
