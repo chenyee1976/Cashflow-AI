@@ -125,6 +125,8 @@ class AccountOperations {
     required String rewardFocus,
   }) async {
     final userId = await _storage.getUserId();
+    final email = await _storage.getGoogleEmail() ?? '';
+    
     if (userId != null) {
       await DatabaseMutex.run(() => _db.updateUser(
         UsersCompanion(
@@ -134,8 +136,32 @@ class AccountOperations {
         ),
       ));
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('tester_first_name', firstName);
+    await prefs.setString('tester_last_name', lastName);
     await _storage.saveMobileNumber(mobileNumber);
     await _storage.saveRewardFocus(rewardFocus);
+
+    // 1. Log event in activity_logs
+    _ref.read(analyticsServiceProvider).logEvent('profile_updated', parameters: {
+      'firstName': firstName,
+      'lastName': lastName,
+      'mobileNumber': mobileNumber,
+      'rewardFocus': rewardFocus,
+    });
+
+    // 2. Sync updated name to Supabase registered_users table
+    if (email.isNotEmpty) {
+      _ref.read(analyticsServiceProvider).logEvent('user_registered', parameters: {
+        'id': userId,
+        'email': email,
+        'displayName': '$firstName $lastName'.trim(),
+        'firstName': firstName,
+        'lastName': lastName,
+      });
+    }
+
     _ref.invalidate(accountProfileProvider);
   }
 
