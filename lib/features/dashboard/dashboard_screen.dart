@@ -374,7 +374,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           valueColor: AppColors.primary,
                           isBoldValue: true,
                           tooltipMessage: currentTooltip,
-                          onTap: () => _showBreakdownSheet(context, ref, data, 'Current balance'),
+                          onTap: () {
+                            final now = DateTime.now();
+                            ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month);
+                            _showBreakdownSheet(context, ref, data, 'Current balance');
+                          },
                         ),
                         const Divider(height: 1, color: AppColors.divider),
                         _buildRowItem(
@@ -384,7 +388,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           valueColor: AppColors.textPrimary,
                           isBoldValue: true,
                           tooltipMessage: prevMonthTooltip,
-                          onTap: () => _showBreakdownSheet(context, ref, data, 'Previous month balance'),
+                          onTap: () {
+                            final now = DateTime.now();
+                            ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month - 1);
+                            _showBreakdownSheet(context, ref, data, 'Previous month balance');
+                          },
                         ),
                         const Divider(height: 1, color: AppColors.divider),
                         _buildRowItem(
@@ -394,7 +402,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           valueColor: AppColors.textPrimary,
                           isBoldValue: true,
                           tooltipMessage: prevYearTooltip,
-                          onTap: () => _showBreakdownSheet(context, ref, data, 'Previous year balance'),
+                          onTap: () {
+                            final now = DateTime.now();
+                            ref.read(selectedMonthProvider.notifier).state = DateTime(now.year - 1, 12);
+                            _showBreakdownSheet(context, ref, data, 'Previous year balance');
+                          },
                         ),
                       ],
                     );
@@ -422,13 +434,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.primary,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.currentMonthBreakdown),
-                        onTap: () => _showMonthlyBreakdownSheet(
-                          context,
-                          'Monthly Income',
-                          data.currentMonthStr,
-                          data.currentMonthBreakdown,
-                          AppColors.primary,
-                        ),
+                        onTap: () {
+                          final now = DateTime.now();
+                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month);
+                          _showMonthlyBreakdownSheet(
+                            context,
+                            'Monthly Income',
+                            data.currentMonthStr,
+                            data.currentMonthBreakdown,
+                            AppColors.primary,
+                          );
+                        },
                       ),
                       const Divider(height: 1, color: AppColors.divider),
                       _buildRowItem(
@@ -438,13 +454,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.primary,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.lastMonthBreakdown),
-                        onTap: () => _showMonthlyBreakdownSheet(
-                          context,
-                          'Monthly Income',
-                          data.lastMonthStr,
-                          data.lastMonthBreakdown,
-                          AppColors.primary,
-                        ),
+                        onTap: () {
+                          final now = DateTime.now();
+                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month - 1);
+                          _showMonthlyBreakdownSheet(
+                            context,
+                            'Monthly Income',
+                            data.lastMonthStr,
+                            data.lastMonthBreakdown,
+                            AppColors.primary,
+                          );
+                        },
                       ),
                       const Divider(height: 1, color: AppColors.divider),
                       _buildRowItem(
@@ -454,13 +474,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.primary,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.twoMonthsAgoBreakdown),
-                        onTap: () => _showMonthlyBreakdownSheet(
-                          context,
-                          'Monthly Income',
-                          data.twoMonthsAgoStr,
-                          data.twoMonthsAgoBreakdown,
-                          AppColors.primary,
-                        ),
+                        onTap: () {
+                          final now = DateTime.now();
+                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month - 2);
+                          _showMonthlyBreakdownSheet(
+                            context,
+                            'Monthly Income',
+                            data.twoMonthsAgoStr,
+                            data.twoMonthsAgoBreakdown,
+                            AppColors.primary,
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -487,13 +511,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.error,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.currentMonthBreakdown),
-                        onTap: () => _showMonthlyBreakdownSheet(
-                          context,
-                          'Monthly Expenses',
-                          data.currentMonthStr,
-                          data.currentMonthBreakdown,
-                          AppColors.error,
-                        ),
+                        onTap: () {
+                          final now = DateTime.now();
+                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month);
+                          _showMonthlyBreakdownSheet(
+                            context,
+                            'Monthly Expenses',
+                            data.currentMonthStr,
+                            data.currentMonthBreakdown,
+                            AppColors.error,
+                          );
+                        },
                       ),
                       const Divider(height: 1, color: AppColors.divider),
                       _buildRowItem(
@@ -503,13 +531,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.error,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.lastMonthBreakdown),
-                        onTap: () => _showMonthlyBreakdownSheet(
-                          context,
-                          'Monthly Expenses',
-                          data.lastMonthStr,
-                          data.lastMonthBreakdown,
-                          AppColors.error,
-                        ),
+                        onTap: () {
+                          final now = DateTime.now();
+                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month - 1);
+                          _showMonthlyBreakdownSheet(
+                            context,
+                            'Monthly Expenses',
+                            data.lastMonthStr,
+                            data.lastMonthBreakdown,
+                            AppColors.error,
+                          );
+                        },
                       ),
                       const Divider(height: 1, color: AppColors.divider),
                       _buildRowItem(
@@ -519,13 +551,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         valueColor: AppColors.error,
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.twoMonthsAgoBreakdown),
-                        onTap: () => _showMonthlyBreakdownSheet(
-                          context,
-                          'Monthly Expenses',
-                          data.twoMonthsAgoStr,
-                          data.twoMonthsAgoBreakdown,
-                          AppColors.error,
-                        ),
+                        onTap: () {
+                          final now = DateTime.now();
+                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month - 2);
+                          _showMonthlyBreakdownSheet(
+                            context,
+                            'Monthly Expenses',
+                            data.twoMonthsAgoStr,
+                            data.twoMonthsAgoBreakdown,
+                            AppColors.error,
+                          );
+                        },
                       ),
                     ],
                   ),
