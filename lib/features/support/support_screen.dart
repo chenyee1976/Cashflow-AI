@@ -230,8 +230,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
               const SizedBox(height: 24),
 
               // 1.5 Beta Testing Feedback Banner Card (Preserved for future use)
-              const bool _showBetaBanner = false;
-              if (_showBetaBanner) ...[
+              if (false) ...[
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),

@@ -575,8 +575,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 20),
 
               // 8. Bottom Pro Upgrade Banner (Preserved for future release)
-              const bool _showProWidgetsBanner = false;
-              if (_showProWidgetsBanner) ...[
+              if (false) ...[
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
