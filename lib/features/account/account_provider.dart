@@ -144,7 +144,7 @@ class AccountOperations {
     await _storage.saveRewardFocus(rewardFocus);
 
     // 1. Log event in activity_logs
-    _ref.read(analyticsServiceProvider).logEvent('profile_updated', parameters: {
+    await _ref.read(analyticsServiceProvider).logEvent('profile_updated', parameters: {
       'firstName': firstName,
       'lastName': lastName,
       'mobileNumber': mobileNumber,
@@ -153,12 +153,13 @@ class AccountOperations {
 
     // 2. Sync updated name to Supabase registered_users table
     if (email.isNotEmpty) {
-      _ref.read(analyticsServiceProvider).logEvent('user_registered', parameters: {
+      await _ref.read(analyticsServiceProvider).logEvent('user_registered', parameters: {
         'id': userId,
         'email': email,
         'displayName': '$firstName $lastName'.trim(),
         'firstName': firstName,
         'lastName': lastName,
+        'mobileNumber': mobileNumber,
       });
     }
 
