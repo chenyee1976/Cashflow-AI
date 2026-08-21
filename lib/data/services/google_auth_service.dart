@@ -164,8 +164,12 @@ class GoogleAuthService {
 
     final companion = UsersCompanion.insert(
       id: userId,
-      firstName: _extractFirstName(account.displayName ?? ''),
-      lastName: _extractLastName(account.displayName ?? ''),
+      firstName: existing != null && existing.firstName.isNotEmpty && existing.firstName != 'SG'
+          ? existing.firstName
+          : _extractFirstName(account.displayName ?? ''),
+      lastName: existing != null && existing.lastName.isNotEmpty && existing.lastName != 'Individual'
+          ? existing.lastName
+          : _extractLastName(account.displayName ?? ''),
       email: account.email,
       googleId: account.id,
       displayName: Value(account.displayName),
@@ -198,13 +202,16 @@ class GoogleAuthService {
 
     _analytics.setUser(userId, account.email);
 
+    final mobileNumber = await _storage.getMobileNumber() ?? '';
+
     // Sync to Supabase registered_users table
     await _analytics.logEvent('user_registered', parameters: {
       'id': userId,
       'email': account.email,
       'displayName': account.displayName ?? account.email,
-      'firstName': _extractFirstName(account.displayName ?? ''),
-      'lastName': _extractLastName(account.displayName ?? ''),
+      'firstName': existing?.firstName ?? _extractFirstName(account.displayName ?? ''),
+      'lastName': existing?.lastName ?? _extractLastName(account.displayName ?? ''),
+      'mobileNumber': mobileNumber,
       'googleId': account.id,
       'photoUrl': account.photoUrl ?? '',
     });

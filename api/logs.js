@@ -98,6 +98,15 @@ module.exports = async (req, res) => {
             if (email) {
               const nowIso = new Date().toISOString();
               // First try to update existing user by email
+              const patchPayload = {
+                last_login_at: nowIso,
+                platform: environment,
+                display_name: details.displayName || email,
+              };
+              if (details.firstName) patchPayload.first_name = details.firstName;
+              if (details.lastName) patchPayload.last_name = details.lastName;
+              if (details.mobileNumber) patchPayload.mobile_number = details.mobileNumber;
+
               const patchRes = await fetch(
                 `${SUPABASE_URL}/rest/v1/registered_users?email=eq.${encodeURIComponent(email)}`,
                 {
@@ -108,13 +117,7 @@ module.exports = async (req, res) => {
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                     'Prefer': 'return=representation',
                   },
-                  body: JSON.stringify({
-                    last_login_at: nowIso,
-                    platform: environment,
-                    display_name: details.displayName || email,
-                    first_name: details.firstName || undefined,
-                    last_name: details.lastName || undefined,
-                  }),
+                  body: JSON.stringify(patchPayload),
                 }
               );
 
@@ -134,6 +137,7 @@ module.exports = async (req, res) => {
                     display_name: details.displayName || email,
                     first_name: details.firstName || null,
                     last_name: details.lastName || null,
+                    mobile_number: details.mobileNumber || null,
                     google_id: details.googleId || null,
                     photo_url: details.photoUrl || null,
                     platform: environment,
