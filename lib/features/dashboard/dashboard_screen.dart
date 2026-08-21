@@ -32,7 +32,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkBetaTesterOnboarding();
       ref.read(aggregateMetricsSyncServiceProvider).syncCurrentMonthMetrics();
     });
   }
