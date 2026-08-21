@@ -199,7 +199,7 @@ class GoogleAuthService {
     _analytics.setUser(userId, account.email);
 
     // Sync to Supabase registered_users table
-    _analytics.logEvent('user_registered', parameters: {
+    await _analytics.logEvent('user_registered', parameters: {
       'id': userId,
       'email': account.email,
       'displayName': account.displayName ?? account.email,
