@@ -10,6 +10,7 @@ import 'dart:html' as html;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/category_enum.dart';
+import '../../../data/services/analytics_service.dart';
 import '../../../shared/widgets/app_header_brand.dart';
 import '../../../shared/widgets/app_footer_brand.dart';
 import 'cashflow_provider.dart';
@@ -373,6 +374,11 @@ class CashFlowHomeScreen extends ConsumerWidget {
                                           SnackBar(content: Text('Saved to: ${file.path}')),
                                         );
                                       }
+                                      ref.read(analyticsServiceProvider).logEvent('csv_exported', parameters: {
+                                        'filter': currentFilter,
+                                        'month': '${selectedMonth.year}-${selectedMonth.month}',
+                                        'count': data.transactions.length,
+                                      });
                                     } catch (e) {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(content: Text('Download failed: $e')),
@@ -620,6 +626,10 @@ class CashFlowHomeScreen extends ConsumerWidget {
                                                           ),
                                                         );
                                                         if (confirm == true) {
+                                                          ref.read(analyticsServiceProvider).logEvent('transaction_deleted', parameters: {
+                                                            'transactionId': tx.id,
+                                                            'category': tx.category,
+                                                          });
                                                           operations.deleteTransaction(tx.id);
                                                         }
                                                       },

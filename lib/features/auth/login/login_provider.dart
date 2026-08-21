@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/google_auth_service.dart';
+import '../../../data/services/analytics_service.dart';
 
 enum LoginStatus { idle, loading, success, error }
 
@@ -42,6 +43,9 @@ class LoginNotifier extends StateNotifier<LoginState> {
       );
       return result.isNewUser;
     } catch (e) {
+      AnalyticsService().logEvent('user_login_failed', parameters: {
+        'error': e.toString(),
+      });
       state = state.copyWith(
         status: LoginStatus.error,
         errorMessage: e.toString(),

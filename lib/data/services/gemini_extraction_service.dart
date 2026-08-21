@@ -7,6 +7,7 @@ import '../../features/cashflow/upload/draft_statement_service.dart';
 import 'card_rules_registry.dart';
 import 'merchant_category_classifier.dart';
 import 'user_category_rules_service.dart';
+import 'analytics_service.dart';
 
 class GeminiExtractionService {
   final String _apiKey;
@@ -177,9 +178,22 @@ You MUST return a raw JSON object formatted precisely as follows:
           lastErr = e is DioException && e.response?.data != null ? e.response?.data : e;
           print('DEBUG Proxy Gemini model $mName failed (attempt $attempts): $lastErr');
           
-          if (e is DioException && e.response?.statusCode == 429 && attempts < 2) {
-            await Future.delayed(const Duration(seconds: 4));
-            continue;
+          if (e is DioException) {
+            if (e.response?.statusCode == 429) {
+              AnalyticsService().logEvent('gemini_rate_limit_exceeded', parameters: {
+                'model': mName,
+                'attempt': attempts,
+              });
+              if (attempts < 2) {
+                await Future.delayed(const Duration(seconds: 4));
+                continue;
+              }
+            } else if (e.response?.statusCode != null && e.response!.statusCode! >= 500) {
+              AnalyticsService().logEvent('gemini_service_unavailable', parameters: {
+                'model': mName,
+                'statusCode': e.response?.statusCode,
+              });
+            }
           }
         }
         break;
@@ -191,6 +205,9 @@ You MUST return a raw JSON object formatted precisely as follows:
     }
 
     if (jsonResponseText == null || jsonResponseText.isEmpty) {
+      AnalyticsService().logEvent('gemini_extraction_failed', parameters: {
+        'error': lastErr.toString(),
+      });
       throw Exception('Gemini API extraction failed across models. Last error: $lastErr');
     }
     final text = jsonResponseText;

@@ -16,6 +16,7 @@ import '../../features/rewards/rewards_screen.dart';
 import '../../features/rewards/miles_screen.dart';
 import '../../features/support/support_screen.dart';
 import '../../features/account/account_screen.dart';
+import '../../shared/widgets/ad_banner_widget.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -138,17 +139,8 @@ class _MainShellState extends ConsumerState<MainShell> {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Banner ad placeholder
-          Container(
-            height: 50,
-            color: const Color(0xFFF8FAFC),
-            child: const Center(
-              child: Text(
-                'Financial Services Ad',
-                style: TextStyle(fontSize: 12, color: Color(0xFFAAAAAA)),
-              ),
-            ),
-          ),
+          // Banner ad (Google AdMob on Android / Native Fallback on Web)
+          const FinancialServicesAdBanner(),
           BottomNavigationBar(
             currentIndex: currentIndex,
             type: BottomNavigationBarType.fixed,

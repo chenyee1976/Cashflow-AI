@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../../data/database/app_database.dart';
-import '../../../data/secure_storage/secure_storage_service.dart';
 import '../../../data/services/gemini_extraction_service.dart';
+import '../../../data/services/analytics_service.dart';
+import '../../../data/secure_storage/secure_storage_service.dart';
 import 'draft_statement_service.dart';
 import '../statement/cashflow_provider.dart';
 import '../../dashboard/dashboard_provider.dart';
@@ -152,8 +153,19 @@ class UploadNotifier extends StateNotifier<UploadState> {
         }
         final service = GeminiExtractionService(geminiKey);
         draftData = await service.extractData(fileBytes: fileBytes, mimeType: mimeType);
+        _ref.read(analyticsServiceProvider).logEvent('statement_uploaded', parameters: {
+          'fileType': fileType,
+          'fileName': fileName,
+          'institution': institution,
+        });
         print('Real-time Gemini AI extraction succeeded!');
       } catch (e) {
+        _ref.read(analyticsServiceProvider).logEvent('statement_upload_failed', parameters: {
+          'fileType': fileType,
+          'fileName': fileName,
+          'institution': institution,
+          'error': e.toString(),
+        });
         print('Real-time Gemini extraction failed, creating fallback draft for manual review: $e');
         final isCard = fileType.toLowerCase().contains('card') || fileType.toLowerCase().contains('credit');
         draftData = DraftStatementData(

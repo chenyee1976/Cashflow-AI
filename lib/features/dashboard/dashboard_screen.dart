@@ -18,6 +18,7 @@ import '../cashflow/statement/cashflow_provider.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
 import '../../data/database/app_database.dart';
 import '../../data/services/gemini_extraction_service.dart';
+import '../../data/services/aggregate_metrics_sync_service.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -32,6 +33,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkBetaTesterOnboarding();
+      ref.read(aggregateMetricsSyncServiceProvider).syncCurrentMonthMetrics();
     });
   }
 

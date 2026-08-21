@@ -1,5 +1,5 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wdvkkxczjphebrawhyqe.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndkdmtreGN6anBoZWJyYXdoeXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0MjUwMTQsImV4cCI6MjEwMjAwMTAxNH0.mzQ8QToUFb_1I4qpbQVHPqIaOHpoiIf4oY_76wcqkbs';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://damkiewubedfkajbvoeo.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhbWtpZXd1YmVkZmthamJ2b2VvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODIyOTgsImV4cCI6MjEwMjg1ODI5OH0.DumsVaIE0R0qJax221CieE8_ldi3YMchybZome2c1G4';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
