@@ -156,6 +156,7 @@ class AccountOperations {
         await (_db.delete(_db.statements)..where((t) => t.userId.equals(userId!))).go();
         await (_db.delete(_db.milesWallet)..where((t) => t.userId.equals(userId!))).go();
         await (_db.delete(_db.travelGoals)..where((t) => t.userId.equals(userId!))).go();
+        await (_db.delete(_db.users)..where((t) => t.id.equals(userId!))).go();
         break;
       } catch (e) {
         if (retries > 0) {
@@ -166,6 +167,9 @@ class AccountOperations {
         }
       }
     }
+
+    await _storage.clearAll();
+    await prefs.clear();
 
     _ref.invalidate(accountProfileProvider);
     _ref.invalidate(cashFlowScreenProvider);
