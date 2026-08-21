@@ -44,17 +44,25 @@ module.exports = async (req, res) => {
 
         const incomingItems = Array.isArray(body) ? body : [body];
 
+        const host = req.headers['host'] || req.headers['x-forwarded-host'] || 'web';
+        const environment = host.includes('web-kappa') ? 'Beta (web-kappa)' : (host.includes('sgcashflowai') ? 'Production (sgcashflowai)' : host);
+
         const rows = [];
         for (const item of incomingItems) {
           if (!item) continue;
           const details = item.details || {};
+          const email = (details.userEmail && details.userEmail.includes('@')) 
+            ? details.userEmail 
+            : ((details.email && details.email.includes('@')) ? details.email : null);
+          const userId = (details.userId && details.userId !== 'unknown_user') ? details.userId : null;
+
           rows.push({
             event_type: item.type || 'event',
             event_name: item.name || 'unknown_event',
-            user_id: details.userId || null,
-            user_email: details.userEmail || details.email || null,
+            user_id: userId,
+            user_email: email,
             ip_address: clientIp,
-            platform: details.platform || null,
+            platform: environment,
             details: details,
             client_timestamp: item.timestamp || null,
             server_timestamp: new Date().toISOString(),

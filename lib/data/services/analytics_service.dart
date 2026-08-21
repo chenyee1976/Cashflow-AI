@@ -107,10 +107,6 @@ class AnalyticsService {
       _identityReady.complete();
     }
     await syncAllLocalToCloud();
-    logEvent('user_login', parameters: {
-      'platform': 'Web PWA',
-      'email': _currentUserEmail,
-    });
   }
 
   Future<void> _ensureUserIdentity() async {
