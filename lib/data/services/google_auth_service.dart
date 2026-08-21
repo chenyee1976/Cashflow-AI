@@ -158,11 +158,9 @@ class GoogleAuthService {
     final onboardingComplete = await _storage.isOnboardingComplete();
     
     final userId = existing?.id ?? const Uuid().v4();
-    final statements = await _db.getStatementsByUser(userId);
-    final bankAccounts = await _db.getBankAccountsByUser(userId);
-    final creditCards = await _db.getCreditCardsByUser(userId);
-    final isExistingAccount = existing != null || statements.isNotEmpty || bankAccounts.isNotEmpty || creditCards.isNotEmpty || onboardingComplete;
-    final isNewUser = !isExistingAccount;
+    
+    // A user is ONLY treated as existing if their profile was already in the DB and onboarding was completed
+    final isNewUser = existing == null || !onboardingComplete;
 
     final companion = UsersCompanion.insert(
       id: userId,
@@ -194,7 +192,7 @@ class GoogleAuthService {
       DateTime.now().add(const Duration(days: 30)),
     );
 
-    if (isExistingAccount) {
+    if (!isNewUser) {
       await _storage.setOnboardingComplete();
     }
 
