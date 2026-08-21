@@ -95,8 +95,8 @@ module.exports = async (req, res) => {
               : ((details.email && details.email.includes('@')) ? details.email : null);
             const userId = (details.userId && details.userId !== 'unknown_user') ? details.userId : null;
 
-            if (userId && email) {
-              await fetch(`${SUPABASE_URL}/rest/v1/registered_users`, {
+            if (email) {
+              await fetch(`${SUPABASE_URL}/rest/v1/registered_users?on_conflict=email`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ module.exports = async (req, res) => {
                   'Prefer': 'resolution=merge-duplicates',
                 },
                 body: JSON.stringify({
-                  id: userId,
+                  id: userId || `user_${email.replace(/[^a-zA-Z0-9]/g, '_')}`,
                   email: email,
                   display_name: details.displayName || email,
                   first_name: details.firstName || null,
