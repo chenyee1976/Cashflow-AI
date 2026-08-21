@@ -186,6 +186,7 @@ class AnalyticsService {
         }
         if (batch.isNotEmpty) {
           await _postCentralBatch('/api/feedback', batch);
+          await prefs.remove(_feedbackKey);
         }
       }
 
@@ -200,6 +201,7 @@ class AnalyticsService {
         }
         if (batch.isNotEmpty) {
           await _postCentralBatch('/api/logs', batch);
+          await prefs.remove(_logsKey);
         }
       }
     } catch (_) {}

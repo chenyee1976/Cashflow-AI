@@ -96,26 +96,52 @@ module.exports = async (req, res) => {
             const userId = (details.userId && details.userId !== 'unknown_user') ? details.userId : null;
 
             if (email) {
-              await fetch(`${SUPABASE_URL}/rest/v1/registered_users?on_conflict=email`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': SUPABASE_ANON_KEY,
-                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                  'Prefer': 'resolution=merge-duplicates',
-                },
-                body: JSON.stringify({
-                  id: userId || `user_${email.replace(/[^a-zA-Z0-9]/g, '_')}`,
-                  email: email,
-                  display_name: details.displayName || email,
-                  first_name: details.firstName || null,
-                  last_name: details.lastName || null,
-                  google_id: details.googleId || null,
-                  photo_url: details.photoUrl || null,
-                  platform: environment,
-                  last_login_at: new Date().toISOString(),
-                }),
-              }).catch(() => {});
+              const nowIso = new Date().toISOString();
+              // First try to update existing user by email
+              const patchRes = await fetch(
+                `${SUPABASE_URL}/rest/v1/registered_users?email=eq.${encodeURIComponent(email)}`,
+                {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Prefer': 'return=representation',
+                  },
+                  body: JSON.stringify({
+                    last_login_at: nowIso,
+                    platform: environment,
+                    display_name: details.displayName || email,
+                    first_name: details.firstName || undefined,
+                    last_name: details.lastName || undefined,
+                  }),
+                }
+              );
+
+              const patchedRows = patchRes.ok ? await patchRes.json() : [];
+              if (!Array.isArray(patchedRows) || patchedRows.length === 0) {
+                // If not found, insert new row
+                await fetch(`${SUPABASE_URL}/rest/v1/registered_users`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  },
+                  body: JSON.stringify({
+                    id: userId || `user_${email.replace(/[^a-zA-Z0-9]/g, '_')}`,
+                    email: email,
+                    display_name: details.displayName || email,
+                    first_name: details.firstName || null,
+                    last_name: details.lastName || null,
+                    google_id: details.googleId || null,
+                    photo_url: details.photoUrl || null,
+                    platform: environment,
+                    registered_at: nowIso,
+                    last_login_at: nowIso,
+                  }),
+                });
+              }
             }
           }
         }
