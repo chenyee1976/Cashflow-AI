@@ -43,6 +43,7 @@ class GoogleAuthService {
   final AnalyticsService _analytics;
 
   static final _googleSignIn = GoogleSignIn(
+    clientId: '156847763373-2sctp4embn1odn68kpo5dcss39hnk0mj.apps.googleusercontent.com',
     scopes: ['email', 'profile'],
   );
 
