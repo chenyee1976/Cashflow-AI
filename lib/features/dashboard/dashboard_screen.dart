@@ -653,6 +653,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     Map<String, double> breakdown,
     Color color,
   ) {
+    final initialMonth = ref.read(selectedMonthProvider);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -870,8 +871,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           );
         },
-      ),
-    );
+    ).then((_) {
+      ref.read(selectedMonthProvider.notifier).state = initialMonth;
+    });
   }
 
   Widget _buildUploadCard({
@@ -1067,6 +1069,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _showBreakdownSheet(BuildContext context, WidgetRef ref, CashPositionModel initialData, String title) {
+    final initialMonth = ref.read(selectedMonthProvider);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1418,7 +1421,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   },
 );
       },
-    );
+    ).then((_) {
+      ref.read(selectedMonthProvider.notifier).state = initialMonth;
+    });
   }
 
   String _getGreeting() {
