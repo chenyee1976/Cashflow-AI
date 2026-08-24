@@ -59,25 +59,25 @@ class MerchantCategoryClassifier {
       );
     }
 
-    // 4. Interest / Savings Interest / Bonus Interest
+    // 4. Interest / Savings Interest / Bonus Interest / Interest Earned
     if (lower.contains('interest') ||
         lower.contains('bonus int') ||
         lower.contains('savings int') ||
         lower.contains('co spend bonus') ||
         lower.contains('spend bonus')) {
       return ClassificationResult(
-        expenseCategory: amount > 0 ? 'income_other' : 'expense_other',
+        expenseCategory: amount > 0 ? 'income_investments' : 'expense_other',
         milesCategory: 'Others',
       );
     }
 
-    // 5. PayNow / FAST / Fund Transfers
-    if (lower.contains('paynow') ||
-        lower.contains('fast payment') ||
+    // 5. PayNow / FAST Transfer / External Transfer / Fund Transfers / Giro
+    if (lower.contains('transfer') ||
+        lower.contains('fast') ||
+        lower.contains('paynow') ||
         lower.contains('fund transfer') ||
-        lower.contains('payment w/transfer') ||
         lower.contains('ibg giro') ||
-        lower.contains('giro deduction') ||
+        lower.contains('giro') ||
         lower.contains('trf')) {
       if (lower.contains('tutorial') || lower.contains('school') || lower.contains('class') || lower.contains('tuition')) {
         return ClassificationResult(
