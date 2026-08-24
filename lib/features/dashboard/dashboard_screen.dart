@@ -871,6 +871,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           );
         },
+      ),
     ).then((_) {
       ref.read(selectedMonthProvider.notifier).state = initialMonth;
     });
