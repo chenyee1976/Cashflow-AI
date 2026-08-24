@@ -1091,8 +1091,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) {
-        return Consumer(
+      builder: (context) => Consumer(
           builder: (context, ref, child) {
             final selectedMonth = ref.watch(selectedMonthProvider);
             final cashAsync = ref.watch(cashPositionProvider);
@@ -1433,14 +1432,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ],
           );
         },
-      );
-    },
-  ),
-).then((_) {
-  if (activeMonth != null) {
-    ref.read(selectedMonthProvider.notifier).state = activeMonth;
-  }
-});
+      ),
+    ).then((_) {
+      if (activeMonth != null) {
+        ref.read(selectedMonthProvider.notifier).state = activeMonth;
+      }
+    });
   }
 
   String _getGreeting() {
