@@ -1429,16 +1429,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   color: AppColors.textSecondary,
                 ),
               ),
-            ],
-          );
-        },
-      ),
-    ).then((_) {
-      if (activeMonth != null) {
-        ref.read(selectedMonthProvider.notifier).state = activeMonth;
-      }
-    });
-  }
+            );
+          },
+        );
+      },
+    ),
+  ).then((_) {
+    if (activeMonth != null) {
+      ref.read(selectedMonthProvider.notifier).state = activeMonth;
+    }
+  });
+}
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
