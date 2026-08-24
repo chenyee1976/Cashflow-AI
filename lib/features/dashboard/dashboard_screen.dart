@@ -1431,14 +1431,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
             ],
-          ),
-        );
-      },
-    ).then((_) {
-      if (activeMonth != null) {
-        ref.read(selectedMonthProvider.notifier).state = activeMonth;
-      }
-    });
+          );
+        },
+      );
+    },
+  ),
+).then((_) {
+  if (activeMonth != null) {
+    ref.read(selectedMonthProvider.notifier).state = activeMonth;
+  }
+});
   }
 
   String _getGreeting() {
