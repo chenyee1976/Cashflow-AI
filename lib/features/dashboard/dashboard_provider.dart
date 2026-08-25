@@ -398,7 +398,8 @@ final monthlyIncomeProvider = FutureProvider.autoDispose<MonthSummaryModel>((ref
     }
   }
 
-  final refDate = selectedMonth;
+  final now = DateTime.now();
+  final refDate = DateTime(now.year, now.month);
 
   final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
   final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
@@ -445,7 +446,8 @@ final monthlyExpensesProvider = FutureProvider.autoDispose<MonthSummaryModel>((r
     }
   }
 
-  final refDate = selectedMonth;
+  final now = DateTime.now();
+  final refDate = DateTime(now.year, now.month);
 
   final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
   final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
