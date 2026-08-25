@@ -43,8 +43,8 @@ final milesScreenProvider = FutureProvider.autoDispose<MilesScreenData>((ref) as
     // Clean up legacy hardcoded 'kf_wallet' entry
     await (db.delete(db.milesWallet)..where((t) => t.id.equals('kf_wallet'))).go();
 
-    // Only delete derived bank program wallets, preserving manually added airline and other programs
-    await (db.delete(db.milesWallet)..where((t) => t.programType.equals('bank'))).go();
+    // Only delete auto-derived bank program wallets, preserving manually added bank, airline, and other programs
+    await (db.delete(db.milesWallet)..where((t) => t.id.like('bank_miles_%'))).go();
 
     if (ccStatements.isNotEmpty) {
 
@@ -137,13 +137,23 @@ class MilesOperations {
 
   MilesOperations(this._db, this._ref);
 
+  Future<String> _resolveUserId() async {
+    final storage = _ref.read(secureStorageProvider);
+    final prefs = await SharedPreferences.getInstance();
+    final testerEmail = prefs.getString('tester_email') ?? '';
+    var userId = await storage.getUserId();
+    if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+      userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+    }
+    return userId;
+  }
+
   Future<void> addLoyaltyProgram({
     required String programName,
-    required String programType, // 'airline' | 'bank'
+    required String programType, // 'airline' | 'bank' | 'other'
     required int balance,
   }) async {
-    final storage = _ref.read(secureStorageProvider);
-    final userId = await storage.getUserId() ?? 'chenyee_user';
+    final userId = await _resolveUserId();
 
     await _db.upsertMilesWallet(
       MilesWalletCompanion.insert(
@@ -163,8 +173,7 @@ class MilesOperations {
     required String destination,
     required int targetMiles,
   }) async {
-    final storage = _ref.read(secureStorageProvider);
-    final userId = await storage.getUserId() ?? 'unknown_user';
+    final userId = await _resolveUserId();
 
     await _db.upsertTravelGoal(
       TravelGoalsCompanion.insert(
@@ -189,10 +198,11 @@ class MilesOperations {
     required String programType,
     required double balance,
   }) async {
+    final activeUserId = userId.isNotEmpty ? userId : await _resolveUserId();
     await _db.upsertMilesWallet(
       MilesWalletCompanion.insert(
         id: id,
-        userId: userId,
+        userId: activeUserId,
         programName: programName,
         programType: programType,
         balance: Value(balance),

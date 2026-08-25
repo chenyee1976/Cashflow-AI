@@ -275,7 +275,7 @@ class MilesScreen extends ConsumerWidget {
               ),
             ),
             Text(
-              '${nf.format(prog.balance)} mi',
+              '${nf.format(prog.balance)} ${prog.programType == 'bank' ? 'mi/pts' : 'mi'}',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -337,6 +337,7 @@ class MilesScreen extends ConsumerWidget {
   void _showEditProgramDialog(BuildContext context, MilesWalletData prog, MilesOperations ops) {
     final balCtrl = TextEditingController(text: prog.balance.toInt().toString());
     final nf = NumberFormat('#,##0');
+    final isBank = prog.programType == 'bank';
 
     showDialog(
       context: context,
@@ -385,7 +386,7 @@ class MilesScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Current balance: ${nf.format(prog.balance)} miles',
+                            'Current balance: ${nf.format(prog.balance)} ${isBank ? "mi/pts" : "miles"}',
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary,
@@ -407,14 +408,14 @@ class MilesScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
 
                 // ── Input Field ──
-                _buildFieldLabel('UPDATED MILES BALANCE'),
+                _buildFieldLabel(isBank ? 'UPDATED BALANCE' : 'UPDATED MILES BALANCE'),
                 TextField(
                   controller: balCtrl,
                   keyboardType: TextInputType.number,
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                   decoration: _buildDialogInputDecoration(
                     hintText: 'Enter new balance',
-                    suffixText: 'mi',
+                    suffixText: isBank ? 'mi/pts' : 'mi',
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -766,14 +767,14 @@ class MilesScreen extends ConsumerWidget {
                   const SizedBox(height: 18),
 
                   // ── Miles Balance Input ──
-                  _buildFieldLabel('CURRENT MILES BALANCE'),
+                  _buildFieldLabel(type == 'bank' ? 'CURRENT BALANCE' : 'CURRENT MILES BALANCE'),
                   TextField(
                     controller: balCtrl,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                     decoration: _buildDialogInputDecoration(
-                      hintText: 'e.g. 50000',
-                      suffixText: 'mi',
+                      hintText: type == 'bank' ? 'e.g. 20000' : 'e.g. 50000',
+                      suffixText: type == 'bank' ? 'mi/pts' : 'mi',
                     ),
                   ),
                   const SizedBox(height: 24),
