@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/snackbar_utils.dart';
@@ -1260,10 +1261,17 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           leading: const Icon(Icons.email_outlined, color: AppColors.primary, size: 20),
                           title: const Text('Data Protection Officer (DPO)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                           subtitle: const Text('sgcashflowai@gmail.com', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                          trailing: const Icon(Icons.content_copy, size: 16, color: AppColors.textSecondary),
-                          onTap: () {
-                            Clipboard.setData(const ClipboardData(text: 'sgcashflowai@gmail.com'));
-                            SnackbarUtils.showSuccess(context, 'DPO email copied to clipboard');
+                          trailing: const Icon(Icons.open_in_new, size: 16, color: AppColors.textSecondary),
+                          onTap: () async {
+                            const email = 'sgcashflowai@gmail.com';
+                            await Clipboard.setData(const ClipboardData(text: email));
+                            if (context.mounted) {
+                              context.showTopSnackBar('Email copied to clipboard ($email)!');
+                            }
+                            final uri = Uri.parse('mailto:$email?subject=Data%20Protection%20Officer%20Inquiry%20-%20CashFlow%20AI');
+                            try {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            } catch (_) {}
                           },
                         ),
                       ],

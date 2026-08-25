@@ -134,7 +134,50 @@
         if (onError) onError(err.toString());
       }
     };
+
+    // Mobile Screenshot & Window Focus / WebGL Context Recovery
+    function resetFlutterGlassPanePointers() {
+      try {
+        const glassPanes = document.querySelectorAll('flt-glass-pane, flutter-view, canvas');
+        glassPanes.forEach(function(el) {
+          try {
+            el.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, cancelable: true }));
+            el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+          } catch(e) {}
+        });
+      } catch(e) {}
+    }
+
+    window.addEventListener('blur', function() {
+      resetFlutterGlassPanePointers();
+    });
+
+    window.addEventListener('focus', function() {
+      resetFlutterGlassPanePointers();
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') {
+        resetFlutterGlassPanePointers();
+        window.dispatchEvent(new Event('resize'));
+      }
+    });
+
+    // Auto-restore WebGL Context if lost during hardware screen capture
+    window.addEventListener('webglcontextlost', function(e) {
+      console.warn('WebGL context lost during screen capture, attempting restore...');
+      e.preventDefault();
+      setTimeout(function() {
+        window.dispatchEvent(new Event('resize'));
+      }, 300);
+    }, false);
+
+    window.addEventListener('webglcontextrestored', function(e) {
+      console.log('WebGL context restored.');
+      window.dispatchEvent(new Event('resize'));
+    }, false);
   </script>
-  <script src="flutter_bootstrap.js?v=20260825_native_speech_bridge_v1" async></script>
+  <script src="flutter_bootstrap.js?v=20260825_screenshot_recovery_v1" async></script>
 </body>
 </html>
