@@ -1026,9 +1026,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 child: Center(child: Text('Error: $err')),
               ),
               data: (data) {
-                final monthStr = DateFormat('MMMM yyyy').format(selectedMonth);
-                final balancesMap = {for (final a in data.accounts) a.id: a.currentBalance};
-                final totalVal = data.currentBalance;
+                final String dateBadgeStr;
+                final Map<String, double> targetBalancesMap;
+                final double totalVal;
+
+                if (title == 'Previous month balance') {
+                  dateBadgeStr = 'as of ${data.prevMonthDateStr}';
+                  targetBalancesMap = data.prevMonthBalances;
+                  totalVal = data.prevMonthBalance;
+                } else if (title == 'Previous year balance') {
+                  dateBadgeStr = 'as of ${data.prevYearDateStr}';
+                  targetBalancesMap = data.prevYearBalances;
+                  totalVal = data.prevYearBalance;
+                } else {
+                  dateBadgeStr = 'as of ${data.currentDateStr}';
+                  targetBalancesMap = {for (final a in data.accounts) a.id: a.currentBalance};
+                  totalVal = data.currentBalance;
+                }
 
                 return Container(
                   constraints: BoxConstraints(
@@ -1087,7 +1101,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      monthStr,
+                                      dateBadgeStr,
                                       style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
@@ -1155,7 +1169,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: data.accounts.map((acc) {
-                      final balanceVal = balancesMap[acc.id] ?? 0.0;
+                      final balanceVal = targetBalancesMap[acc.id] ?? 0.0;
                       final currencyStr = acc.currency.trim().toUpperCase();
                       final isCashOnHand = acc.bankName == 'Cash on hand';
 
@@ -1215,7 +1229,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       final newBase = await showDialog<double>(
                                         context: context,
                                         builder: (ctx) => AlertDialog(
-                                          title: Text('Update Base Cash on Hand ($monthStr)'),
+                                          title: Text('Update Base Cash on Hand ($dateBadgeStr)'),
                                           content: TextField(
                                             controller: ctrl,
                                             keyboardType: const TextInputType.numberWithOptions(decimal: true),

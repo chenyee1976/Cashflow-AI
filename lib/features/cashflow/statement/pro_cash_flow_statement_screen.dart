@@ -640,10 +640,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final c = val == 0 ? Colors.white38 : activeColor;
             return Expanded(
               flex: 3,
-              child: Text(
-                fmt.format(val),
-                textAlign: TextAlign.right,
-                style: TextStyle(color: c, fontSize: valSize, fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  fmt.format(val),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(color: c, fontSize: valSize, fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
+                ),
               ),
             );
           }),
@@ -675,10 +679,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final c = val == 0 ? Colors.white38 : activeColor;
             return Expanded(
               flex: 3,
-              child: Text(
-                fmt.format(val),
-                textAlign: TextAlign.right,
-                style: TextStyle(color: c, fontSize: fontSize),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  fmt.format(val),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(color: c, fontSize: fontSize),
+                ),
               ),
             );
           }),
@@ -710,10 +718,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final val = col[key] as double? ?? 0.0;
             return Expanded(
               flex: 3,
-              child: Text(
-                fmt.format(val),
-                textAlign: TextAlign.right,
-                style: TextStyle(color: val >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.bold, fontSize: valSize),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  fmt.format(val),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(color: val >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.bold, fontSize: valSize),
+                ),
               ),
             );
           }),
@@ -912,10 +924,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     ),
                     ...values.map((v) => Expanded(
                       flex: 3,
-                      child: Text(
-                        fmt.format(v),
-                        textAlign: TextAlign.right,
-                        style: TextStyle(color: v == 0 ? Colors.white38 : const Color(0xFF60A5FA), fontSize: valSize),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          fmt.format(v),
+                          textAlign: TextAlign.right,
+                          style: TextStyle(color: v == 0 ? Colors.white38 : const Color(0xFF60A5FA), fontSize: valSize),
+                        ),
                       ),
                     )),
                   ],
