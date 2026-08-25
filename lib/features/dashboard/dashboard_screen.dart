@@ -375,8 +375,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           isBoldValue: true,
                           tooltipMessage: currentTooltip,
                           onTap: () {
-                            final now = DateTime.now();
-                            ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month);
                             _showBreakdownSheet(context, ref, data, 'Current balance');
                           },
                         ),
@@ -389,8 +387,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           isBoldValue: true,
                           tooltipMessage: prevMonthTooltip,
                           onTap: () {
-                            final now = DateTime.now();
-                            ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month - 1);
                             _showBreakdownSheet(context, ref, data, 'Previous month balance');
                           },
                         ),
@@ -403,8 +399,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           isBoldValue: true,
                           tooltipMessage: prevYearTooltip,
                           onTap: () {
-                            final now = DateTime.now();
-                            ref.read(selectedMonthProvider.notifier).state = DateTime(now.year - 1, 12);
                             _showBreakdownSheet(context, ref, data, 'Previous year balance');
                           },
                         ),
@@ -435,8 +429,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.currentMonthBreakdown),
                         onTap: () {
-                          final now = DateTime.now();
-                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month);
                           _showMonthlyBreakdownSheet(
                             context,
                             'Monthly Income',
@@ -455,8 +447,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.lastMonthBreakdown),
                         onTap: () {
-                          final now = DateTime.now();
-                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month - 1);
                           _showMonthlyBreakdownSheet(
                             context,
                             'Monthly Income',
@@ -475,8 +465,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.twoMonthsAgoBreakdown),
                         onTap: () {
-                          final now = DateTime.now();
-                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month - 2);
                           _showMonthlyBreakdownSheet(
                             context,
                             'Monthly Income',
@@ -512,8 +500,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.currentMonthBreakdown),
                         onTap: () {
-                          final now = DateTime.now();
-                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month);
                           _showMonthlyBreakdownSheet(
                             context,
                             'Monthly Expenses',
@@ -532,8 +518,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.lastMonthBreakdown),
                         onTap: () {
-                          final now = DateTime.now();
-                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month - 1);
                           _showMonthlyBreakdownSheet(
                             context,
                             'Monthly Expenses',
@@ -552,8 +536,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         isBoldValue: true,
                         tooltipMessage: _formatTooltipBreakdown(data.twoMonthsAgoBreakdown),
                         onTap: () {
-                          final now = DateTime.now();
-                          ref.read(selectedMonthProvider.notifier).state = DateTime(now.year, now.month - 2);
                           _showMonthlyBreakdownSheet(
                             context,
                             'Monthly Expenses',
@@ -651,232 +633,176 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     String title,
     String dateInfo,
     Map<String, double> breakdown,
-    Color color, {
-    DateTime? activeMonth,
-  }) {
+    Color color,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => Consumer(
-        builder: (context, ref, child) {
-          final selectedMonth = ref.watch(selectedMonthProvider);
-          final monthStr = DateFormat('MMMM yyyy').format(selectedMonth);
+      builder: (ctx) {
+        final totalVal = breakdown.values.fold<double>(0.0, (s, v) => s + v);
 
-          final summaryAsync = title == 'Monthly Income' ? ref.watch(monthlyIncomeProvider) : ref.watch(monthlyExpensesProvider);
-          final currentBreakdown = summaryAsync.when(
-            data: (data) => data.currentMonthBreakdown,
-            loading: () => <String, double>{},
-            error: (_, __) => <String, double>{},
-          );
-
-          // Get total from cashFlowScreenProvider for exact alignment with Cash Flow screen
-          final cashFlowAsync = ref.watch(cashFlowScreenProvider);
-          final totalVal = cashFlowAsync.when(
-            data: (data) => title == 'Monthly Income' ? data.totalIncome : data.totalExpenses,
-            loading: () => currentBreakdown.values.fold<double>(0.0, (s, v) => s + v),
-            error: (_, __) => currentBreakdown.values.fold<double>(0.0, (s, v) => s + v),
-          );
-
-          return Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-            child: Container(
-              width: 500,
-              constraints: const BoxConstraints(maxHeight: 520),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header layout: Title (left), Subtitle (bottom-left), Month Badge & Navigation controls (right column)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              title == 'Monthly Income' ? 'Breakdown by income sources' : 'Breakdown by expense categories',
-                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: color.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  monthStr,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: color,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () {
-                                    if (Navigator.canPop(ctx)) {
-                                      Navigator.pop(ctx);
-                                    }
-                                  },
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryLight.withOpacity(0.6),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.close, size: 18, color: AppColors.primary),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.chevron_left_rounded, color: AppColors.primary, size: 24),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                tooltip: 'Previous Month',
-                                onPressed: () {
-                                  final current = ref.read(selectedMonthProvider);
-                                  ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month - 1);
-                                },
-                              ),
-                              const SizedBox(width: 16),
-                              IconButton(
-                                icon: const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 24),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                tooltip: 'Next Month',
-                                onPressed: () {
-                                  final current = ref.read(selectedMonthProvider);
-                                  ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month + 1);
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: SingleChildScrollView(
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+          child: Container(
+            width: 500,
+            constraints: const BoxConstraints(maxHeight: 520),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (currentBreakdown.isEmpty) ...[
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 24),
-                              child: Center(
-                                child: Text('No main entries recorded for this month.', style: TextStyle(color: AppColors.textSecondary)),
-                              ),
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
                             ),
-                          ] else ...[
-                            ...currentBreakdown.entries.map((entry) => Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: color.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: color.withOpacity(0.18)),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      entry.key,
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                    ),
-                                  ),
-                                  Text(
-                                    'S\$${NumberFormat('#,##0.00').format(entry.value)}',
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
-                                  ),
-                                ],
-                              ),
-                            )),
-                          ],
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            title == 'Monthly Income' ? 'Breakdown by income sources' : 'Breakdown by expense categories',
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                       ),
                     ),
-                  ),
-                  const Divider(height: 24, color: AppColors.divider),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: color.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    const SizedBox(width: 10),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          title == 'Monthly Income' ? 'Total Income' : 'Total Expenses',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            dateInfo,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
+                          ),
                         ),
-                        Text(
-                          'S\$${NumberFormat('#,##0.00').format(totalVal)}',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: color),
+                        const SizedBox(width: 10),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              if (Navigator.canPop(ctx)) {
+                                Navigator.pop(ctx);
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight.withOpacity(0.6),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close, size: 18, color: AppColors.primary),
+                            ),
+                          ),
                         ),
                       ],
                     ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        if (breakdown.isEmpty) ...[
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Center(
+                              child: Text('No main entries recorded for this month.', style: TextStyle(color: AppColors.textSecondary)),
+                            ),
+                          ),
+                        ] else ...[
+                          ...breakdown.entries.map((entry) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: color.withOpacity(0.18)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    entry.key,
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                  ),
+                                ),
+                                Text(
+                                  'S\$${NumberFormat('#,##0.00').format(entry.value)}',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
+                                ),
+                              ],
+                            ),
+                          )),
+                        ],
+                      ],
+                    ),
                   ),
-                ],
-              ),
+                ),
+                const Divider(height: 24, color: AppColors.divider),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: color.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        title == 'Monthly Income' ? 'Total Income' : 'Total Expenses',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                      ),
+                      Text(
+                        'S\$${NumberFormat('#,##0.00').format(totalVal)}',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: color),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          );
-        },
-      ),
-    ).then((_) {
-      if (activeMonth != null) {
-        ref.read(selectedMonthProvider.notifier).state = activeMonth;
-      }
-    });
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildUploadCard({
