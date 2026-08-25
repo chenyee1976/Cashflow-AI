@@ -29,6 +29,15 @@ class GeminiExtractionService {
       'gemini-flash-latest',
     ];
 
+    final rulesService = UserCategoryRulesService();
+    final topLearnedRules = await rulesService.getTopRules(limit: 25);
+    String userRulesSection = '';
+    if (topLearnedRules.isNotEmpty) {
+      userRulesSection = '\nUSER-LEARNED MERCHANT CATEGORY PREFERENCES (Apply these first with high priority):\n' +
+          topLearnedRules.map((r) => '- "${r.pattern}" -> categoryValue: "${r.expenseCategory}", milesCategory: "${r.milesCategory}"').join('\n') +
+          '\n';
+    }
+
     final String promptText = '''
 You are an expert financial AI specializing in Singapore bank and credit card statements (DBS, POSB, OCBC, UOB, MariBank, Citibank, HSBC, Maybank, Standard Chartered).
 Analyze the uploaded statement document/image and extract:
@@ -38,19 +47,19 @@ Analyze the uploaded statement document/image and extract:
    - If this is a Credit Card Statement (e.g. Citi PremierMiles, DBS Altitude, UOB PRVI, HSBC Revolution), extract details into "cardDraft".
 
 2. BANK STATEMENT DETAILS ("accounts"):
-   - bankName: Exact Bank Name (e.g. POSB, DBS Bank, OCBC Bank, UOB, MariBank, Citibank). If POSB statement, MUST return "POSB".
-   - accountName: Exact account description (e.g. "POSB eSavings Account", "DBS Multi-Currency Account", "Savings Account"). DO NOT use file names.
-   - accountNumber: Account number (e.g. "123-45678-9" or masked "123-****-9").
-   - statementEndingBalance: Ending balance as a double (e.g. 1250.50).
-   - currency: 3-letter currency code (e.g. "SGD").
-   - statementEndingDate: Ending date of statement in YYYY-MM-DD format (e.g. "2026-06-30").
+   - bankName: Exact Bank Name extracted directly from the statement header/logo (e.g. POSB, DBS Bank, OCBC Bank, UOB, MariBank, Citibank, HSBC, Maybank, Standard Chartered).
+   - accountName: Exact account description from statement (e.g. "eSavings Account", "Multi-Currency Account", "One Account", "360 Account"). DO NOT invent names or use file names.
+   - accountNumber: Full or masked account number printed on the statement (e.g. "123-45678-9" or "123-****-9"). If not found, return empty string "". NEVER invent fake numbers.
+   - statementEndingBalance: Statement ending / closing balance as a double (e.g. 1250.50). Look for "Closing Balance", "Ending Balance", "Total Balance", "Balance Carried Forward".
+   - currency: 3-letter currency code (e.g. "SGD", "USD", "EUR").
+   - statementEndingDate: Statement date or period end date in YYYY-MM-DD format (e.g. "2026-06-30").
 
 3. CREDIT CARD STATEMENT DETAILS ("cardDraft"):
-   - cardIssuer: Bank Issuer (e.g. Citibank, DBS Bank, OCBC Bank, UOB, HSBC).
+   - cardIssuer: Bank Issuer (e.g. Citibank, DBS Bank, OCBC Bank, UOB, HSBC, Maybank, Standard Chartered).
    - cardType: Card Brand (Visa, Mastercard, Amex).
-   - cardName: Full Card Product Name (e.g. "CITI PREMIERMILES WORLD MASTER", "DBS ALTITUDE VISA", "UOB PRVI MILES").
-   - cardNumber: Card number (full or masked e.g. "5425-XXXX-7628").
-   - hasMiles: true if statement shows miles/points, false if cashback.
+   - cardName: Full Card Product Name from the statement (e.g. "CITI PREMIERMILES WORLD MASTER", "DBS ALTITUDE VISA", "UOB PRVI MILES").
+   - cardNumber: Card number printed on the statement (e.g. "5425-XXXX-7628" or last 4 digits).
+   - hasMiles: true if statement shows miles/points rewards, false if cashback.
    - milesOpening: Opening miles balance as string.
    - milesEarned: Miles earned this month as string.
    - milesBonus: Bonus miles earned this month as string.
@@ -60,27 +69,39 @@ Analyze the uploaded statement document/image and extract:
    - hasCashback: true if cashback card.
    - cashbackEarned: Cashback amount earned as string.
    - cashbackRates: Array of cashback rates [{ "category": "Dining", "rate": "6%", "minSpend": "800", "maxSpend": "" }].
-   - totalSpend: Total card spend this statement period as a decimal string (e.g. "450.80").
+   - totalSpend: Total card spend this statement period as a decimal string (e.g. "450.80"). Look for "Total Current Charges" or "Total Purchases".
    - paymentDueDate: Payment due date in YYYY-MM-DD format (e.g. "2026-07-15").
 
 4. TRANSACTIONS LIST ("extractedTransactions"):
    Extract EVERY transaction row listed on the statement:
    - dateStr: Date formatted as DD MMM YYYY (e.g. "15 Jun 2026", "28 Jul 2026").
-   - merchant: Cleaned merchant or description (e.g. "NTUC FairPrice", "Sheng Siong Supermarket", "PayNow to John", "ATM Cash Withdrawal", "IRAS Tax Payment", "Singtel Bill").
+   - merchant: Cleaned merchant or description from statement (e.g. "NTUC FairPrice", "Sheng Siong Supermarket", "PayNow to John", "ATM Cash Withdrawal", "IRAS Tax Payment", "Singtel Bill").
    - amount: Double value. EXPENSES MUST BE NEGATIVE (e.g. -42.50), INCOME/DEPOSITS MUST BE POSITIVE (e.g. 150.00).
    - spendCurrency: For credit cards, IF amount > 0 select "SGD Receipt", else select one of: "SGD Spend", "MYR spend", "IDR spend", "FCY Spend".
-   - categoryValue: Select exact value: 'expense_transfer_to_cash', 'expense_tax', 'expense_dining', 'expense_groceries', 'expense_transport', 'expense_shopping', 'expense_entertainment', 'expense_travel', 'expense_utilities', 'expense_investments', 'expense_education', 'expense_transfer', 'expense_other', 'income_salary', 'income_transfer', 'income_investments', 'income_dividends', 'income_other'.
+   - categoryValue: Select exact value:
+     * Income: 'income_salary', 'income_transfer', 'income_interest', 'income_investments', 'income_dividends', 'income_other'
+     * Expense: 'expense_transfer_to_cash', 'expense_tax', 'expense_dining', 'expense_groceries', 'expense_transport', 'expense_petrol', 'expense_shopping', 'expense_entertainment', 'expense_travel', 'expense_utilities', 'expense_insurance', 'expense_healthcare', 'expense_education', 'expense_investments', 'expense_transfer', 'expense_other'
    - milesCashbackCategoryValue: Select exact value: 'Automobile', 'Beauty & Wellness', 'Commute', 'Dining & Food Delivery', 'Entertainment', 'Groceries', 'Kids & Pets', 'Online', 'SimplyGo', 'Shopping', 'Fuel', 'Others'.
 
 STRICT SINGAPORE CATEGORIZATION RULES:
+- Interest Earned / Bonus Interest / Savings Interest (amount > 0) -> categoryValue 'income_interest'.
+- Salary / Payroll / Bonus / AWS / CPF -> categoryValue 'income_salary'.
 - ATM Cash Withdrawals -> categoryValue 'expense_transfer_to_cash'.
 - Taxes & IRAS -> categoryValue 'expense_tax'.
-- PayNow / FAST / Giro Transfers -> categoryValue 'income_transfer' (if > 0) or 'expense_transfer' (if < 0).
-- NTUC / FairPrice / Sheng Siong / Cold Storage -> 'expense_groceries', milesCategory 'Groceries'.
-- Grab / Gojek / SimplyGo / SMRT -> 'expense_transport', milesCategory 'SimplyGo' or 'Commute'.
-- Foodpanda / Deliveroo / GrabFood / McDonald's / Starbucks -> 'expense_dining', milesCategory 'Dining & Food Delivery'.
-- Singtel / StarHub / M1 / SP Services -> 'expense_utilities'.
-
+- PayNow / FAST / Giro / Fund Transfers:
+  * If positive (amount > 0) -> categoryValue 'income_transfer' (Transfer In).
+  * If negative (amount < 0) -> categoryValue 'expense_transfer' (Transfer Out).
+- Insurance (AIA, Prudential, Great Eastern, Aviva, Singlife, NTUC Income, AXA, FWD, Manulife) -> categoryValue 'expense_insurance'.
+- Healthcare (Raffles Medical, Mount Elizabeth, Parkway, Gleneagles, Guardian, Watsons, Polyclinic, Hospitals, Clinics, Dental) -> categoryValue 'expense_healthcare'.
+- Petrol / Gas (Shell, Esso, SPC, Caltex) -> categoryValue 'expense_petrol', milesCategory 'Fuel'.
+- Supermarkets (NTUC FairPrice, Sheng Siong, Cold Storage, Giant, Don Don Donki, Meidi-Ya, Prime Super, RedMart) -> 'expense_groceries', milesCategory 'Groceries'.
+- Transport & Rides (SimplyGo, SMRT, SBS Transit, Grab ride, Gojek, Tada, ComfortDelGro) -> 'expense_transport', milesCategory 'SimplyGo' or 'Commute'.
+- Dining & Delivery (Foodpanda, Deliveroo, GrabFood, McDonald's, Starbucks, Toast Box, Ya Kun, restaurants, cafes, Kopitiam) -> 'expense_dining', milesCategory 'Dining & Food Delivery'.
+- Utilities & Telco (Singtel, StarHub, M1, SP Services, SP Group, PUB, Electricity, Circles.Life, Simba, MyRepublic) -> 'expense_utilities'.
+- Streaming & Entertainment (Netflix, Spotify, Disney+, YouTube, Golden Village, Cathay, Shaw) -> 'expense_entertainment', milesCategory 'Entertainment'.
+- Travel (SIA, Scoot, Jetstar, AirAsia, Klook, Agoda, Booking.com, Hotels) -> 'expense_travel'.
+- Shopping (Shopee, Lazada, Amazon, Taobao, Uniqlo, Zara, H&M, Takashimaya, Tangs) -> 'expense_shopping', milesCategory 'Shopping'.
+$userRulesSection
 You MUST return a raw JSON object formatted precisely as follows:
 {
   "accounts": [
@@ -146,7 +167,11 @@ You MUST return a raw JSON object formatted precisely as follows:
                     }
                   ]
                 }
-              ]
+              ],
+              'generationConfig': {
+                'responseMimeType': 'application/json',
+                'maxOutputTokens': 8192,
+              },
             },
             options: Options(
               headers: headers,
@@ -235,10 +260,10 @@ You MUST return a raw JSON object formatted precisely as follows:
         (parsed['history'] as List<dynamic>?) ?? [];
 
     final accounts = rawAccounts.map((acc) {
-      String bankVal = acc['bankName'] as String? ?? acc['bank'] as String? ?? '';
-      String nameVal = acc['accountName'] as String? ?? acc['name'] as String? ?? '';
-      String numVal = acc['accountNumber'] as String? ?? acc['num'] as String? ?? '';
-      final curVal = acc['currency'] as String? ?? 'SGD';
+      String bankVal = (acc['bankName'] as String? ?? acc['bank'] as String? ?? '').trim();
+      String nameVal = (acc['accountName'] as String? ?? acc['name'] as String? ?? '').trim();
+      String numVal = (acc['accountNumber'] as String? ?? acc['num'] as String? ?? '').trim();
+      final curVal = (acc['currency'] as String? ?? 'SGD').trim().toUpperCase();
 
       final fullLowerText = cleanText.toLowerCase();
       if (bankVal.isEmpty || bankVal == 'Bank') {
@@ -254,27 +279,27 @@ You MUST return a raw JSON object formatted precisely as follows:
           bankVal = 'MariBank';
         } else if (fullLowerText.contains('citi')) {
           bankVal = 'Citibank';
+        } else if (fullLowerText.contains('hsbc')) {
+          bankVal = 'HSBC';
+        } else if (fullLowerText.contains('maybank')) {
+          bankVal = 'Maybank';
+        } else if (fullLowerText.contains('standard chartered') || fullLowerText.contains('stanbic')) {
+          bankVal = 'Standard Chartered';
         } else {
-          bankVal = 'POSB';
+          bankVal = 'Bank Account';
         }
       }
 
       if (nameVal.isEmpty || nameVal.contains('stater') || nameVal.contains('statement') || nameVal.contains('.pdf')) {
-        if (bankVal.toUpperCase().contains('POSB')) {
-          nameVal = 'POSB eSavings Account';
-        } else if (bankVal.toUpperCase().contains('DBS')) {
-          nameVal = 'DBS Multi-Currency Account';
-        } else {
-          nameVal = '$bankVal Savings Account';
-        }
+        nameVal = '$bankVal Account';
       }
 
-      if (numVal.isEmpty || numVal == '****') {
-        final numMatch = RegExp(r'\b\d{3}-\d{5}-\d\b|\b\d{9,10}\b').firstMatch(cleanText);
+      if (numVal == '****' || numVal == '123-45678-9') {
+        final numMatch = RegExp(r'\b\d{3}-\d{5,6}-\d\b|\b\d{3}-\d{3}-\d{3}-\d\b|\b\d{3}-\d{6}\b|\b\d{9,12}\b').firstMatch(cleanText);
         if (numMatch != null) {
           numVal = numMatch.group(0)!;
         } else {
-          numVal = '123-45678-9';
+          numVal = '';
         }
       }
       
@@ -394,8 +419,6 @@ You MUST return a raw JSON object formatted precisely as follows:
         paymentDueDate: dueVal,
       );
     }
-
-    final rulesService = UserCategoryRulesService();
 
     final transactions = <ExtractedTransactionDraft>[];
     for (final tx in rawTransactions) {

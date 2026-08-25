@@ -222,7 +222,7 @@ class UploadNotifier extends StateNotifier<UploadState> {
         fileName: fileName,
         filePath: '',
         fileType: fileType,
-        fileSizeBytes: 1024 * 100, // mock size
+        fileSizeBytes: fileBytes?.length ?? (1024 * 50),
         status: const drift.Value('Awaiting review'),
         bankOrCard: drift.Value(institution),
         accountType: drift.Value(fileType),

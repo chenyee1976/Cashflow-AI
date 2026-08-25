@@ -69,6 +69,24 @@ class UserCategoryRulesService {
     await prefs.setString(_rulesKey, jsonEncode(rulesMap));
   }
 
+  /// Get top user learned rules formatted for AI prompt injection
+  Future<List<LearnedRule>> getTopRules({int limit = 25}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonStr = prefs.getString(_rulesKey);
+    if (jsonStr == null || jsonStr.isEmpty) return [];
+
+    try {
+      final Map<String, dynamic> rulesMap = jsonDecode(jsonStr) as Map<String, dynamic>;
+      final list = rulesMap.values
+          .map((v) => LearnedRule.fromJson(v as Map<String, dynamic>))
+          .where((r) => r.pattern.length >= 3)
+          .toList();
+      return list.take(limit).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Match a merchant string against saved user rules
   Future<LearnedRule?> matchRule(String rawMerchant) async {
     final cleaned = _normalize(rawMerchant);
@@ -81,11 +99,21 @@ class UserCategoryRulesService {
     try {
       final Map<String, dynamic> rulesMap = jsonDecode(jsonStr) as Map<String, dynamic>;
 
-      // 1. Direct match or substring match
+      // 1. Exact match first (highest confidence)
+      if (rulesMap.containsKey(cleaned)) {
+        return LearnedRule.fromJson(rulesMap[cleaned] as Map<String, dynamic>);
+      }
+
+      // 2. Substring match with minimum length threshold to prevent false positives
       for (final entry in rulesMap.entries) {
         final keyPattern = entry.key;
-        if (cleaned.contains(keyPattern) || keyPattern.contains(cleaned)) {
-          return LearnedRule.fromJson(entry.value as Map<String, dynamic>);
+        if (keyPattern.length >= 4 && cleaned.length >= 4) {
+          if (cleaned.contains(keyPattern) || keyPattern.contains(cleaned)) {
+            final shorterLen = cleaned.length < keyPattern.length ? cleaned.length : keyPattern.length;
+            if (shorterLen >= 4) {
+              return LearnedRule.fromJson(entry.value as Map<String, dynamic>);
+            }
+          }
         }
       }
     } catch (_) {}

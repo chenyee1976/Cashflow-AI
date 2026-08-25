@@ -1522,7 +1522,13 @@ class _VoiceExpenseCardState extends State<_VoiceExpenseCard> {
 
   void _startWebVoiceRecognition() {
     if (!kIsWeb) {
-      _simulateVoiceRecording();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Speech-to-text is available on web browsers. You can type your expense in the text field!'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 3),
+        ),
+      );
       return;
     }
 
@@ -1569,7 +1575,13 @@ class _VoiceExpenseCardState extends State<_VoiceExpenseCard> {
             setState(() {
               _isListening = false;
             });
-            _simulateVoiceRecording();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Microphone access unavailable. You can type your expense in the text field above!'),
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 3),
+              ),
+            );
           }
         });
 
@@ -1578,36 +1590,43 @@ class _VoiceExpenseCardState extends State<_VoiceExpenseCard> {
             setState(() {
               _isListening = false;
             });
-            // If Chrome finished listening but microphone yielded empty audio, trigger fallback simulation for smooth testing
-            _simulateVoiceRecording();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No speech detected. Please try speaking again or type your expense directly!'),
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 3),
+              ),
+            );
           }
         });
 
         recognition.start();
       } else {
-        _simulateVoiceRecording();
+        setState(() {
+          _isListening = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Speech-to-text is supported on Chrome browsers. You can type your expense in the text field!'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
-    } catch (_) {
-      _simulateVoiceRecording();
-    }
-  }
-
-  void _simulateVoiceRecording() {
-    setState(() {
-      _isListening = true;
-    });
-
-    Future.delayed(const Duration(seconds: 2), () {
+    } catch (err) {
       if (mounted) {
         setState(() {
           _isListening = false;
         });
-        final samples = ['Kopi \$1.50', 'Lunch \$5.20', 'Taxi ride \$14.50'];
-        final sample = (samples..shuffle()).first;
-        _inputCtrl.text = sample;
-        _processExpense(sample);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not start microphone. Please type your expense directly!'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
-    });
+    }
   }
 
   @override

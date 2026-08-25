@@ -1177,7 +1177,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
             fileName: widget.fileName,
             filePath: '',
             fileType: widget.fileType,
-            fileSizeBytes: 1024 * 100, // mock size
+            fileSizeBytes: 1024 * 50,
             status: const drift.Value('Processed'),
             bankOrCard: drift.Value(bankOrCardName),
             accountType: drift.Value(widget.fileType),

@@ -1175,8 +1175,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                             context,
                             'Linked Bank Accounts',
                             data.bankAccounts.isEmpty
-                                ? ['DBS eSavings Account · 123-45678-9 (S\$ 2,450.00)']
-                                : data.bankAccounts.map((acc) => '${acc.bankName} · ${acc.accountNumber ?? "Active"}').toList(),
+                                ? ['No bank accounts linked yet. Upload a bank statement to add your accounts.']
+                                : data.bankAccounts.map((acc) => '${acc.bankName} · ${acc.accountNumber != null && acc.accountNumber!.isNotEmpty ? acc.accountNumber! : "Active"}').toList(),
                             Icons.account_balance_rounded,
                           ),
                         ),
@@ -1192,8 +1192,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                             context,
                             'Linked Credit Cards',
                             data.creditCards.isEmpty
-                                ? ['Citi PremierMiles Card · 5425-XXXX-7628 (Active)']
-                                : data.creditCards.map((card) => '${card.bankName} ${card.cardName} · ${card.lastFour ?? "Active"}').toList(),
+                                ? ['No credit cards linked yet. Upload a credit card statement to add your cards.']
+                                : data.creditCards.map((card) => '${card.bankName} ${card.cardName} · ${card.lastFour != null && card.lastFour!.isNotEmpty ? card.lastFour! : "Active"}').toList(),
                             Icons.credit_card_rounded,
                           ),
                         ),
