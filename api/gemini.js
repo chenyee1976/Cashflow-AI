@@ -28,14 +28,33 @@ module.exports = async (req, res) => {
     });
   }
 
-  // 2. Handle GET /api/gemini?action=listModels
+  // 2. Handle GET /api/gemini
   if (req.method === 'GET') {
-    try {
-      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-      const listData = await listRes.json();
-      return res.status(listRes.status).json(listData);
-    } catch (err) {
-      return res.status(500).json({ error: 'Failed to list models', details: err.message });
+    if (req.query.action === 'listModels') {
+      try {
+        const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const listData = await listRes.json();
+        return res.status(listRes.status).json(listData);
+      } catch (err) {
+        return res.status(500).json({ error: 'Failed to list models', details: err.message });
+      }
+    }
+    if (req.query.action === 'test') {
+      const testModel = req.query.model || 'gemini-2.5-flash';
+      try {
+        const testRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify({ contents: [{ parts: [{ text: 'Say OK' }] }] }),
+        });
+        const testText = await testRes.text();
+        return res.status(testRes.status).send(testText);
+      } catch (err) {
+        return res.status(500).json({ error: err.message });
+      }
     }
   }
 
@@ -45,26 +64,29 @@ module.exports = async (req, res) => {
 
   try {
     const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
-    const requestedModel = req.query.model || 'gemini-2.0-flash';
+    const requestedModel = req.query.model || 'gemini-2.5-flash';
 
-    // Candidate fallback models
-    const fallbackList = [
+    // Primary supported active models in priority order
+    const priorityModels = [
       requestedModel,
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
-      'gemini-1.5-flash-latest',
-      'gemini-2.0-flash-lite',
+      'gemini-2.5-flash',
       'gemini-flash-latest',
-      'gemini-1.5-pro',
-      'gemini-pro',
+      'gemini-2.5-flash-lite',
+      'gemini-flash-lite-latest',
+      'gemini-3.6-flash',
+      'gemini-2.5-pro',
+      'gemini-pro-latest'
     ];
-    const uniqueModels = [...new Set(fallbackList)];
+    const uniqueModels = [...new Set(priorityModels)];
 
     let lastErrorResponse = null;
     let lastStatus = 500;
 
     for (const model of uniqueModels) {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s per model attempt
+
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const response = await fetch(url, {
           method: 'POST',
@@ -73,7 +95,9 @@ module.exports = async (req, res) => {
             'x-goog-api-key': apiKey,
           },
           body: body,
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
 
         const responseText = await response.text();
         lastStatus = response.status;
