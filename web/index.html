@@ -77,7 +77,64 @@
         }
       });
     }
+
+    // Native Web Speech Recognition Bridge
+    window.activeSpeechRecognition = null;
+    window.initiateSpeechRecognition = function(lang, onResult, onError, onEnd) {
+      try {
+        if (window.activeSpeechRecognition) {
+          try { window.activeSpeechRecognition.abort(); } catch(e) {}
+          window.activeSpeechRecognition = null;
+        }
+
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec) {
+          if (onError) onError('unsupported');
+          return;
+        }
+
+        const rec = new SpeechRec();
+        window.activeSpeechRecognition = rec;
+        rec.lang = lang || 'en-SG';
+        rec.continuous = false;
+        rec.interimResults = false;
+        rec.maxAlternatives = 1;
+        let gotResult = false;
+
+        rec.onresult = function(e) {
+          try {
+            if (e.results && e.results.length > 0) {
+              const res = e.results[e.results.length - 1];
+              if (res && res.length > 0) {
+                const transcript = res[0].transcript;
+                if (transcript && transcript.trim().length > 0) {
+                  gotResult = true;
+                  if (onResult) onResult(transcript.trim());
+                }
+              }
+            }
+          } catch(err) {
+            console.error('Speech onresult error:', err);
+          }
+        };
+
+        rec.onerror = function(e) {
+          console.warn('Speech recognition error:', e.error);
+          if (onError) onError(e.error || 'error');
+        };
+
+        rec.onend = function() {
+          window.activeSpeechRecognition = null;
+          if (onEnd) onEnd(gotResult);
+        };
+
+        rec.start();
+      } catch(err) {
+        console.error('Speech start exception:', err);
+        if (onError) onError(err.toString());
+      }
+    };
   </script>
-  <script src="flutter_bootstrap.js?v=20260825_restore_pro_statement_v1" async></script>
+  <script src="flutter_bootstrap.js?v=20260825_native_speech_bridge_v1" async></script>
 </body>
 </html>

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:html' as html;
+import 'dart:js' as js;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/category_enum.dart';
@@ -1642,87 +1643,64 @@ class _VoiceExpenseCardState extends State<_VoiceExpenseCard> {
     }
 
     try {
-      if (html.SpeechRecognition.supported) {
-        final recognition = html.SpeechRecognition();
-        bool receivedResult = false;
+      setState(() {
+        _isListening = true;
+      });
 
-        setState(() {
-          _isListening = true;
-        });
-
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-SG';
-
-        recognition.onResult.listen((event) {
-          try {
-            final dynamic ev = event;
-            final results = ev.results;
-            if (results != null) {
-              final dynamic lastRes = results[results.length - 1];
-              final dynamic item = lastRes[0];
-              final String? text = item?.transcript?.toString();
-              if (text != null && text.trim().isNotEmpty) {
-                receivedResult = true;
-                if (mounted) {
-                  setState(() {
-                    _isListening = false;
-                    _inputCtrl.text = text;
-                  });
-                  _processExpense(text);
-                }
-              }
+      js.context.callMethod('initiateSpeechRecognition', [
+        'en-SG',
+        js.allowInterop((dynamic transcript) {
+          final text = transcript?.toString().trim();
+          if (text != null && text.isNotEmpty) {
+            if (mounted) {
+              setState(() {
+                _isListening = false;
+                _inputCtrl.text = text;
+              });
+              _processExpense(text);
             }
-          } catch (e) {
-            debugPrint('Speech recognition error parsing: $e');
           }
-        });
-
-        recognition.onError.listen((e) {
-          debugPrint('Speech recognition error: $e');
-          if (mounted && !receivedResult) {
+        }),
+        js.allowInterop((dynamic error) {
+          debugPrint('Speech recognition error: $error');
+          if (mounted) {
             setState(() {
               _isListening = false;
             });
+            final errStr = error?.toString() ?? '';
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Microphone access unavailable. You can type your expense in the text field above!'),
+              SnackBar(
+                content: Text(errStr == 'unsupported'
+                    ? 'Speech recognition is not supported in this browser. You can type your expense directly!'
+                    : (errStr == 'not-allowed' || errStr == 'permission-denied')
+                        ? 'Microphone permission blocked. Please enable mic access in your browser settings or type your expense!'
+                        : 'Microphone listening ended ($errStr). You can type your expense directly!'),
                 behavior: SnackBarBehavior.floating,
-                duration: Duration(seconds: 3),
+                duration: const Duration(seconds: 4),
               ),
             );
           }
-        });
-
-        recognition.onEnd.listen((_) {
-          if (mounted && _isListening && !receivedResult) {
+        }),
+        js.allowInterop((dynamic gotResult) {
+          final bool success = gotResult == true;
+          if (mounted && _isListening) {
             setState(() {
               _isListening = false;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('No speech detected. Please try speaking again or type your expense directly!'),
-                behavior: SnackBarBehavior.floating,
-                duration: Duration(seconds: 3),
-              ),
-            );
+            if (!success) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No speech detected. Please speak clearly into your mic or type your expense directly!'),
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
           }
-        });
-
-        recognition.start();
-      } else {
-        setState(() {
-          _isListening = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Speech-to-text is supported on Chrome browsers. You can type your expense in the text field!'),
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
+        }),
+      ]);
     } catch (err) {
+      debugPrint('Speech recognition exception: $err');
       if (mounted) {
         setState(() {
           _isListening = false;
