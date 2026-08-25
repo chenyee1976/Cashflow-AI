@@ -207,9 +207,7 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
   }
   final consolidatedAccounts = uniqueAccounts.values.toList();
 
-  // Calculate net cash adjustments:
-  // 1) Manual cash expenses (negative)
-  // 2) ATM cash withdrawals categorized as 'expense_transfer_to_cash' (adds to cash on hand)
+  // Net cash adjustments
   double cashAdjustmentsTotal = 0.0;
   for (final tx in transactions) {
     if (tx.accountId == 'manual_cash' || tx.accountId == 'manual') {
@@ -219,7 +217,9 @@ final cashPositionProvider = FutureProvider.autoDispose<CashPositionModel>((ref)
     }
   }
 
-  final targetMonth = ref.watch(selectedMonthProvider);
+  // Anchor Cash Position to current calendar month (matches Monthly Income and Expenses)
+  final now = DateTime.now();
+  final targetMonth = DateTime(now.year, now.month);
   final endOfTargetMonth = DateTime(targetMonth.year, targetMonth.month + 1, 0, 23, 59, 59);
 
   final targetMonthBase = await storage.getCashOnHandBaseForMonth(year: targetMonth.year, month: targetMonth.month) ?? 0.0;

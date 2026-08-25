@@ -324,18 +324,20 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
               ),
               child: Icon(icon, color: AppColors.primary, size: 28),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               title,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
+                fontSize: 13,
                 color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 4),
             const Text(
-              'PDF, CSV, JPG or PNG · 20 MB',
+              'PDF, JPG or PNG · 20 MB',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 10,
                 color: AppColors.textSecondary,

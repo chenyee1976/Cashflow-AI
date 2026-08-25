@@ -1093,52 +1093,131 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return innerContent;
   }
 
-  void _showBreakdownSheet(BuildContext context, WidgetRef ref, CashPositionModel initialData, String title, {DateTime? activeMonth}) {
+  void _showBreakdownSheet(BuildContext context, WidgetRef ref, CashPositionModel initialData, String title, {DateTime? initialDate}) {
+    DateTime activeDate = initialDate ?? DateTime.now();
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) {
-        return Consumer(
-          builder: (context, ref, child) {
-            final selectedMonth = ref.watch(selectedMonthProvider);
-            final cashAsync = ref.watch(cashPositionProvider);
+      builder: (modalContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final targetMonth = DateTime(activeDate.year, activeDate.month);
+            final endOfTargetMonth = DateTime(targetMonth.year, targetMonth.month + 1, 0, 23, 59, 59);
+            final dateBadgeStr = 'as of ${DateFormat('dd/MM/yyyy').format(endOfTargetMonth)}';
 
-            return cashAsync.when(
-              loading: () => Container(
-                height: 300,
-                decoration: const BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-              error: (err, _) => Container(
-                height: 300,
-                decoration: const BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: Center(child: Text('Error: $err')),
-              ),
-              data: (data) {
-                final String dateBadgeStr;
-                final Map<String, double> targetBalancesMap;
-                final double totalVal;
+            final db = ref.read(appDatabaseProvider);
+            final storage = ref.read(secureStorageProvider);
 
-                if (title == 'Previous month balance') {
-                  dateBadgeStr = 'as of ${data.prevMonthDateStr}';
-                  targetBalancesMap = data.prevMonthBalances;
-                  totalVal = data.prevMonthBalance;
-                } else if (title == 'Previous year balance') {
-                  dateBadgeStr = 'as of ${data.prevYearDateStr}';
-                  targetBalancesMap = data.prevYearBalances;
-                  totalVal = data.prevYearBalance;
-                } else {
-                  dateBadgeStr = 'as of ${data.currentDateStr}';
-                  targetBalancesMap = {for (final a in data.accounts) a.id: a.currentBalance};
-                  totalVal = data.currentBalance;
+            return FutureBuilder<Map<String, dynamic>>(
+              future: () async {
+                final prefs = await SharedPreferences.getInstance();
+                final testerEmail = prefs.getString('tester_email') ?? '';
+                var userId = await storage.getUserId();
+                if (userId == null || userId.isEmpty || userId == 'unknown_user') {
+                  userId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
                 }
+
+                final accounts = await DatabaseMutex.run(() => db.getBankAccountsByUser(userId!));
+                final transactions = await DatabaseMutex.run(() => db.getTransactionsByUser(userId!));
+                final statements = await DatabaseMutex.run(() => db.getStatementsByUser(userId!));
+
+                String _normalize(String s) => s.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+                final Map<String, BankAccount> uniqueAccounts = {};
+                for (final acc in accounts) {
+                  final key = '${_normalize(acc.bankName)}_${_normalize(acc.accountNumber ?? '')}';
+                  if (!uniqueAccounts.containsKey(key)) {
+                    uniqueAccounts[key] = acc;
+                  }
+                }
+                final consolidated = uniqueAccounts.values.toList();
+
+                final targetMonthBase = await storage.getCashOnHandBaseForMonth(year: targetMonth.year, month: targetMonth.month) ?? 0.0;
+                double cashAdjustmentsTotal = 0.0;
+                final targetTimestamp = endOfTargetMonth.millisecondsSinceEpoch ~/ 1000;
+                for (final tx in transactions) {
+                  if (tx.date <= targetTimestamp) {
+                    if (tx.accountId == 'manual_cash' || tx.accountId == 'manual') {
+                      cashAdjustmentsTotal += tx.amount;
+                    } else if (tx.category == TransactionCategory.expenseTransferToCash.value) {
+                      cashAdjustmentsTotal += tx.amount.abs();
+                    }
+                  }
+                }
+                final cashOnHandAcc = BankAccount(
+                  id: 'manual_cash_account',
+                  userId: userId,
+                  bankName: 'Cash on hand',
+                  accountType: 'Physical Cash Pool',
+                  accountNumber: 'Wallet',
+                  currentBalance: targetMonthBase + cashAdjustmentsTotal,
+                  openingBalance: targetMonthBase,
+                  currency: 'SGD',
+                  sourceStatementId: null,
+                  createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                );
+                consolidated.add(cashOnHandAcc);
+
+                final Map<String, double> balances = {};
+                for (final acc in consolidated) {
+                  if (acc.id == 'manual_cash_account') {
+                    balances[acc.id] = targetMonthBase + cashAdjustmentsTotal;
+                    continue;
+                  }
+
+                  final sameAccountSnapshots = accounts.where((a) =>
+                    _normalize(a.bankName) == _normalize(acc.bankName) &&
+                    _normalize(a.accountNumber ?? '') == _normalize(acc.accountNumber ?? '')
+                  ).toList();
+
+                  BankAccount? bestMatchAccount;
+                  DateTime? bestMatchDate;
+                  final targetMonthStart = DateTime(targetMonth.year, targetMonth.month, 1);
+
+                  for (final snap in sameAccountSnapshots) {
+                    final matchedStmt = statements.where((s) => s.id == snap.sourceStatementId).firstOrNull;
+                    if (snap.sourceStatementId != null && matchedStmt == null) continue;
+
+                    DateTime? stmtDate;
+                    if (matchedStmt != null && matchedStmt.periodEnd != null) {
+                      stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
+                    } else if (snap.createdAt > 0) {
+                      stmtDate = DateTime.fromMillisecondsSinceEpoch(snap.createdAt * 1000);
+                    }
+
+                    if (stmtDate == null) continue;
+                    final snapMonthStart = DateTime(stmtDate.year, stmtDate.month, 1);
+                    if (!snapMonthStart.isAfter(targetMonthStart)) {
+                      if (bestMatchDate == null || snapMonthStart.isAfter(bestMatchDate)) {
+                        bestMatchDate = snapMonthStart;
+                        bestMatchAccount = snap;
+                      }
+                    }
+                  }
+
+                  balances[acc.id] = bestMatchAccount?.currentBalance ?? 0.0;
+                }
+
+                return {
+                  'accounts': consolidated,
+                  'balances': balances,
+                };
+              }(),
+              builder: (ctx, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Container(
+                    height: 300,
+                    decoration: const BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    ),
+                    child: const Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final accountsList = (snapshot.data?['accounts'] as List<BankAccount>?) ?? initialData.accounts;
+                final targetBalancesMap = (snapshot.data?['balances'] as Map<String, double>?) ?? {};
 
                 return Container(
                   constraints: BoxConstraints(
@@ -1153,7 +1232,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header layout: Title (left), Subtitle (bottom-left), Month Badge & Navigation controls (right column)
+                      // Header layout
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1237,8 +1316,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     constraints: const BoxConstraints(),
                                     tooltip: 'Previous Month',
                                     onPressed: () {
-                                      final current = ref.read(selectedMonthProvider);
-                                      ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month - 1);
+                                      setModalState(() {
+                                        activeDate = DateTime(activeDate.year, activeDate.month - 1);
+                                      });
                                     },
                                   ),
                                   const SizedBox(width: 16),
@@ -1248,8 +1328,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     constraints: const BoxConstraints(),
                                     tooltip: 'Next Month',
                                     onPressed: () {
-                                      final current = ref.read(selectedMonthProvider);
-                                      ref.read(selectedMonthProvider.notifier).state = DateTime(current.year, current.month + 1);
+                                      setModalState(() {
+                                        activeDate = DateTime(activeDate.year, activeDate.month + 1);
+                                      });
                                     },
                                   ),
                                 ],
@@ -1260,210 +1341,140 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                       const SizedBox(height: 20),
 
-              // Scrollable Account List
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: data.accounts.map((acc) {
-                      final balanceVal = targetBalancesMap[acc.id] ?? 0.0;
-                      final currencyStr = acc.currency.trim().toUpperCase();
-                      final isCashOnHand = acc.bankName == 'Cash on hand';
+                      // Scrollable Account List
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: accountsList.map((acc) {
+                              final balanceVal = targetBalancesMap[acc.id] ?? 0.0;
+                              final currencyStr = acc.currency.trim().toUpperCase();
+                              final isCashOnHand = acc.bankName == 'Cash on hand';
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.divider.withOpacity(0.5)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    isCashOnHand ? 'Cash on Hand' : '${acc.bankName} ${acc.accountType}',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    isCashOnHand
-                                        ? 'Physical wallet pool'
-                                        : '${acc.bankName} · as of ${DateFormat('dd/MM/yyyy').format(DateTime(selectedMonth.year, selectedMonth.month + 1, 0))}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '$currencyStr ${NumberFormat('#,##0.00').format(balanceVal)}',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
-                                  ),
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppColors.divider.withOpacity(0.5)),
                                 ),
-                                if (isCashOnHand) ...[
-                                  const SizedBox(height: 6),
-                                  InkWell(
-                                    onTap: () async {
-                                      final ctrl = TextEditingController(text: balanceVal.toStringAsFixed(2));
-                                      final newBase = await showDialog<double>(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          title: Text('Update Base Cash on Hand ($dateBadgeStr)'),
-                                          content: TextField(
-                                            controller: ctrl,
-                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                            decoration: const InputDecoration(
-                                              labelText: 'Base Cash Pool Amount (S\$)',
-                                              border: OutlineInputBorder(),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            isCashOnHand ? 'Cash on Hand' : '${acc.bankName} ${acc.accountType}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.textPrimary,
                                             ),
                                           ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(ctx),
-                                              child: const Text('Cancel'),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            isCashOnHand
+                                                ? 'Physical wallet pool'
+                                                : '${acc.bankName} · as of ${DateFormat('dd/MM/yyyy').format(endOfTargetMonth)}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.textSecondary,
                                             ),
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                final val = double.tryParse(ctrl.text);
-                                                Navigator.pop(ctx, val);
-                                              },
-                                              child: const Text('Save'),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-
-                                      if (newBase != null) {
-                                        final targetDate = title == 'Current balance'
-                                            ? DateTime.now()
-                                            : (title == 'Previous month balance'
-                                                ? DateTime(DateTime.now().year, DateTime.now().month, 0)
-                                                : DateTime(DateTime.now().year - 1, 12, 31));
-
-                                        await ref.read(secureStorageProvider).saveCashOnHandBaseForMonth(
-                                              year: targetDate.year,
-                                              month: targetDate.month,
-                                              amount: newBase,
-                                            );
-                                        ref.invalidate(cashPositionProvider);
-                                        if (context.mounted) {
-                                          Navigator.pop(context);
-                                        }
-                                      }
-                                    },
-                                    borderRadius: BorderRadius.circular(6),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
-                                      ),
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.edit, size: 11, color: AppColors.primary),
-                                          SizedBox(width: 4),
-                                          Text('Edit Cash', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                                          ),
                                         ],
                                       ),
                                     ),
-                                  ),
-                                ],
-                                if (currencyStr != 'SGD') ...[
-                                  const SizedBox(height: 2),
-                                  FutureBuilder<String?>(
-                                    future: ref.read(secureStorageProvider).getFxRate(currencyStr),
-                                    builder: (context, snapshot) {
-                                      final savedRate = snapshot.data;
-                                      final rate = double.tryParse(savedRate ?? '') ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
-                                      return Text(
-                                        '(S\$ ${NumberFormat('#,##0.00').format(balanceVal * rate)})',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.w500,
+                                    const SizedBox(width: 12),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '$currencyStr ${NumberFormat('#,##0.00').format(balanceVal)}',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.textPrimary,
+                                          ),
                                         ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
+                                        if (isCashOnHand) ...[
+                                          const SizedBox(height: 6),
+                                          InkWell(
+                                            onTap: () async {
+                                              final ctrl = TextEditingController(text: balanceVal.toStringAsFixed(2));
+                                              final newBase = await showDialog<double>(
+                                                context: context,
+                                                builder: (ctx) => AlertDialog(
+                                                  title: Text('Update Base Cash on Hand ($dateBadgeStr)'),
+                                                  content: TextField(
+                                                    controller: ctrl,
+                                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                    decoration: const InputDecoration(
+                                                      labelText: 'Base Cash Pool Amount (S\$)',
+                                                      border: OutlineInputBorder(),
+                                                    ),
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(ctx),
+                                                      child: const Text('Cancel'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () {
+                                                        final val = double.tryParse(ctrl.text);
+                                                        Navigator.pop(ctx, val);
+                                                      },
+                                                      child: const Text('Save'),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                              if (newBase != null) {
+                                                await storage.saveCashOnHandBaseForMonth(
+                                                  year: targetMonth.year,
+                                                  month: targetMonth.month,
+                                                  amount: newBase,
+                                                );
+                                                ref.invalidate(cashPositionProvider);
+                                                setModalState(() {});
+                                              }
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primaryLight,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: const Text(
+                                                'Edit Base',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
                         ),
-                      );
-                    }).toList(),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 8),
-              const Divider(color: AppColors.divider),
-              const SizedBox(height: 12),
-
-              // Total Row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Total (SGD Equiv.)',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    'S\$${NumberFormat('#,##0.00').format(totalVal)}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Footer caption
-              const Text(
-                'Per-account historical balances reflect the most recent statement on file.',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
+                );
+              },
+            );
+          },
         );
       },
     );
-  },
-);
-      },
-    ).then((_) {
-      if (activeMonth != null) {
-        ref.read(selectedMonthProvider.notifier).state = activeMonth;
-      }
-    });
   }
 
   String _getGreeting() {

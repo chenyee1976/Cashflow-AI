@@ -768,7 +768,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
     final Map<String, BankAccount> uniqueAccountSamples = {};
     for (final acc in allUserAccounts) {
-      final key = '${acc.bankName}_${acc.accountNumber ?? ""}';
+      final key = _normIdentity(acc);
       if (!uniqueAccountSamples.containsKey(key)) {
         uniqueAccountSamples[key] = acc;
       }
@@ -847,7 +847,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           continue;
         }
 
-        DateTime? latestDate;
+        DateTime? bestMatchDate;
         double latestBal = 0.0;
 
         for (final acc in allUserAccounts) {
@@ -858,21 +858,19 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final matchedStmt = allStatements.where((s) => s.id == acc.sourceStatementId).firstOrNull;
             if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
               stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
+            } else if (matchedStmt != null && matchedStmt.uploadedAt > 0) {
+              stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.uploadedAt * 1000);
             }
-            if (stmtDate == null) {
-              final stmtTxs = allTransactions.where((t) => t.statementId == acc.sourceStatementId).toList();
-              if (stmtTxs.isNotEmpty) {
-                stmtTxs.sort((a, b) => b.date.compareTo(a.date));
-                stmtDate = DateTime.fromMillisecondsSinceEpoch(stmtTxs.first.date * 1000);
-              }
-            }
+          }
+          if (stmtDate == null && acc.createdAt > 0) {
+            stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
           }
 
           if (stmtDate != null) {
             final stmtMonthStart = DateTime(stmtDate.year, stmtDate.month, 1);
             if (!stmtMonthStart.isAfter(targetEndMonthStart)) {
-              if (latestDate == null || stmtDate.isAfter(latestDate)) {
-                latestDate = stmtDate;
+              if (bestMatchDate == null || stmtMonthStart.isAfter(bestMatchDate)) {
+                bestMatchDate = stmtMonthStart;
                 latestBal = acc.currentBalance;
               }
             }

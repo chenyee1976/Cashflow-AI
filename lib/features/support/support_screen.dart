@@ -402,7 +402,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                   Icon(Icons.menu_book_outlined, size: 16, color: AppColors.textSecondary),
                   SizedBox(width: 8),
                   Text(
-                    'FREQUENTLY ASKED',
+                    'FREQUENTLY ASKED QUESTIONS',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -452,8 +452,8 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                     ),
                     const Divider(height: 1),
                     _buildFaqItem(
-                      'How do I delete my account or clear data?',
-                      'You can delete your account and clear all locally cached statement data by going to the Account tab, scrolling to the bottom, and tapping "Delete Account".',
+                      'How to clear data on this app',
+                      'You can clear all locally cached statement data by going to the Account tab, scrolling to the bottom, and tapping "Clear all my data".',
                     ),
                   ],
                 ),
