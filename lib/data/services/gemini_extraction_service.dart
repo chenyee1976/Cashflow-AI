@@ -175,8 +175,8 @@ You MUST return a raw JSON object formatted precisely as follows:
             },
             options: Options(
               headers: headers,
-              sendTimeout: const Duration(seconds: 60),
-              receiveTimeout: const Duration(seconds: 60),
+              sendTimeout: const Duration(seconds: 120),
+              receiveTimeout: const Duration(seconds: 120),
             ),
           );
 
