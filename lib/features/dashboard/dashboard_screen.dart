@@ -375,7 +375,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           isBoldValue: true,
                           tooltipMessage: currentTooltip,
                           onTap: () {
-                            _showBreakdownSheet(context, ref, data, 'Current balance');
+                            _showBreakdownSheet(context, ref, data, 'Current balance', initialDate: DateTime.now());
                           },
                         ),
                         const Divider(height: 1, color: AppColors.divider),
@@ -387,7 +387,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           isBoldValue: true,
                           tooltipMessage: prevMonthTooltip,
                           onTap: () {
-                            _showBreakdownSheet(context, ref, data, 'Previous month balance');
+                            final now = DateTime.now();
+                            _showBreakdownSheet(context, ref, data, 'Previous month balance', initialDate: DateTime(now.year, now.month - 1));
                           },
                         ),
                         const Divider(height: 1, color: AppColors.divider),
@@ -399,7 +400,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           isBoldValue: true,
                           tooltipMessage: prevYearTooltip,
                           onTap: () {
-                            _showBreakdownSheet(context, ref, data, 'Previous year balance');
+                            final now = DateTime.now();
+                            _showBreakdownSheet(context, ref, data, 'Previous year balance', initialDate: DateTime(now.year - 1, 12));
                           },
                         ),
                       ],

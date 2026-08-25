@@ -408,13 +408,107 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final m0Date = selectedMonth;
             final m1Date = DateTime(selectedMonth.year, selectedMonth.month - 1);
             final m2Date = DateTime(selectedMonth.year, selectedMonth.month - 2);
-            final twoMonthsAgoCash = cashPositionAsync.when(data: (pos) => pos.twoMonthsAgoBalance, loading: () => 0.0, error: (_, __) => 0.0);
-            final threeMonthsAgoCash = cashPositionAsync.when(data: (pos) => pos.threeMonthsAgoBalance, loading: () => 0.0, error: (_, __) => 0.0);
+
+            final allUserAccounts = state.bankAccounts;
+            final statementsList = state.statements;
+            final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
+            final posData = cashPositionAsync.asData?.value;
+
+            String _normKey(BankAccount a) => '${a.bankName.trim()}_${(a.accountNumber ?? '').trim()}'.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+
+            double _calcTotalEndingCashForDate(DateTime dt, int colIndex) {
+              final targetEndMonth = DateTime(dt.year, dt.month + 1, 0, 23, 59, 59);
+              final targetEndMonthStart = DateTime(dt.year, dt.month, 1);
+
+              final Map<String, BankAccount> uniqueAccountSamples = {};
+              for (final acc in allUserAccounts) {
+                final key = _normKey(acc);
+                if (!uniqueAccountSamples.containsKey(key)) {
+                  uniqueAccountSamples[key] = acc;
+                }
+              }
+
+              double total = 0.0;
+              for (final identity in uniqueAccountSamples.keys) {
+                final sampleAcc = uniqueAccountSamples[identity]!;
+                if (sampleAcc.id == 'manual_cash_account') continue;
+
+                DateTime? bestMatchDate;
+                double latestBal = 0.0;
+
+                for (final acc in allUserAccounts) {
+                  if (_normKey(acc) != identity) continue;
+
+                  DateTime? stmtDate;
+                  if (acc.sourceStatementId != null) {
+                    final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
+                    if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
+                      stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
+                    } else if (matchedStmt != null && matchedStmt.uploadedAt > 0) {
+                      stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.uploadedAt * 1000);
+                    }
+                  }
+                  if (stmtDate == null && acc.createdAt > 0) {
+                    stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
+                  }
+
+                  if (stmtDate != null) {
+                    final stmtMonthStart = DateTime(stmtDate.year, stmtDate.month, 1);
+                    if (!stmtMonthStart.isAfter(targetEndMonthStart)) {
+                      if (bestMatchDate == null || stmtMonthStart.isAfter(bestMatchDate)) {
+                        bestMatchDate = stmtMonthStart;
+                        latestBal = acc.currentBalance;
+                      }
+                    }
+                  }
+                }
+
+                final currencyStr = sampleAcc.currency.trim().toUpperCase();
+                if (currencyStr != 'SGD') {
+                  final rate = fxRates[currencyStr] ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+                  total += latestBal * rate;
+                } else {
+                  total += latestBal;
+                }
+              }
+
+              // Add physical cash on hand for that column
+              double monthCashVal = 0.0;
+              if (colIndex == 2) {
+                monthCashVal = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull?.currentBalance ?? 0.0;
+              } else if (colIndex == 1) {
+                monthCashVal = posData?.prevMonthBalances['manual_cash_account'] ?? 0.0;
+              } else {
+                monthCashVal = posData?.twoMonthsAgoBalances['manual_cash_account'] ?? 0.0;
+              }
+              total += monthCashVal;
+
+              return total;
+            }
+
+            final m2EndCash = _calcTotalEndingCashForDate(m2Date, 0);
+            final m1EndCash = _calcTotalEndingCashForDate(m1Date, 1);
+            final m0EndCash = _calcTotalEndingCashForDate(m0Date, 2);
+
+            final m3Date = DateTime(selectedMonth.year, selectedMonth.month - 3);
+            final m3EndCash = _calcTotalEndingCashForDate(m3Date, -1);
 
             columns = [
-              {..._calcMonthMetrics(m2Date, twoMonthsAgoCash, threeMonthsAgoCash), 'label': DateFormat('MMM yyyy').format(m2Date)},
-              {..._calcMonthMetrics(m1Date, prevMonthCash, twoMonthsAgoCash), 'label': DateFormat('MMM yyyy').format(m1Date)},
-              {..._calcMonthMetrics(m0Date, currentLiquidCash, prevMonthCash), 'label': DateFormat('MMM yyyy').format(m0Date)},
+              {
+                ..._calcMonthMetrics(m2Date, m2EndCash, m3EndCash),
+                'label': DateFormat('MMM yyyy').format(m2Date),
+                'targetDate': m2Date,
+              },
+              {
+                ..._calcMonthMetrics(m1Date, m1EndCash, m2EndCash),
+                'label': DateFormat('MMM yyyy').format(m1Date),
+                'targetDate': m1Date,
+              },
+              {
+                ..._calcMonthMetrics(m0Date, m0EndCash, m1EndCash),
+                'label': DateFormat('MMM yyyy').format(m0Date),
+                'targetDate': m0Date,
+              },
             ];
           }
 
@@ -1493,7 +1587,32 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       3: const pw.FlexColumnWidth(3.0),
     };
 
-    final endMonthDates = columns.map((c) => c['date'] as DateTime? ?? selectedMonth).toList();
+    final endMonthDates = <DateTime>[];
+    for (int colIdx = 0; colIdx < columns.length; colIdx++) {
+      final col = columns[colIdx];
+      final targetDate = col['targetDate'] as DateTime?;
+      if (targetDate != null) {
+        endMonthDates.add(targetDate);
+      } else if (horizonName == 'Month') {
+        if (colIdx == 0) {
+          endMonthDates.add(DateTime(selectedMonth.year, selectedMonth.month - 2));
+        } else if (colIdx == 1) {
+          endMonthDates.add(DateTime(selectedMonth.year, selectedMonth.month - 1));
+        } else {
+          endMonthDates.add(selectedMonth);
+        }
+      } else if (horizonName == 'Quarter') {
+        final label = col['label'] as String? ?? '';
+        int endM = 3;
+        if (label.contains('Q1')) endM = 3;
+        if (label.contains('Q2')) endM = 6;
+        if (label.contains('Q3')) endM = 9;
+        if (label.contains('Q4')) endM = 12;
+        endMonthDates.add(DateTime(selectedMonth.year, endM));
+      } else {
+        endMonthDates.add(DateTime(selectedMonth.year, 12));
+      }
+    }
 
     // Build per-account row values across columns filtered by statement date
     final List<List<String>> accountBreakdownData = [];
@@ -1525,7 +1644,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           continue;
         }
 
-        DateTime? latestDate;
+        DateTime? bestMatchDate;
         double latestBal = 0.0;
 
         for (final acc in bankAccounts) {
@@ -1535,21 +1654,19 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final matchedStmt = statements.where((s) => s.id == acc.sourceStatementId).firstOrNull;
             if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
               stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
+            } else if (matchedStmt != null && matchedStmt.uploadedAt > 0) {
+              stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.uploadedAt * 1000);
             }
-            if (stmtDate == null) {
-              final stmtTxs = txs.where((t) => t.statementId == acc.sourceStatementId).toList();
-              if (stmtTxs.isNotEmpty) {
-                stmtTxs.sort((a, b) => b.date.compareTo(a.date));
-                stmtDate = DateTime.fromMillisecondsSinceEpoch(stmtTxs.first.date * 1000);
-              }
-            }
+          }
+          if (stmtDate == null && acc.createdAt > 0) {
+            stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
           }
 
           if (stmtDate != null) {
             final stmtMonthStart = DateTime(stmtDate.year, stmtDate.month, 1);
             if (!stmtMonthStart.isAfter(targetEndMonthStart)) {
-              if (latestDate == null || stmtDate.isAfter(latestDate)) {
-                latestDate = stmtDate;
+              if (bestMatchDate == null || stmtMonthStart.isAfter(bestMatchDate)) {
+                bestMatchDate = stmtMonthStart;
                 latestBal = acc.currentBalance;
               }
             }
