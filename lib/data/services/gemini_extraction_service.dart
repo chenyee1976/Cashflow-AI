@@ -21,12 +21,12 @@ class GeminiExtractionService {
     final dio = Dio();
     final String base64Data = base64Encode(fileBytes);
 
-    // Primary AI Models List (gemini-2.5-flash is flagship for document intelligence & OCR)
+    // Primary AI Models List (gemini-3.6-flash is flagship for document intelligence & OCR)
     final modelNames = [
-      'gemini-2.5-flash',
-      'gemini-flash-latest',
-      'gemini-2.5-flash-lite',
       'gemini-3.6-flash',
+      'gemini-3.5-flash',
+      'gemini-3.7-flash',
+      'gemini-3.5-flash-lite',
     ];
 
     final rulesService = UserCategoryRulesService();
