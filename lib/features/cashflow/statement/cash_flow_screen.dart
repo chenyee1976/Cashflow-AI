@@ -42,45 +42,52 @@ class CashFlowHomeScreen extends ConsumerWidget {
             ),
             // 1. Header Title & Add Button
             Padding(
-              padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 16.0, bottom: 8.0),
+              padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: 8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Cash Flow',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                  const Flexible(
+                    child: Text(
+                      'Cash Flow',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       ElevatedButton.icon(
                         onPressed: () => context.push('/home/cashflow/statement'),
-                        icon: const Icon(Icons.verified, size: 14, color: AppColors.proGold),
-                        label: const Text('Pro Statement', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                        icon: const Icon(Icons.verified, size: 13, color: AppColors.proGold),
+                        label: const Text('Pro Statement', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold, fontSize: 11)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.proBackground,
-                          minimumSize: const Size(100, 36),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          minimumSize: const Size(0, 32),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: const BorderSide(color: AppColors.proPrimary, width: 1.5),
+                            borderRadius: BorderRadius.circular(18),
+                            side: const BorderSide(color: AppColors.proPrimary, width: 1.2),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       ElevatedButton.icon(
                         onPressed: () => _showAddTransactionBottomSheet(context, ref),
-                        icon: const Icon(Icons.add, size: 16, color: AppColors.white),
-                        label: const Text('Add', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold)),
+                        icon: const Icon(Icons.add, size: 14, color: AppColors.white),
+                        label: const Text('Add', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          minimumSize: const Size(80, 36),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          minimumSize: const Size(0, 32),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(18),
                           ),
                         ),
                       ),

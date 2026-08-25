@@ -596,7 +596,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
   Widget _buildDynamicHeader(List<Map<String, dynamic>> columns) {
     final isMobile = MediaQuery.of(context).size.width < 480;
-    final fontSize = isMobile ? 10.0 : 11.0;
+    final fontSize = isMobile ? 9.5 : 11.5;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -606,7 +606,14 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         ),
         ...columns.map((col) => Expanded(
           flex: 3,
-          child: Text(col['label'] as String, textAlign: TextAlign.right, style: TextStyle(color: AppColors.proGold, fontSize: fontSize, fontWeight: FontWeight.bold)),
+          child: Container(
+            padding: const EdgeInsets.only(left: 4, right: 2),
+            child: Text(
+              col['label'] as String,
+              textAlign: TextAlign.right,
+              style: TextStyle(color: AppColors.proGold, fontSize: fontSize, fontWeight: FontWeight.bold),
+            ),
+          ),
         )),
       ],
     );
@@ -615,8 +622,8 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   Widget _buildDynamicRow(String label, List<Map<String, dynamic>> columns, String key, NumberFormat fmt, {bool isPositive = true, bool isBold = false, bool negate = false}) {
     final activeColor = isPositive ? const Color(0xFF60A5FA) : const Color(0xFFF87171);
     final isMobile = MediaQuery.of(context).size.width < 480;
-    final labelSize = isMobile ? (isBold ? 12.0 : 11.0) : (isBold ? 13.5 : 12.5);
-    final valSize = isMobile ? (isBold ? 11.5 : 10.5) : (isBold ? 13.5 : 12.0);
+    final labelSize = isMobile ? (isBold ? 11.5 : 10.5) : (isBold ? 13.0 : 12.0);
+    final valSize = isMobile ? (isBold ? 10.0 : 9.5) : (isBold ? 12.5 : 11.5);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -640,13 +647,16 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final c = val == 0 ? Colors.white38 : activeColor;
             return Expanded(
               flex: 3,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerRight,
-                child: Text(
-                  fmt.format(val),
-                  textAlign: TextAlign.right,
-                  style: TextStyle(color: c, fontSize: valSize, fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
+              child: Container(
+                padding: const EdgeInsets.only(left: 4, right: 2),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    fmt.format(val),
+                    textAlign: TextAlign.right,
+                    style: TextStyle(color: c, fontSize: valSize, fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
+                  ),
                 ),
               ),
             );
@@ -659,7 +669,8 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   Widget _buildDynamicCategoryRow(String label, List<Map<String, dynamic>> columns, String catName, NumberFormat fmt) {
     final activeColor = const Color(0xFFF87171);
     final isMobile = MediaQuery.of(context).size.width < 480;
-    final fontSize = isMobile ? 10.5 : 12.0;
+    final labelSize = isMobile ? 10.5 : 11.5;
+    final valSize = isMobile ? 9.5 : 11.0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -670,7 +681,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             flex: 4,
             child: Text(
               label,
-              style: TextStyle(color: Colors.white70, fontSize: fontSize),
+              style: TextStyle(color: Colors.white70, fontSize: labelSize),
             ),
           ),
           ...columns.map((col) {
@@ -679,13 +690,16 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final c = val == 0 ? Colors.white38 : activeColor;
             return Expanded(
               flex: 3,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerRight,
-                child: Text(
-                  fmt.format(val),
-                  textAlign: TextAlign.right,
-                  style: TextStyle(color: c, fontSize: fontSize),
+              child: Container(
+                padding: const EdgeInsets.only(left: 4, right: 2),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    fmt.format(val),
+                    textAlign: TextAlign.right,
+                    style: TextStyle(color: c, fontSize: valSize),
+                  ),
                 ),
               ),
             );
@@ -697,8 +711,8 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
   Widget _buildDynamicSubtotalRow(String label, List<Map<String, dynamic>> columns, String key, NumberFormat fmt) {
     final isMobile = MediaQuery.of(context).size.width < 480;
-    final labelSize = isMobile ? 11.0 : 12.0;
-    final valSize = isMobile ? 11.0 : 12.0;
+    final labelSize = isMobile ? 10.5 : 11.5;
+    final valSize = isMobile ? 10.0 : 11.5;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 10, vertical: isMobile ? 8 : 10),
@@ -718,13 +732,16 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final val = col[key] as double? ?? 0.0;
             return Expanded(
               flex: 3,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerRight,
-                child: Text(
-                  fmt.format(val),
-                  textAlign: TextAlign.right,
-                  style: TextStyle(color: val >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.bold, fontSize: valSize),
+              child: Container(
+                padding: const EdgeInsets.only(left: 4, right: 2),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    fmt.format(val),
+                    textAlign: TextAlign.right,
+                    style: TextStyle(color: val >= 0 ? const Color(0xFF60A5FA) : const Color(0xFFF87171), fontWeight: FontWeight.bold, fontSize: valSize),
+                  ),
                 ),
               ),
             );
@@ -738,19 +755,42 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
     List<Map<String, dynamic>> columns,
     NumberFormat fmt,
     List<BankAccount> allUserAccounts,
-    List<Statement> statementsList,
-    List<Transaction> txs,
+    List<Statement> allStatements,
+    List<Transaction> allTransactions,
     int selectedYear,
     Map<String, double> fxRates,
   ) {
     final isMobile = MediaQuery.of(context).size.width < 480;
-    final labelSize = isMobile ? 11.0 : 12.0;
-    final valSize = isMobile ? 10.5 : 12.0;
+    final labelSize = isMobile ? 10.5 : 11.5;
+    final valSize = isMobile ? 9.5 : 11.0;
 
     String _normIdentity(BankAccount a) => '${a.bankName.trim()}_${(a.accountNumber ?? '').trim()}'.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
 
+    final Map<String, BankAccount> uniqueAccountSamples = {};
+    for (final acc in allUserAccounts) {
+      final key = '${acc.bankName}_${acc.accountNumber ?? ""}';
+      if (!uniqueAccountSamples.containsKey(key)) {
+        uniqueAccountSamples[key] = acc;
+      }
+    }
+
+    if (!uniqueAccountSamples.containsKey('physicalcashonhand_cash') &&
+        !uniqueAccountSamples.values.any((a) => a.id == 'manual_cash_account')) {
+      uniqueAccountSamples['physicalcashonhand_cash'] = BankAccount(
+        id: 'manual_cash_account',
+        userId: 'chenyee_user',
+        bankName: 'Physical Cash on Hand',
+        accountType: 'cash',
+        accountNumber: 'Cash',
+        currentBalance: 0.0,
+        openingBalance: 0.0,
+        currency: 'SGD',
+        createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      );
+    }
+
     // Map column index to month end date
-    List<DateTime> endMonthDates = [];
+    final List<DateTime> endMonthDates = [];
     for (int colIdx = 0; colIdx < columns.length; colIdx++) {
       final col = columns[colIdx];
       final label = col['label'] as String;
@@ -775,48 +815,15 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
       }
     }
 
-    // Collect all unique account identities
-    final combinedAccounts = <BankAccount>[
-      ...?ref.watch(cashPositionProvider).asData?.value.accounts,
-      ...allUserAccounts,
-    ];
+    final accountRows = <Map<String, dynamic>>[];
 
-    final Map<String, BankAccount> uniqueAccountSamples = {};
-    for (final acc in combinedAccounts) {
-      final key = _normIdentity(acc);
-      if (!uniqueAccountSamples.containsKey(key)) {
-        uniqueAccountSamples[key] = acc;
-      }
-    }
-
-    final realCashAcc = ref.watch(cashPositionProvider).asData?.value.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull;
-    final realCashBal = realCashAcc?.currentBalance ?? 0.0;
-
-    if (!uniqueAccountSamples.containsKey('physicalcashonhand_cash') &&
-        !uniqueAccountSamples.values.any((a) => a.id == 'manual_cash_account')) {
-      uniqueAccountSamples['physicalcashonhand_cash'] = BankAccount(
-        id: 'manual_cash_account',
-        userId: 'chenyee_user',
-        bankName: 'Physical Cash on Hand',
-        accountType: 'Physical Cash',
-        accountNumber: 'Cash',
-        currentBalance: realCashBal,
-        openingBalance: 0.0,
-        currency: 'SGD',
-        sourceStatementId: null,
-        createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      );
-    }
-
-    // Build per-account row values across columns
-    final List<Map<String, dynamic>> accountRows = [];
     for (final identity in uniqueAccountSamples.keys) {
       final sampleAcc = uniqueAccountSamples[identity]!;
       final accLabel = sampleAcc.id == 'manual_cash_account'
           ? 'Physical Cash on Hand'
           : '${sampleAcc.bankName} (${sampleAcc.accountNumber ?? ""})'.trim();
 
-      final List<double> colValues = [];
+      final colValues = <double>[];
 
       for (int i = 0; i < columns.length; i++) {
         final targetEndMonth = endMonthDates[i];
@@ -848,12 +855,12 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
           DateTime? stmtDate;
           if (acc.sourceStatementId != null) {
-            final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
+            final matchedStmt = allStatements.where((s) => s.id == acc.sourceStatementId).firstOrNull;
             if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
               stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
             }
             if (stmtDate == null) {
-              final stmtTxs = txs.where((t) => t.statementId == acc.sourceStatementId).toList();
+              final stmtTxs = allTransactions.where((t) => t.statementId == acc.sourceStatementId).toList();
               if (stmtTxs.isNotEmpty) {
                 stmtTxs.sort((a, b) => b.date.compareTo(a.date));
                 stmtDate = DateTime.fromMillisecondsSinceEpoch(stmtTxs.first.date * 1000);
@@ -902,7 +909,6 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
           const Text('Sum of Bank Balances + Physical Cash on Hand', style: TextStyle(color: Colors.white54, fontSize: 11)),
           const SizedBox(height: 14),
 
-          // Account Breakdown Sub-Header
           if (accountRows.isNotEmpty) ...[
             const Text('Account Breakdown:', style: TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
@@ -924,13 +930,16 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     ),
                     ...values.map((v) => Expanded(
                       flex: 3,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          fmt.format(v),
-                          textAlign: TextAlign.right,
-                          style: TextStyle(color: v == 0 ? Colors.white38 : const Color(0xFF60A5FA), fontSize: valSize),
+                      child: Container(
+                        padding: const EdgeInsets.only(left: 4, right: 2),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            fmt.format(v),
+                            textAlign: TextAlign.right,
+                            style: TextStyle(color: v == 0 ? Colors.white38 : const Color(0xFF60A5FA), fontSize: valSize),
+                          ),
                         ),
                       ),
                     )),
