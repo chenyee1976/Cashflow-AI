@@ -833,12 +833,12 @@ class CashFlowHomeScreen extends ConsumerWidget {
         return StatefulBuilder(
           builder: (context, setModalState) {
             final isIncomeTx = (double.tryParse(amountController.text) ?? -1.0) > 0;
-            final allowedCategories = TransactionCategory.values.where((c) {
-              return isIncomeTx ? c.isIncome : c.isExpense;
-            }).toList();
+            final allowedCategories = isIncomeTx
+                ? TransactionCategory.incomeCategories
+                : TransactionCategory.expenseCategories;
 
             if (!allowedCategories.contains(selectedCategory)) {
-              selectedCategory = allowedCategories.first;
+              selectedCategory = isIncomeTx ? TransactionCategory.incomeOther : TransactionCategory.expenseOther;
             }
 
             return Padding(
@@ -1072,12 +1072,12 @@ class CashFlowHomeScreen extends ConsumerWidget {
         return StatefulBuilder(
           builder: (context, setModalState) {
             final isIncomeTx = (double.tryParse(amountController.text) ?? -1.0) > 0;
-            final allowedCategories = TransactionCategory.values.where((c) {
-              return isIncomeTx ? c.isIncome : c.isExpense;
-            }).toList();
+            final allowedCategories = isIncomeTx
+                ? TransactionCategory.incomeCategories
+                : TransactionCategory.expenseCategories;
 
             if (!allowedCategories.contains(selectedCategory)) {
-              selectedCategory = allowedCategories.first;
+              selectedCategory = isIncomeTx ? TransactionCategory.incomeOther : TransactionCategory.expenseOther;
             }
 
             return Padding(

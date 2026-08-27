@@ -1598,8 +1598,22 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                         child: _buildTransactionField(
                                           value: tx.amount.toString(),
                                           label: 'Amount',
-                                          onChanged: (val) => tx.amount = double.tryParse(val) ?? 0.0,
-                                          keyboardType: TextInputType.number,
+                                          onChanged: (val) {
+                                            setState(() {
+                                              final parsed = double.tryParse(val.trim());
+                                              if (parsed != null) {
+                                                tx.amount = parsed;
+                                                final isIncome = tx.amount > 0;
+                                                final catEnum = TransactionCategory.fromValue(tx.expenseCategoryStr);
+                                                if (isIncome && !catEnum.isIncome) {
+                                                  tx.expenseCategoryStr = TransactionCategory.incomeOther.value;
+                                                } else if (!isIncome && catEnum.isIncome) {
+                                                  tx.expenseCategoryStr = TransactionCategory.expenseOther.value;
+                                                }
+                                              }
+                                            });
+                                          },
+                                          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                         ),
                                       ),
                                       const SizedBox(width: 4),
@@ -1654,24 +1668,20 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                             const SizedBox(height: 2),
                                             DropdownButtonFormField<TransactionCategory>(
                                               value: () {
+                                                final isIncome = tx.amount > 0;
                                                 final cat = TransactionCategory.fromValue(tx.expenseCategoryStr);
-                                                final allowed = [
-                                                  ...TransactionCategory.expenseCategories,
-                                                  TransactionCategory.incomeTransfer,
-                                                  TransactionCategory.incomeOther,
-                                                ];
-                                                return allowed.contains(cat) ? cat : TransactionCategory.expenseOther;
+                                                final allowed = isIncome
+                                                    ? TransactionCategory.incomeCategories
+                                                    : TransactionCategory.expenseCategories;
+                                                return allowed.contains(cat) ? cat : (isIncome ? TransactionCategory.incomeOther : TransactionCategory.expenseOther);
                                               }(),
                                               isExpanded: true,
                                               decoration: const InputDecoration(
                                                 contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                 border: OutlineInputBorder(),
                                               ),
-                                              items: [
-                                                ...TransactionCategory.expenseCategories,
-                                                TransactionCategory.incomeTransfer,
-                                                TransactionCategory.incomeOther,
-                                              ].map((cat) => DropdownMenuItem(
+                                              items: (tx.amount > 0 ? TransactionCategory.incomeCategories : TransactionCategory.expenseCategories)
+                                                  .map((cat) => DropdownMenuItem(
                                                         value: cat,
                                                         child: Text(cat.displayName, style: const TextStyle(fontSize: 10)),
                                                       ))
@@ -1840,8 +1850,22 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                         child: _buildTransactionField(
                                           value: tx.amount.toString(),
                                           label: 'Amount',
-                                          onChanged: (val) => tx.amount = double.tryParse(val) ?? 0.0,
-                                          keyboardType: TextInputType.number,
+                                          onChanged: (val) {
+                                            setState(() {
+                                              final parsed = double.tryParse(val.trim());
+                                              if (parsed != null) {
+                                                tx.amount = parsed;
+                                                final isIncome = tx.amount > 0;
+                                                final catEnum = TransactionCategory.fromValue(tx.categoryStr);
+                                                if (isIncome && !catEnum.isIncome) {
+                                                  tx.categoryStr = TransactionCategory.incomeOther.value;
+                                                } else if (!isIncome && catEnum.isIncome) {
+                                                  tx.categoryStr = TransactionCategory.expenseOther.value;
+                                                }
+                                              }
+                                            });
+                                          },
+                                          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                                         ),
                                       ),
                                       const SizedBox(width: 4),
@@ -1890,19 +1914,16 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                     builder: (context) {
                                       final isIncomeTx = tx.amount > 0;
                                       final catEnum = TransactionCategory.fromValue(tx.categoryStr);
+                                      final allowedCategories = isIncomeTx
+                                          ? TransactionCategory.incomeCategories
+                                          : TransactionCategory.expenseCategories;
+
                                       // Auto-correct category value if sign doesn't match
                                       TransactionCategory finalCat = catEnum;
-                                      if (isIncomeTx && !catEnum.isIncome) {
-                                        finalCat = TransactionCategory.incomeOther;
-                                        tx.categoryStr = finalCat.value;
-                                      } else if (!isIncomeTx && catEnum.isIncome) {
-                                        finalCat = TransactionCategory.expenseOther;
+                                      if (!allowedCategories.contains(finalCat)) {
+                                        finalCat = isIncomeTx ? TransactionCategory.incomeOther : TransactionCategory.expenseOther;
                                         tx.categoryStr = finalCat.value;
                                       }
-
-                                      final itemsToShow = TransactionCategory.values.where((cat) {
-                                        return isIncomeTx ? cat.isIncome : cat.isExpense;
-                                      }).toList();
 
                                       return DropdownButtonFormField<TransactionCategory>(
                                         value: finalCat,
@@ -1913,7 +1934,7 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                           contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                           border: OutlineInputBorder(),
                                         ),
-                                        items: itemsToShow
+                                        items: allowedCategories
                                             .map((cat) => DropdownMenuItem(
                                                   value: cat,
                                                   child: Text(
