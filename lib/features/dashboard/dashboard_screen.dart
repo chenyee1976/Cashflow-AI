@@ -504,10 +504,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       _buildRowItem(
                         label: 'Current month',
                         dateInfo: data.currentMonthStr,
-                        value: currencyFormatter.format(data.currentMonthAmount),
+                        value: '-S\$${NumberFormat('#,##0.00').format(data.currentMonthAmount.abs())}',
                         valueColor: AppColors.error,
                         isBoldValue: true,
-                        tooltipMessage: _formatTooltipBreakdown(data.currentMonthBreakdown),
+                        tooltipMessage: _formatTooltipBreakdown(data.currentMonthBreakdown, isExpense: true),
                         onTap: () {
                           final now = DateTime.now();
                           _showMonthlyBreakdownSheet(
@@ -524,10 +524,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       _buildRowItem(
                         label: 'Last month',
                         dateInfo: data.lastMonthStr,
-                        value: currencyFormatter.format(data.lastMonthAmount),
+                        value: '-S\$${NumberFormat('#,##0.00').format(data.lastMonthAmount.abs())}',
                         valueColor: AppColors.error,
                         isBoldValue: true,
-                        tooltipMessage: _formatTooltipBreakdown(data.lastMonthBreakdown),
+                        tooltipMessage: _formatTooltipBreakdown(data.lastMonthBreakdown, isExpense: true),
                         onTap: () {
                           final now = DateTime.now();
                           _showMonthlyBreakdownSheet(
@@ -544,10 +544,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       _buildRowItem(
                         label: '2 months ago',
                         dateInfo: data.twoMonthsAgoStr,
-                        value: currencyFormatter.format(data.twoMonthsAgoAmount),
+                        value: '-S\$${NumberFormat('#,##0.00').format(data.twoMonthsAgoAmount.abs())}',
                         valueColor: AppColors.error,
                         isBoldValue: true,
-                        tooltipMessage: _formatTooltipBreakdown(data.twoMonthsAgoBreakdown),
+                        tooltipMessage: _formatTooltipBreakdown(data.twoMonthsAgoBreakdown, isExpense: true),
                         onTap: () {
                           final now = DateTime.now();
                           _showMonthlyBreakdownSheet(
@@ -859,7 +859,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                           ),
                                         ),
                                         Text(
-                                          'S\$${NumberFormat('#,##0.00').format(entry.value)}',
+                                          '${isIncome ? "S\$" : "-S\$"}${NumberFormat('#,##0.00').format(entry.value.abs())}',
                                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
                                         ),
                                       ],
@@ -886,7 +886,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
                               ),
                               Text(
-                                'S\$${NumberFormat('#,##0.00').format(totalVal)}',
+                                '${isIncome ? "S\$" : "-S\$"}${NumberFormat('#,##0.00').format(totalVal.abs())}',
                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: color),
                               ),
                             ],
@@ -1535,7 +1535,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return 'Good evening';
   }
 
-  String _formatTooltipBreakdown(Map<String, double> breakdown) {
+  String _formatTooltipBreakdown(Map<String, double> breakdown, {bool isExpense = false}) {
     if (breakdown.isEmpty) return 'No records this month';
     final items = breakdown.entries.where((e) => e.value > 0).toList();
     if (items.isEmpty) return 'No records this month';
@@ -1544,7 +1544,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final fmt = NumberFormat('#,##0.00');
     for (int i = 0; i < items.length; i++) {
       final entry = items[i];
-      buffer.write('${entry.key}: S\$${fmt.format(entry.value)}');
+      final prefix = isExpense ? '-S\$' : 'S\$';
+      buffer.write('${entry.key}: $prefix${fmt.format(entry.value)}');
       if (i < items.length - 1) {
         buffer.write('\n');
       }

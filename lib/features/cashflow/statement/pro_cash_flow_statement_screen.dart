@@ -229,6 +229,12 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
               final statementsList = state.statements;
 
+              // Step 1: Identify statement date for each account snapshot
+              final accountDateMap = <String, DateTime>{};
+              final accountIdentityMap = <String, String>{};
+
+              String _normKey(BankAccount a) => '${a.bankName.trim()}_${(a.accountNumber ?? '').trim()}'.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+
               for (final acc in allUserAccounts) {
                 if (acc.id == 'manual_cash_account') continue;
                 DateTime? stmtDate;
@@ -245,8 +251,31 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     }
                   }
                 }
+                if (stmtDate != null) {
+                  accountDateMap[acc.id] = stmtDate;
+                  accountIdentityMap[acc.id] = _normKey(acc);
+                }
+              }
 
-                if (stmtDate != null && stmtDate.year == selectedYear && stmtDate.month >= startM && stmtDate.month <= endM) {
+              // Step 2: Find earliest statement date per unique bank account identity
+              final earliestDatePerIdentity = <String, DateTime>{};
+              final earliestSnapshotPerIdentity = <String, String>{};
+
+              for (final accId in accountDateMap.keys) {
+                final date = accountDateMap[accId]!;
+                final identity = accountIdentityMap[accId]!;
+                if (!earliestDatePerIdentity.containsKey(identity) || date.isBefore(earliestDatePerIdentity[identity]!)) {
+                  earliestDatePerIdentity[identity] = date;
+                  earliestSnapshotPerIdentity[identity] = accId;
+                }
+              }
+
+              // Step 3: Add to newCashPos ONLY if this snapshot is the earliest statement for that unique account, and falls within this quarter
+              for (final identity in earliestSnapshotPerIdentity.keys) {
+                final earliestDate = earliestDatePerIdentity[identity]!;
+                if (earliestDate.year == selectedYear && earliestDate.month >= startM && earliestDate.month <= endM) {
+                  final snapshotId = earliestSnapshotPerIdentity[identity]!;
+                  final acc = allUserAccounts.firstWhere((a) => a.id == snapshotId);
                   final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
                   final currencyStr = acc.currency.trim().toUpperCase();
                   if (currencyStr == 'SGD') {
@@ -353,25 +382,57 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final netCash = totalInc - totalExp;
 
             double newCashPos = 0.0;
-            final allUserAccounts = cashPositionAsync.asData?.value.accounts ?? [];
+            final allUserAccounts = state.bankAccounts;
             final fxRates = cashPositionAsync.asData?.value.fxRates ?? {};
             final statementsList = state.statements;
+
+            // Step 1: Identify statement date for each account snapshot
+            final accountDateMap = <String, DateTime>{};
+            final accountIdentityMap = <String, String>{};
+
+            String _normKey(BankAccount a) => '${a.bankName.trim()}_${(a.accountNumber ?? '').trim()}'.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
 
             for (final acc in allUserAccounts) {
               if (acc.id == 'manual_cash_account') continue;
               DateTime? stmtDate;
               if (acc.sourceStatementId != null) {
                 final matchedStmt = statementsList.where((s) => s.id == acc.sourceStatementId).firstOrNull;
-                if (matchedStmt != null) {
-                  final pEnd = matchedStmt.periodEnd ?? matchedStmt.periodStart ?? matchedStmt.uploadedAt;
-                  stmtDate = DateTime.fromMillisecondsSinceEpoch(pEnd * 1000);
+                if (matchedStmt != null && matchedStmt.periodEnd != null && matchedStmt.periodEnd! > 0) {
+                  stmtDate = DateTime.fromMillisecondsSinceEpoch(matchedStmt.periodEnd! * 1000);
+                }
+                if (stmtDate == null) {
+                  final stmtTxs = txs.where((t) => t.statementId == acc.sourceStatementId).toList();
+                  if (stmtTxs.isNotEmpty) {
+                    stmtTxs.sort((a, b) => b.date.compareTo(a.date));
+                    stmtDate = DateTime.fromMillisecondsSinceEpoch(stmtTxs.first.date * 1000);
+                  }
                 }
               }
-              if (stmtDate == null && acc.createdAt > 0) {
-                stmtDate = DateTime.fromMillisecondsSinceEpoch(acc.createdAt * 1000);
+              if (stmtDate != null) {
+                accountDateMap[acc.id] = stmtDate;
+                accountIdentityMap[acc.id] = _normKey(acc);
               }
+            }
 
-              if (stmtDate != null && stmtDate.year == selectedYear && stmtDate.month <= endMonth) {
+            // Step 2: Find earliest statement date per unique bank account identity
+            final earliestDatePerIdentity = <String, DateTime>{};
+            final earliestSnapshotPerIdentity = <String, String>{};
+
+            for (final accId in accountDateMap.keys) {
+              final date = accountDateMap[accId]!;
+              final identity = accountIdentityMap[accId]!;
+              if (!earliestDatePerIdentity.containsKey(identity) || date.isBefore(earliestDatePerIdentity[identity]!)) {
+                earliestDatePerIdentity[identity] = date;
+                earliestSnapshotPerIdentity[identity] = accId;
+              }
+            }
+
+            // Step 3: Add to newCashPos ONLY if this snapshot is the earliest statement for that unique account, and falls within YTD
+            for (final identity in earliestSnapshotPerIdentity.keys) {
+              final earliestDate = earliestDatePerIdentity[identity]!;
+              if (earliestDate.year == selectedYear && earliestDate.month <= endMonth) {
+                final snapshotId = earliestSnapshotPerIdentity[identity]!;
+                final acc = allUserAccounts.firstWhere((a) => a.id == snapshotId);
                 final baseBal = acc.openingBalance > 0 ? acc.openingBalance : acc.currentBalance;
                 final currencyStr = acc.currency.trim().toUpperCase();
                 if (currencyStr == 'SGD') {
@@ -472,14 +533,17 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 }
               }
 
-              // Add physical cash on hand for that column
+              // Add physical cash on hand for that column as-of targetEndMonth
+              final targetTimestamp = targetEndMonth.millisecondsSinceEpoch ~/ 1000;
               double monthCashVal = 0.0;
-              if (colIndex == 2) {
-                monthCashVal = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull?.currentBalance ?? 0.0;
-              } else if (colIndex == 1) {
-                monthCashVal = posData?.prevMonthBalances['manual_cash_account'] ?? 0.0;
-              } else {
-                monthCashVal = posData?.twoMonthsAgoBalances['manual_cash_account'] ?? 0.0;
+              for (final tx in txs) {
+                if (tx.date <= targetTimestamp) {
+                  if (tx.accountId == 'manual_cash' || tx.accountId == 'manual') {
+                    monthCashVal += tx.amount;
+                  } else if (tx.category == TransactionCategory.expenseTransferToCash.value) {
+                    monthCashVal += tx.amount.abs();
+                  }
+                }
               }
               total += monthCashVal;
 
@@ -610,9 +674,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                     ),
                     const SizedBox(height: 20),
 
-                    // Part I: Operating Cash Flows (Personal)
+                    // Part I: Operating Cash Flows
                     _buildStatementSection(
-                      title: 'PART I: OPERATING CASH FLOWS (PERSONAL)',
+                      title: 'PART I: OPERATING CASH FLOWS',
                       icon: Icons.account_balance_wallet_outlined,
                       accentColor: AppColors.proPrimary,
                       children: [
@@ -924,18 +988,16 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         final targetEndMonthStart = DateTime(targetEndMonth.year, targetEndMonth.month, 1);
 
         if (sampleAcc.id == 'manual_cash_account') {
-          final posData = ref.watch(cashPositionProvider).asData?.value;
+          final targetTimestamp = DateTime(targetEndMonth.year, targetEndMonth.month + 1, 0, 23, 59, 59).millisecondsSinceEpoch ~/ 1000;
           double monthCashVal = 0.0;
-          if (_periodType == 'Month') {
-            if (i == 2) {
-              monthCashVal = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull?.currentBalance ?? 0.0;
-            } else if (i == 1) {
-              monthCashVal = posData?.prevMonthBalances['manual_cash_account'] ?? 0.0;
-            } else {
-              monthCashVal = posData?.twoMonthsAgoBalances['manual_cash_account'] ?? 0.0;
+          for (final tx in allTransactions) {
+            if (tx.date <= targetTimestamp) {
+              if (tx.accountId == 'manual_cash' || tx.accountId == 'manual') {
+                monthCashVal += tx.amount;
+              } else if (tx.category == TransactionCategory.expenseTransferToCash.value) {
+                monthCashVal += tx.amount.abs();
+              }
             }
-          } else {
-            monthCashVal = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull?.currentBalance ?? 0.0;
           }
           colValues.add(monthCashVal);
           continue;
@@ -1067,6 +1129,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             SizedBox(
               width: double.infinity,
               child: SegmentedButton<String>(
+                showSelectedIcon: false,
                 segments: const [
                   ButtonSegment(value: 'Month', label: Text('Month')),
                   ButtonSegment(value: 'Quarter', label: Text('Quarter')),
@@ -1092,6 +1155,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
               children: [
                 const Text('Period Horizon', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
                 SegmentedButton<String>(
+                  showSelectedIcon: false,
                   segments: const [
                     ButtonSegment(value: 'Month', label: Text('Month')),
                     ButtonSegment(value: 'Quarter', label: Text('Quarter')),
@@ -1293,9 +1357,11 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             children: [
               Icon(icon, color: accentColor, size: 20),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(color: accentColor, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(color: accentColor, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                ),
               ),
             ],
           ),
@@ -1628,17 +1694,16 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
         final targetEndMonthStart = DateTime(targetEndMonth.year, targetEndMonth.month, 1);
 
         if (sampleAcc.id == 'manual_cash_account') {
+          final targetTimestamp = DateTime(targetEndMonth.year, targetEndMonth.month + 1, 0, 23, 59, 59).millisecondsSinceEpoch ~/ 1000;
           double monthCashVal = 0.0;
-          if (horizonName == 'Month') {
-            if (i == 2) {
-              monthCashVal = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull?.currentBalance ?? 0.0;
-            } else if (i == 1) {
-              monthCashVal = posData?.prevMonthBalances['manual_cash_account'] ?? 0.0;
-            } else {
-              monthCashVal = posData?.twoMonthsAgoBalances['manual_cash_account'] ?? 0.0;
+          for (final tx in txs) {
+            if (tx.date <= targetTimestamp) {
+              if (tx.accountId == 'manual_cash' || tx.accountId == 'manual') {
+                monthCashVal += tx.amount;
+              } else if (tx.category == TransactionCategory.expenseTransferToCash.value) {
+                monthCashVal += tx.amount.abs();
+              }
             }
-          } else {
-            monthCashVal = posData?.accounts.where((a) => a.id == 'manual_cash_account').firstOrNull?.currentBalance ?? 0.0;
           }
           colVals.add(currencyFmt.format(monthCashVal));
           continue;
@@ -1810,8 +1875,8 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             ),
             pw.SizedBox(height: 12),
 
-            // PART I: OPERATING CASH FLOWS (PERSONAL)
-            pw.Text('PART I: OPERATING CASH FLOWS (PERSONAL)', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: blueColor)),
+            // PART I: OPERATING CASH FLOWS
+            pw.Text('PART I: OPERATING CASH FLOWS', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: blueColor)),
             pw.SizedBox(height: 4),
 
             buildStyledPdfTable(
@@ -1975,7 +2040,18 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
         double latestBal = 0.0;
         if (sampleAcc.id == 'manual_cash_account') {
-          latestBal = sampleAcc.currentBalance > 0 ? sampleAcc.currentBalance : realCashBal;
+          final targetTimestamp = DateTime(targetEndMonth.year, targetEndMonth.month + 1, 0, 23, 59, 59).millisecondsSinceEpoch ~/ 1000;
+          double monthCashVal = 0.0;
+          for (final tx in txs) {
+            if (tx.date <= targetTimestamp) {
+              if (tx.accountId == 'manual_cash' || tx.accountId == 'manual') {
+                monthCashVal += tx.amount;
+              } else if (tx.category == TransactionCategory.expenseTransferToCash.value) {
+                monthCashVal += tx.amount.abs();
+              }
+            }
+          }
+          latestBal = monthCashVal;
         } else {
           DateTime? latestDate;
           for (final acc in bankAccounts) {

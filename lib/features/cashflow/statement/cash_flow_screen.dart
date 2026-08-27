@@ -147,6 +147,7 @@ class CashFlowHomeScreen extends ConsumerWidget {
                     children: [
 
                       // 3. Side-by-side Income & Expense cards
+                      // 3. Summary Cards (Income / Expenses)
                       Row(
                         children: [
                           Expanded(
@@ -156,16 +157,18 @@ class CashFlowHomeScreen extends ConsumerWidget {
                               icon: Icons.arrow_downward,
                               iconColor: AppColors.primary,
                               bgColor: const Color(0xFFF1F8FF),
+                              textColor: AppColors.primary,
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: _buildSummaryCard(
                               label: 'EXPENSES',
-                              value: currencyFormatter.format(data.totalExpenses),
+                              value: '-S\$${NumberFormat('#,##0.00').format(data.totalExpenses.abs())}',
                               icon: Icons.arrow_upward,
-                              iconColor: AppColors.textSecondary,
-                              bgColor: AppColors.surface,
+                              iconColor: AppColors.error,
+                              bgColor: const Color(0xFFFFF5F5),
+                              textColor: AppColors.error,
                             ),
                           ),
                         ],
@@ -202,10 +205,10 @@ class CashFlowHomeScreen extends ConsumerWidget {
                             const SizedBox(height: 8),
                             Text(
                               currencyFormatter.format(data.netCashFlow),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 26,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
+                                color: data.netCashFlow >= 0 ? AppColors.primary : AppColors.error,
                               ),
                             ),
                           ],
@@ -704,6 +707,7 @@ class CashFlowHomeScreen extends ConsumerWidget {
     required IconData icon,
     required Color iconColor,
     required Color bgColor,
+    Color textColor = AppColors.textPrimary,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -741,10 +745,10 @@ class CashFlowHomeScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: textColor,
             ),
           ),
         ],
