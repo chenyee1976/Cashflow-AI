@@ -115,13 +115,13 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
             final salary = periodTxs.where((t) => t.category == TransactionCategory.incomeSalary.value).fold<double>(0.0, (s, t) => s + t.amount);
             final passive = periodTxs.where((t) => t.category == TransactionCategory.incomeInterest.value || t.category == TransactionCategory.incomeInvestments.value || t.category == TransactionCategory.incomeDividends.value).fold<double>(0.0, (s, t) => s + t.amount);
-            final totalInc = periodTxs.where((t) => TransactionCategory.fromValue(t.category).isIncome && t.category != TransactionCategory.incomeTransfer.value).fold<double>(0.0, (s, t) => s + t.amount);
-            final totalExp = periodTxs.where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value).fold<double>(0.0, (s, t) => s + t.amount.abs());
+            final totalInc = periodTxs.where((t) => TransactionCategory.fromValue(t.category).isIncome && !TransactionCategory.fromValue(t.category).isTransfer).fold<double>(0.0, (s, t) => s + t.amount);
+            final totalExp = periodTxs.where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && !TransactionCategory.fromValue(t.category).isTransfer).fold<double>(0.0, (s, t) => s + t.amount.abs());
             
             final catMap = <String, double>{};
             for (final t in periodTxs) {
               final cat = TransactionCategory.fromValue(t.category);
-              if (cat.isExpense && cat != TransactionCategory.expenseTransfer && cat != TransactionCategory.expenseTransferToCash) {
+              if (cat.isOperatingExpense) {
                 catMap[cat.displayName] = (catMap[cat.displayName] ?? 0.0) + t.amount.abs();
               }
             }
@@ -219,9 +219,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
               final salary = periodTxs.where((t) => t.category == TransactionCategory.incomeSalary.value).fold<double>(0.0, (s, t) => s + t.amount);
               final passive = periodTxs.where((t) => t.category == TransactionCategory.incomeInterest.value || t.category == TransactionCategory.incomeInvestments.value || t.category == TransactionCategory.incomeDividends.value).fold<double>(0.0, (s, t) => s + t.amount);
-              final totalInc = periodTxs.where((t) => TransactionCategory.fromValue(t.category).isIncome && t.category != TransactionCategory.incomeTransfer.value).fold<double>(0.0, (s, t) => s + t.amount);
+              final totalInc = periodTxs.where((t) => TransactionCategory.fromValue(t.category).isIncome && !TransactionCategory.fromValue(t.category).isTransfer).fold<double>(0.0, (s, t) => s + t.amount);
               final otherInc = totalInc - salary - passive;
-              final totalExp = periodTxs.where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value).fold<double>(0.0, (s, t) => s + t.amount.abs());
+              final totalExp = periodTxs.where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && !TransactionCategory.fromValue(t.category).isTransfer).fold<double>(0.0, (s, t) => s + t.amount.abs());
               final netCash = totalInc - totalExp;
 
               double newCashPos = 0.0;
@@ -345,6 +345,20 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                 }
               }
 
+              // Add physical cash on hand as of the quarter end
+              final targetQuarterTimestamp = DateTime(selectedYear, endM + 1, 0, 23, 59, 59).millisecondsSinceEpoch ~/ 1000;
+              double quarterCashVal = 0.0;
+              for (final tx in txs) {
+                if (tx.date <= targetQuarterTimestamp) {
+                  if (tx.accountId == 'manual_cash' || tx.accountId == 'manual') {
+                    quarterCashVal += tx.amount;
+                  } else if (tx.category == TransactionCategory.expenseTransferToCash.value) {
+                    quarterCashVal += tx.amount.abs();
+                  }
+                }
+              }
+              cumulativeCash += quarterCashVal;
+
               final qEndCash = cumulativeCash;
 
               columns.add({
@@ -376,9 +390,9 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
 
             final salary = periodTxs.where((t) => t.category == TransactionCategory.incomeSalary.value).fold<double>(0.0, (s, t) => s + t.amount);
             final passive = periodTxs.where((t) => t.category == TransactionCategory.incomeInterest.value || t.category == TransactionCategory.incomeInvestments.value || t.category == TransactionCategory.incomeDividends.value).fold<double>(0.0, (s, t) => s + t.amount);
-            final totalInc = periodTxs.where((t) => TransactionCategory.fromValue(t.category).isIncome && t.category != TransactionCategory.incomeTransfer.value).fold<double>(0.0, (s, t) => s + t.amount);
+            final totalInc = periodTxs.where((t) => TransactionCategory.fromValue(t.category).isIncome && !TransactionCategory.fromValue(t.category).isTransfer).fold<double>(0.0, (s, t) => s + t.amount);
             final otherInc = totalInc - salary - passive;
-            final totalExp = periodTxs.where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && t.category != TransactionCategory.incomeTransfer.value && t.category != TransactionCategory.expenseTransfer.value).fold<double>(0.0, (s, t) => s + t.amount.abs());
+            final totalExp = periodTxs.where((t) => (t.amount < 0 || TransactionCategory.fromValue(t.category).isExpense) && !TransactionCategory.fromValue(t.category).isTransfer).fold<double>(0.0, (s, t) => s + t.amount.abs());
             final netCash = totalInc - totalExp;
 
             double newCashPos = 0.0;
@@ -447,7 +461,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
             final catMap = <String, double>{};
             for (final t in periodTxs) {
               final cat = TransactionCategory.fromValue(t.category);
-              if (cat.isExpense && cat != TransactionCategory.expenseTransfer && cat != TransactionCategory.expenseTransferToCash) {
+              if (cat.isOperatingExpense) {
                 catMap[cat.displayName] = (catMap[cat.displayName] ?? 0.0) + t.amount.abs();
               }
             }

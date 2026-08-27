@@ -95,7 +95,7 @@ final cashFlowScreenProvider = FutureProvider.autoDispose<CashFlowMonthData>((re
 
     for (var tx in monthTxs) {
       final category = TransactionCategory.fromValue(tx.category);
-      if (category == TransactionCategory.incomeTransfer || category == TransactionCategory.expenseTransfer) {
+      if (category.isTransfer) {
         if (tx.amount > 0) {
           transfersIn += tx.amount;
         } else {

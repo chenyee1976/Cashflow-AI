@@ -682,10 +682,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   final txDate = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
                   final isSame = txDate.year == activeDate.year && txDate.month == activeDate.month;
                   if (!isSame) return false;
+                  final catEnum = TransactionCategory.fromValue(t.category);
+                  if (catEnum.isTransfer) return false;
                   if (isIncome) {
-                    return t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer';
+                    return t.amount > 0;
                   } else {
-                    return t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer';
+                    return t.amount < 0;
                   }
                 }).toList();
 

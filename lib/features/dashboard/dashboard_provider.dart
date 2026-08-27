@@ -401,9 +401,9 @@ final monthlyIncomeProvider = FutureProvider.autoDispose<MonthSummaryModel>((ref
   final now = DateTime.now();
   final refDate = DateTime(now.year, now.month);
 
-  final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
-  final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
-  final twoMonthsAgoTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 2)) && t.amount > 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
+  final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount > 0 && !TransactionCategory.fromValue(t.category).isTransfer);
+  final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount > 0 && !TransactionCategory.fromValue(t.category).isTransfer);
+  final twoMonthsAgoTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 2)) && t.amount > 0 && !TransactionCategory.fromValue(t.category).isTransfer);
 
   return MonthSummaryModel(
     currentMonthAmount: currentMonthTxs.fold<double>(0.0, (sum, item) => sum + item.amount),
@@ -449,9 +449,9 @@ final monthlyExpensesProvider = FutureProvider.autoDispose<MonthSummaryModel>((r
   final now = DateTime.now();
   final refDate = DateTime(now.year, now.month);
 
-  final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
-  final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
-  final twoMonthsAgoTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 2)) && t.amount < 0 && t.category != 'income_transfer' && t.category != 'expense_transfer');
+  final currentMonthTxs = txs.where((t) => _isSameMonth(t.date, refDate) && t.amount < 0 && !TransactionCategory.fromValue(t.category).isTransfer);
+  final lastMonthTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 1)) && t.amount < 0 && !TransactionCategory.fromValue(t.category).isTransfer);
+  final twoMonthsAgoTxs = txs.where((t) => _isSameMonth(t.date, DateTime(refDate.year, refDate.month - 2)) && t.amount < 0 && !TransactionCategory.fromValue(t.category).isTransfer);
 
   return MonthSummaryModel(
     currentMonthAmount: currentMonthTxs.fold<double>(0.0, (sum, item) => sum + item.amount.abs()),
@@ -501,7 +501,9 @@ String _getMonthName(DateTime date) {
 Map<String, double> _getSummaryBreakdown(Iterable<Transaction> items) {
   final breakdown = <String, double>{};
   for (final tx in items) {
-    final cat = TransactionCategory.fromValue(tx.category).displayName;
+    final catEnum = TransactionCategory.fromValue(tx.category);
+    if (catEnum.isTransfer) continue;
+    final cat = catEnum.displayName;
     breakdown[cat] = (breakdown[cat] ?? 0.0) + tx.amount.abs();
   }
   return breakdown;

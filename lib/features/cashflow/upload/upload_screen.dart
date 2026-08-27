@@ -547,7 +547,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
                     institution: institution,
                     fileBytes: fileBytes,
                   )
-                  .timeout(const Duration(seconds: 30));
+                  .timeout(const Duration(seconds: 120));
 
               if (firstStatementId == null) {
                 firstStatementId = id;
@@ -556,7 +556,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
             } on TimeoutException {
               notifier.setUploading(false);
               setState(() {
-                _statusBannerMessage = 'AI extraction timed out (30s). Something went wrong, please try again later.';
+                _statusBannerMessage = 'AI extraction timed out (120s). Something went wrong, please try again later.';
                 _isSuccess = false;
                 _isError = true;
               });

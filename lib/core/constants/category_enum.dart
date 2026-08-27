@@ -30,6 +30,13 @@ enum TransactionCategory {
 
   bool get isExpense => !isIncome;
 
+  bool get isTransfer =>
+      this == TransactionCategory.incomeTransfer ||
+      this == TransactionCategory.expenseTransfer ||
+      this == TransactionCategory.expenseTransferToCash;
+
+  bool get isOperatingExpense => isExpense && !isTransfer;
+
   static TransactionCategory fromValue(String value) {
     return TransactionCategory.values.firstWhere(
       (e) => e.value == value,

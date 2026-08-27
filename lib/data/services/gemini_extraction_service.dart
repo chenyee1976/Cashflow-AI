@@ -178,8 +178,8 @@ You MUST return a raw JSON object formatted precisely as follows:
             },
             options: Options(
               headers: headers,
-              sendTimeout: const Duration(seconds: 25),
-              receiveTimeout: const Duration(seconds: 25),
+              sendTimeout: const Duration(seconds: 120),
+              receiveTimeout: const Duration(seconds: 120),
             ),
           );
 
