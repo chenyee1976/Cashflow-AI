@@ -69,11 +69,13 @@ module.exports = async (req, res) => {
     // Primary supported active models in priority order
     const priorityModels = [
       requestedModel,
+      'gemini-flash-latest',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-2.5-flash',
       'gemini-3.6-flash',
       'gemini-3.5-flash',
       'gemini-3.7-flash',
-      'gemini-3.5-flash-lite',
-      'gemini-flash-latest',
     ];
     const uniqueModels = [...new Set(priorityModels)];
 
@@ -83,7 +85,7 @@ module.exports = async (req, res) => {
     for (const model of uniqueModels) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s per model attempt
+        const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s per model attempt
 
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const response = await fetch(url, {

@@ -607,7 +607,9 @@ class CashFlowHomeScreen extends ConsumerWidget {
                                                       icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
                                                       padding: EdgeInsets.zero,
                                                       constraints: const BoxConstraints(),
-                                                      onPressed: () {}, // Optional future edit dialog
+                                                      onPressed: () {
+                                                        _showEditTransactionBottomSheet(context, ref, tx);
+                                                      },
                                                     ),
                                                     const SizedBox(width: 8),
                                                     IconButton(
@@ -1009,6 +1011,246 @@ class CashFlowHomeScreen extends ConsumerWidget {
                                 }
                               },
                               child: const Text('Add Entry'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditTransactionBottomSheet(BuildContext context, WidgetRef ref, Transaction tx) async {
+    final db = ref.read(appDatabaseProvider);
+    final storage = ref.read(secureStorageProvider);
+    final prefs = await SharedPreferences.getInstance();
+    final testerEmail = prefs.getString('tester_email') ?? '';
+    var cfUserId = await storage.getUserId();
+    if (cfUserId == null || cfUserId.isEmpty || cfUserId == 'unknown_user') {
+      cfUserId = testerEmail.contains('@') ? 'tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}' : 'chenyee_user';
+    }
+    final bankAccounts = await db.getBankAccountsByUser(cfUserId);
+    final creditCards = await db.getCreditCardsByUser(cfUserId);
+
+    final accountOptions = <Map<String, String>>[
+      {'id': 'manual_cash', 'name': 'Cash on hand / Physical Cash'},
+    ];
+    for (final acc in bankAccounts) {
+      accountOptions.add({'id': acc.id, 'name': '${acc.bankName} ${acc.accountType} (${acc.accountNumber ?? ""})'});
+    }
+    for (final card in creditCards) {
+      accountOptions.add({'id': card.id, 'name': '${card.bankName} ${card.cardName} (${card.lastFour ?? ""})'});
+    }
+
+    final formKey = GlobalKey<FormState>();
+    final merchantController = TextEditingController(text: tx.merchant);
+    final amountController = TextEditingController(text: tx.amount.toStringAsFixed(2));
+    String selectedAccountId = tx.accountId;
+    if (!accountOptions.any((a) => a['id'] == selectedAccountId)) {
+      selectedAccountId = 'manual_cash';
+    }
+    TransactionCategory selectedCategory = TransactionCategory.fromValue(tx.category);
+    DateTime selectedDate = DateTime.fromMillisecondsSinceEpoch(tx.date * 1000);
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final isIncomeTx = (double.tryParse(amountController.text) ?? -1.0) > 0;
+            final allowedCategories = TransactionCategory.values.where((c) {
+              return isIncomeTx ? c.isIncome : c.isExpense;
+            }).toList();
+
+            if (!allowedCategories.contains(selectedCategory)) {
+              selectedCategory = allowedCategories.first;
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 24,
+                right: 24,
+                top: 24,
+              ),
+              child: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Edit Transaction',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // 1. Account / Target Selector
+                      DropdownButtonFormField<String>(
+                        value: selectedAccountId,
+                        decoration: const InputDecoration(
+                          labelText: 'Account / Card',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        items: accountOptions
+                            .map((acc) => DropdownMenuItem(
+                                  value: acc['id'],
+                                  child: Text(acc['name']!, style: const TextStyle(fontSize: 13)),
+                                ))
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setModalState(() {
+                              selectedAccountId = val;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 2. Date Selector with Native Calendar View
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setModalState(() {
+                              selectedDate = picked;
+                            });
+                          }
+                        },
+                        child: InputDecorator(
+                          decoration: const InputDecoration(
+                            labelText: 'Date',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                DateFormat('dd MMM yyyy').format(selectedDate),
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              const Icon(Icons.calendar_today, size: 16, color: AppColors.primary),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 3. Merchant / Description
+                      TextFormField(
+                        controller: merchantController,
+                        decoration: const InputDecoration(
+                          labelText: 'Merchant / Description',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 4. Amount Field
+                      TextFormField(
+                        controller: amountController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Amount (S\$) (Negative = Outflow/Expense, Positive = Income)',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        onChanged: (_) => setModalState(() {}),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Required';
+                          if (double.tryParse(v) == null) return 'Must be a valid number';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 5. Category Dropdown
+                      DropdownButtonFormField<TransactionCategory>(
+                        value: selectedCategory,
+                        decoration: const InputDecoration(
+                          labelText: 'Category',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        items: allowedCategories
+                            .map((cat) => DropdownMenuItem(
+                                  value: cat,
+                                  child: Text(cat.displayName, style: const TextStyle(fontSize: 13)),
+                                ))
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setModalState(() {
+                              selectedCategory = val;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (formKey.currentState!.validate()) {
+                                  final amt = double.parse(amountController.text);
+                                  await ref.read(cashFlowOperationsProvider).updateTransaction(
+                                        id: tx.id,
+                                        merchant: merchantController.text.trim(),
+                                        amount: amt,
+                                        category: selectedCategory,
+                                        date: selectedDate,
+                                        accountId: selectedAccountId,
+                                      );
+                                  ref.invalidate(cashPositionProvider);
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                  }
+                                }
+                              },
+                              child: const Text('Save Changes'),
                             ),
                           ),
                         ],

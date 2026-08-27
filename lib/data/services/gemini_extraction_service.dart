@@ -21,12 +21,15 @@ class GeminiExtractionService {
     final dio = Dio();
     final String base64Data = base64Encode(fileBytes);
 
-    // Primary AI Models List (gemini-3.6-flash is flagship for document intelligence & OCR)
+    // Primary AI Models List
     final modelNames = [
+      'gemini-flash-latest',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-2.5-flash',
       'gemini-3.6-flash',
       'gemini-3.5-flash',
       'gemini-3.7-flash',
-      'gemini-3.5-flash-lite',
     ];
 
     final rulesService = UserCategoryRulesService();
@@ -84,11 +87,11 @@ Analyze the uploaded statement document/image and extract:
    - milesCashbackCategoryValue: Select exact value: 'Automobile', 'Beauty & Wellness', 'Commute', 'Dining & Food Delivery', 'Entertainment', 'Groceries', 'Kids & Pets', 'Online', 'SimplyGo', 'Shopping', 'Fuel', 'Others'.
 
 STRICT SINGAPORE CATEGORIZATION RULES:
-- Interest Earned / Bonus Interest / Savings Interest (amount > 0) -> categoryValue 'income_interest'.
+- Interest Earned / INT / INT CR / Bonus Interest / Savings Interest / Credit Int (amount > 0) -> categoryValue 'income_interest'.
 - Salary / Payroll / Bonus / AWS / CPF -> categoryValue 'income_salary'.
 - ATM Cash Withdrawals -> categoryValue 'expense_transfer_to_cash'.
 - Taxes & IRAS -> categoryValue 'expense_tax'.
-- PayNow / FAST / Giro / Fund Transfers:
+- PayNow / FAST / FAST Transfer / Giro / Fund Transfers:
   * If positive (amount > 0) -> categoryValue 'income_transfer' (Transfer In).
   * If negative (amount < 0) -> categoryValue 'expense_transfer' (Transfer Out).
 - Insurance (AIA, Prudential, Great Eastern, Aviva, Singlife, NTUC Income, AXA, FWD, Manulife) -> categoryValue 'expense_insurance'.
@@ -175,8 +178,8 @@ You MUST return a raw JSON object formatted precisely as follows:
             },
             options: Options(
               headers: headers,
-              sendTimeout: const Duration(seconds: 120),
-              receiveTimeout: const Duration(seconds: 120),
+              sendTimeout: const Duration(seconds: 25),
+              receiveTimeout: const Duration(seconds: 25),
             ),
           );
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' as io;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ class UploadScreen extends ConsumerStatefulWidget {
 class _UploadScreenState extends ConsumerState<UploadScreen> {
   String? _statusBannerMessage;
   bool _isSuccess = false;
+  bool _isError = false;
   bool _isBannerVisible = false;
   bool _isBankExpanded = true;
   bool _isCreditCardExpanded = true;
@@ -71,11 +73,13 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: _isError
+                        ? AppColors.error
+                        : (_isSuccess ? const Color(0xFF10B981) : AppColors.primary),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.2),
+                        color: (_isError ? AppColors.error : AppColors.primary).withOpacity(0.2),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -83,7 +87,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
                   ),
                   child: Row(
                     children: [
-                      if (!_isSuccess)
+                      if (!_isSuccess && !_isError)
                         const SizedBox(
                           width: 18,
                           height: 18,
@@ -92,6 +96,8 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
                             valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
                           ),
                         )
+                      else if (_isError)
+                        const Icon(Icons.error_outline, color: AppColors.white, size: 20)
                       else
                         const Icon(Icons.check_circle, color: AppColors.white, size: 20),
                       const SizedBox(width: 12),
@@ -110,6 +116,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
                         onPressed: () {
                           setState(() {
                             _statusBannerMessage = null;
+                            _isError = false;
                           });
                         },
                         padding: EdgeInsets.zero,
@@ -492,6 +499,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         setState(() {
           _statusBannerMessage = 'AI extraction in progress, pls wait';
           _isSuccess = false;
+          _isError = false;
         });
         notifier.setUploading(true);
 
@@ -524,9 +532,6 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
               institution = 'Standard Chartered';
             }
 
-            // Simulate file parsing delay
-            await Future.delayed(const Duration(seconds: 1));
-
             Uint8List? fileBytes = file.bytes;
             if (fileBytes == null && file.path != null && !kIsWeb) {
               try {
@@ -534,16 +539,28 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
               } catch (_) {}
             }
 
-            final id = await notifier.addStatementDraft(
-              fileName: fileName,
-              fileType: type,
-              institution: institution,
-              fileBytes: fileBytes,
-            );
-            
-            if (firstStatementId == null) {
-              firstStatementId = id;
-              firstFileName = fileName;
+            try {
+              final id = await notifier
+                  .addStatementDraft(
+                    fileName: fileName,
+                    fileType: type,
+                    institution: institution,
+                    fileBytes: fileBytes,
+                  )
+                  .timeout(const Duration(seconds: 30));
+
+              if (firstStatementId == null) {
+                firstStatementId = id;
+                firstFileName = fileName;
+              }
+            } on TimeoutException {
+              notifier.setUploading(false);
+              setState(() {
+                _statusBannerMessage = 'AI extraction timed out (30s). Something went wrong, please try again later.';
+                _isSuccess = false;
+                _isError = true;
+              });
+              return;
             }
           }
         }
@@ -563,6 +580,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         setState(() {
           _statusBannerMessage = 'AI extraction completed, pls review the extraction data';
           _isSuccess = true;
+          _isError = false;
         });
 
         if (firstStatementId != null && context.mounted) {
@@ -582,8 +600,9 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     } catch (e) {
       notifier.setUploading(false);
       setState(() {
-        _statusBannerMessage = 'Error choosing files: $e';
+        _statusBannerMessage = 'Something went wrong during upload ($e). Please try again later.';
         _isSuccess = false;
+        _isError = true;
       });
     }
   }

@@ -234,6 +234,30 @@ class CashFlowOperations {
     _ref.invalidate(cashFlowScreenProvider);
   }
 
+  Future<void> updateTransaction({
+    required String id,
+    required String merchant,
+    required double amount,
+    required TransactionCategory category,
+    required DateTime date,
+    required String accountId,
+  }) async {
+    final query = _db.update(_db.transactions)..where((t) => t.id.equals(id));
+    await query.write(
+      TransactionsCompanion(
+        merchant: drift.Value(merchant),
+        description: drift.Value(merchant),
+        amount: drift.Value(amount),
+        category: drift.Value(category.value),
+        date: drift.Value(date.millisecondsSinceEpoch ~/ 1000),
+        accountId: drift.Value(accountId),
+      ),
+    );
+
+    // Force refresh
+    _ref.invalidate(cashFlowScreenProvider);
+  }
+
   Future<void> deleteTransaction(String id) async {
     // Implement delete using transaction id via query update or delete
     // Drift provides delete queries directly

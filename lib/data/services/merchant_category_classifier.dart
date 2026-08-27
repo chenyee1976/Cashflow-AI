@@ -66,7 +66,13 @@ class MerchantCategoryClassifier {
         lower.contains('co spend bonus') ||
         lower.contains('spend bonus') ||
         lower.contains('int earned') ||
-        lower.contains('credit int')) {
+        lower.contains('credit int') ||
+        lower == 'int' ||
+        lower.startsWith('int ') ||
+        lower.endsWith(' int') ||
+        lower.contains(' int ') ||
+        lower.contains('int cr') ||
+        lower.contains('int/cr')) {
       return ClassificationResult(
         expenseCategory: amount > 0 ? 'income_interest' : 'expense_other',
         milesCategory: 'Others',
