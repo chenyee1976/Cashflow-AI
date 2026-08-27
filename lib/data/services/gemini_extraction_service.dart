@@ -143,15 +143,22 @@ You MUST return a raw JSON object formatted precisely as follows:
     String? jsonResponseText;
     Object? lastErr;
 
-    for (final mName in modelNames) {
+    final stopwatch = Stopwatch()..start();
+
+    for (int i = 0; i < modelNames.length; i++) {
+      if (stopwatch.elapsed.inSeconds >= 110) break; // Keep strictly within 120s limit
+      final mName = modelNames[i];
       int attempts = 0;
       while (attempts < 2) {
+        if (stopwatch.elapsed.inSeconds >= 110) break;
         attempts++;
         try {
           final headers = <String, String>{'Content-Type': 'application/json'};
           if (_apiKey.isNotEmpty && !_apiKey.startsWith('PROXY')) {
             headers['x-gemini-key'] = _apiKey;
           }
+
+          final remainingSeconds = (115 - stopwatch.elapsed.inSeconds).clamp(5, 120);
 
           final proxyRes = await dio.post(
             '/api/gemini?model=$mName',
@@ -178,8 +185,8 @@ You MUST return a raw JSON object formatted precisely as follows:
             },
             options: Options(
               headers: headers,
-              sendTimeout: const Duration(seconds: 120),
-              receiveTimeout: const Duration(seconds: 120),
+              sendTimeout: Duration(seconds: remainingSeconds),
+              receiveTimeout: Duration(seconds: remainingSeconds),
             ),
           );
 
@@ -212,8 +219,12 @@ You MUST return a raw JSON object formatted precisely as follows:
                 'model': mName,
                 'attempt': attempts,
               });
+              // First 3 engines: pause 5-6s, remainder engines: pause 10s
+              final pauseSec = i < 3 ? 5 : 10;
+              if (stopwatch.elapsed.inSeconds + pauseSec < 115) {
+                await Future.delayed(Duration(seconds: pauseSec));
+              }
               if (attempts < 2) {
-                await Future.delayed(const Duration(seconds: 4));
                 continue;
               }
             } else if (e.response?.statusCode != null && e.response!.statusCode! >= 500) {

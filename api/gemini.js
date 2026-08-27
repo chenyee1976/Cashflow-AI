@@ -81,11 +81,16 @@ module.exports = async (req, res) => {
 
     let lastErrorResponse = null;
     let lastStatus = 500;
+    const startTime = Date.now();
 
-    for (const model of uniqueModels) {
+    for (let i = 0; i < uniqueModels.length; i++) {
+      if (Date.now() - startTime >= 110000) break; // Keep strictly within 120s limit
+      const model = uniqueModels[i];
       try {
+        const remainingTimeMs = Math.max(5000, 115000 - (Date.now() - startTime));
+        const perAttemptTimeout = Math.min(35000, remainingTimeMs);
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s per model attempt
+        const timeoutId = setTimeout(() => controller.abort(), perAttemptTimeout);
 
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const response = await fetch(url, {
@@ -109,6 +114,14 @@ module.exports = async (req, res) => {
 
         console.warn(`Model ${model} returned ${response.status}: ${responseText.slice(0, 200)}`);
         lastErrorResponse = responseText;
+
+        // Rate-limit handling: pause 5-6s for first 3 engines, 10s for remainder engines
+        if (response.status === 429) {
+          const pauseMs = i < 3 ? 5500 : 10000;
+          if (Date.now() - startTime + pauseMs < 112000) {
+            await new Promise(r => setTimeout(r, pauseMs));
+          }
+        }
       } catch (err) {
         console.error(`Model ${model} fetch exception:`, err);
         lastErrorResponse = JSON.stringify({ error: err.message });
