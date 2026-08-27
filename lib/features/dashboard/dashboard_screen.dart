@@ -1202,9 +1202,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   balances[acc.id] = bestMatchAccount?.currentBalance ?? 0.0;
                 }
 
+                double totalCashPositionSgd = 0.0;
+                for (final acc in consolidated) {
+                  final bal = balances[acc.id] ?? 0.0;
+                  final currencyStr = acc.currency.trim().toUpperCase();
+                  if (currencyStr == 'SGD') {
+                    totalCashPositionSgd += bal;
+                  } else {
+                    final savedRate = await storage.getFxRate(currencyStr);
+                    final rate = double.tryParse(savedRate ?? '') ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+                    totalCashPositionSgd += bal * rate;
+                  }
+                }
+
                 return {
                   'accounts': consolidated,
                   'balances': balances,
+                  'totalCash': totalCashPositionSgd,
                 };
               }(),
               builder: (ctx, snapshot) {
@@ -1221,6 +1235,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                 final accountsList = (snapshot.data?['accounts'] as List<BankAccount>?) ?? initialData.accounts;
                 final targetBalancesMap = (snapshot.data?['balances'] as Map<String, double>?) ?? {};
+                final totalCash = (snapshot.data?['totalCash'] as double?) ?? 0.0;
+                final currencyFormatter = NumberFormat.currency(locale: 'en_SG', symbol: 'S\$');
 
                 return Container(
                   constraints: BoxConstraints(
@@ -1342,7 +1358,39 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
+
+                      // Total Cash Position Summary Row / Box on top
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Total Cash Position',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              currencyFormatter.format(totalCash),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
                       // Scrollable Account List
                       Flexible(
