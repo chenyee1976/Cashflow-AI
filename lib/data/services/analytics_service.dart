@@ -125,23 +125,25 @@ class AnalyticsService {
     } catch (_) {}
   }
 
-  void setUser(String userId, String email) {
+  Future<void> setUser(String userId, String email) async {
     final wasUnknown = _currentUserId == 'unknown_user' || _currentUserEmail.isEmpty;
     if (userId.isNotEmpty) _currentUserId = userId;
     if (email.contains('@')) _currentUserEmail = email.trim();
-    SharedPreferences.getInstance().then((prefs) {
-      if (email.contains('@')) prefs.setString('tester_email', email.trim());
-      if (userId.isNotEmpty) prefs.setString('user_id', userId.trim());
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (email.contains('@')) await prefs.setString('tester_email', email.trim());
+      if (userId.isNotEmpty) await prefs.setString('user_id', userId.trim());
+    } catch (_) {}
 
     // Backfill any entries logged before identity was available
     if (wasUnknown && _currentUserEmail.isNotEmpty) {
       _backfillUnknownEntries();
     }
 
-    logEvent('user_login', parameters: {
+    await logEvent('user_login', parameters: {
       'userId': _currentUserId,
       'email': _currentUserEmail,
+      'userEmail': _currentUserEmail,
     });
   }
 
@@ -254,8 +256,8 @@ class AnalyticsService {
       type: 'event',
       name: eventName,
       details: {
-        'userId': _currentUserId,
-        'userEmail': _currentUserEmail,
+        'userId': parameters?['userId'] ?? _currentUserId,
+        'userEmail': parameters?['userEmail'] ?? parameters?['email'] ?? _currentUserEmail,
         ...?parameters,
       },
       timestamp: DateTime.now(),
