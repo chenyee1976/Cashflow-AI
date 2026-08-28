@@ -1005,6 +1005,15 @@ class CashFlowHomeScreen extends ConsumerWidget {
                                         accountId: selectedAccountId,
                                       );
                                   ref.invalidate(cashPositionProvider);
+                                  
+                                  // Track manual transaction event
+                                  ref.read(analyticsServiceProvider).logEvent('manual_transaction_added', parameters: {
+                                    'merchant': merchantController.text.trim(),
+                                    'amount': amt,
+                                    'category': selectedCategory.value,
+                                    'accountId': selectedAccountId,
+                                  });
+
                                   if (context.mounted) {
                                     Navigator.pop(context);
                                   }

@@ -28,15 +28,19 @@ module.exports = async (req, res) => {
           category_breakdown: item.categoryBreakdown || {},
           total_miles_balance: item.totalMilesBalance || 0.0,
           total_cashback_earned: item.totalCashbackEarned || 0.0,
+          manual_input_count: item.manualInputCount || 0,
+          voice_upload_count: item.voiceUploadCount || 0,
+          report_view_count: item.reportViewCount || 0,
+          report_download_count: item.reportDownloadCount || 0,
           last_synced_at: new Date().toISOString(),
         }));
 
-        const response = await fetch(${SUPABASE_URL}/rest/v1/monthly_aggregate_metrics, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/monthly_aggregate_metrics`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'apikey': SUPABASE_ANON_KEY,
-            'Authorization': Bearer ,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'Prefer': 'resolution=merge-duplicates',
           },
           body: JSON.stringify(rows),
@@ -59,11 +63,11 @@ module.exports = async (req, res) => {
   if (req.method === 'GET') {
     try {
       const response = await fetch(
-        ${SUPABASE_URL}/rest/v1/monthly_aggregate_metrics?order=month_year.desc&limit=1000,
+        `${SUPABASE_URL}/rest/v1/monthly_aggregate_metrics?order=month_year.desc&limit=1000`,
         {
           headers: {
             'apikey': SUPABASE_ANON_KEY,
-            'Authorization': Bearer ,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           },
         }
       );

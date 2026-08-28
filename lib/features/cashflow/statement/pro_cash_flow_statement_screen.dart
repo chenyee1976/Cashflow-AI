@@ -14,6 +14,7 @@ import '../../../data/database/app_database.dart';
 import 'cashflow_provider.dart';
 import '../../account/account_provider.dart';
 import '../../dashboard/dashboard_provider.dart';
+import '../../../data/services/analytics_service.dart';
 
 class ProCashFlowStatementScreen extends ConsumerStatefulWidget {
   const ProCashFlowStatementScreen({super.key});
@@ -26,6 +27,15 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
   bool _includeBusiness = false;
   String _periodType = 'Month'; // 'Month', 'Quarter', 'YTD'
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Track report view
+    ref.read(analyticsServiceProvider).logEvent('pro_statement_viewed', parameters: {
+      'periodType': _periodType,
+    });
+  }
 
   @override
   void dispose() {
@@ -643,6 +653,12 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                             duration: const Duration(seconds: 3),
                           ),
                         );
+
+                        // Track PDF download event
+                        ref.read(analyticsServiceProvider).logEvent('pro_statement_pdf_downloaded', parameters: {
+                          'periodType': _periodType,
+                          'fileName': fileName,
+                        });
                       } catch (e) {
                         debugPrint('Error generating PDF: $e');
                       }

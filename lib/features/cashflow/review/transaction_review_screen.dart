@@ -26,6 +26,7 @@ import '../../../data/services/card_rules_registry.dart';
 import '../../../data/services/user_category_rules_service.dart';
 import '../../../data/services/merchant_category_classifier.dart';
 import '../../../data/services/analytics_service.dart';
+import '../../../data/services/aggregate_metrics_sync_service.dart';
 
 class ExtractedAccountItem {
   final TextEditingController bankCtrl;
@@ -1212,6 +1213,11 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
       ref.invalidate(monthlyIncomeProvider);
       ref.invalidate(monthlyExpensesProvider);
       ref.invalidate(uploadScreenProvider);
+
+      // Sync aggregate metrics to Supabase after successful save
+      try {
+        ref.read(aggregateMetricsSyncServiceProvider).syncCurrentMonthMetrics();
+      } catch (_) {}
 
       context.pop();
     } catch (e) {

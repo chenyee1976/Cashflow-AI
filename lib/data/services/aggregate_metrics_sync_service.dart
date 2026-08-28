@@ -31,7 +31,7 @@ class AggregateMetricsSyncService {
       if (rawUserId == null || rawUserId.isEmpty) return;
 
       // Create one-way cryptographic SHA-256 hash of user ID for privacy
-      final userHash = sha256.convert(utf8.encode('salt_sgcashflow_')).toString();
+      final userHash = sha256.convert(utf8.encode('salt_sgcashflow_$rawUserId')).toString();
 
       final now = DateTime.now();
       final monthYear = DateFormat('yyyy-MM').format(now);
@@ -69,9 +69,11 @@ class AggregateMetricsSyncService {
       for (final tx in monthTxs) {
         if (tx.amount > 0) {
           monthlyIncome += tx.amount;
+          final cat = 'income_${tx.category}';
+          categoryBreakdown[cat] = (categoryBreakdown[cat] ?? 0.0) + tx.amount;
         } else {
           monthlyExpenses += tx.amount.abs();
-          final cat = tx.category;
+          final cat = 'expense_${tx.category}';
           categoryBreakdown[cat] = (categoryBreakdown[cat] ?? 0.0) + tx.amount.abs();
         }
       }
@@ -107,7 +109,10 @@ class AggregateMetricsSyncService {
       ));
 
       final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
-      await dio.post('/api/metrics', data: payload);
-    } catch (_) {}
+      await dio.post('$baseUrl/api/metrics', data: payload);
+      debugPrint('✅ [AggregateMetrics] synced successfully for $monthYear');
+    } catch (e) {
+      debugPrint('⚠️ [AggregateMetrics] sync failed: $e');
+    }
   }
 }

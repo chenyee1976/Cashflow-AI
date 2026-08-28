@@ -1668,6 +1668,13 @@ class _VoiceExpenseCardState extends State<_VoiceExpenseCard> {
           ),
         ),
       );
+
+      // Track voice expense event
+      widget.ref.read(analyticsServiceProvider).logEvent('voice_expense_logged', parameters: {
+        'merchant': merchant,
+        'amount': amount,
+        'category': category.value,
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not log expense: $e')),
