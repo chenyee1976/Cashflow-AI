@@ -251,7 +251,7 @@ You MUST return a raw JSON object formatted precisely as follows:
     }
     final text = jsonResponseText;
 
-    // 5. Decode JSON and map to target structures
+    // 5. Decode JSON and map to target structures with robust repair
     String cleanText = text.trim();
     if (cleanText.contains('```') || !cleanText.startsWith('{')) {
       final start = cleanText.indexOf('{');
@@ -260,7 +260,43 @@ You MUST return a raw JSON object formatted precisely as follows:
         cleanText = cleanText.substring(start, end + 1);
       }
     }
-    final Map<String, dynamic> parsed = jsonDecode(cleanText) as Map<String, dynamic>;
+
+    Map<String, dynamic> parsed;
+    try {
+      parsed = jsonDecode(cleanText) as Map<String, dynamic>;
+    } catch (e) {
+      // Robust repair fallback for unescaped newlines, tabs, and unescaped quotes
+      try {
+        String repaired = cleanText
+            .replaceAll(RegExp(r'[\x00-\x09\x0B\x0C\x0E-\x1F]'), ' ')
+            .replaceAll(r'\"', '"') // Normalize existing escapes
+            .replaceAllMapped(
+              RegExp(r'(?<!\\)[\r\n]+(?=[^"]*"[^"]*(?:"[^"]*"[^"]*)*$)'),
+              (m) => ' ',
+            );
+
+        // Remove trailing commas before closing braces/brackets
+        repaired = repaired.replaceAll(RegExp(r',\s*([\}\]])'), r'$1');
+
+        parsed = jsonDecode(repaired) as Map<String, dynamic>;
+      } catch (_) {
+        // Second level repair: extract JSON using regex tokenization if syntax remains broken
+        try {
+          final jsonRegex = RegExp(r'\{[\s\S]*\}');
+          final match = jsonRegex.firstMatch(cleanText);
+          if (match != null) {
+            String fixed = match.group(0)!;
+            fixed = fixed.replaceAll(RegExp(r',\s*([\}\]])'), r'$1');
+            parsed = jsonDecode(fixed) as Map<String, dynamic>;
+          } else {
+            rethrow;
+          }
+        } catch (finalErr) {
+          debugPrint('JSON Decode failed even after repair attempts: $finalErr');
+          rethrow;
+        }
+      }
+    }
 
     final List<dynamic> rawAccounts = (parsed['accounts'] as List<dynamic>?) ?? 
         (parsed['accountList'] as List<dynamic>?) ?? 
