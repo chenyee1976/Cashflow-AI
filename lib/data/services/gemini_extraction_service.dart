@@ -75,9 +75,10 @@ Analyze the uploaded statement document/image and extract:
 
 4. TRANSACTIONS LIST ("extractedTransactions"):
    CRITICAL REQUIREMENTS FOR MULTI-PAGE & SUPPLEMENTARY STATEMENTS:
-   - Extract EVERY transaction row across ALL pages (Page 1 to Page 8).
-   - The statement has multiple card sections: TOK CHEN YEE (Principal Card) AND TEOH LEE CHIN (Supplementary Card). You MUST extract ALL transactions from BOTH card sections.
-   - Return every single transaction (there are 50 to 100+ transactions on this statement). Do not skip, group, sample, or truncate any row.
+   - Extract EVERY transaction row across ALL pages of the statement (Page 1 to the final page).
+   - If the statement contains multiple card sections or multiple cardholders (e.g. Principal Cardmember AND any Supplementary / Additional Cardmembers), you MUST extract ALL transactions from BOTH the Principal card section AND ALL Supplementary card sections.
+   - Do NOT stop parsing when reaching the end of the first cardholder section or page.
+   - Return every single transaction (even if there are 50 to 100+ transactions on the statement). Do not skip, group, sample, or truncate any row.
    - Use compact key names for high speed and token efficiency:
      * "d": Date formatted as DD MMM YYYY (e.g. "24 Jun 2026", "01 Jul 2026").
      * "m": Cleaned merchant/description (e.g. "Cold Storage", "Shopee", "Lotus's Bukit Indah", "Pinduoduo", "Sheng Siong", "Giro Pymt").
@@ -108,19 +109,19 @@ You MUST return a raw JSON object formatted precisely as follows:
 {
   "accounts": [
     {
-      "bankName": "Maybank",
-      "accountName": "Maybank Family & Friends",
-      "accountNumber": "5188-3467-1139-1003",
+      "bankName": "Bank Name",
+      "accountName": "Account or Card Product Name",
+      "accountNumber": "1234-5678-9012-3456",
       "statementEndingBalance": 888.92,
       "currency": "SGD",
       "statementEndingDate": "2026-07-25"
     }
   ],
   "cardDraft": {
-    "cardIssuer": "Maybank",
+    "cardIssuer": "Bank Issuer",
     "cardType": "Mastercard",
-    "cardName": "Maybank Family & Friends Card",
-    "cardNumber": "5188-3467-1139-1003",
+    "cardName": "Full Card Product Name",
+    "cardNumber": "1234-5678-9012-3456",
     "hasMiles": false,
     "hasCashback": true,
     "cashbackEarned": "51.51",
