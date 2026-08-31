@@ -1,4 +1,4 @@
-// Vercel Serverless Function Proxy for Google Gemini API (Supports Auto-Fallback & Header Sanitization)
+// Vercel Serverless Function Proxy for Google Gemini API (Supports Auto-Fallback & Fast Extraction)
 
 export const config = {
   api: {
@@ -64,18 +64,15 @@ module.exports = async (req, res) => {
 
   try {
     const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
-    const requestedModel = req.query.model || 'gemini-2.5-flash';
+    const requestedModel = req.query.model;
 
-    // Primary supported active models in priority order
+    // Fast, production-ready active models in order of proven response speed and reliability
     const priorityModels = [
-      requestedModel,
-      'gemini-flash-latest',
+      ...(requestedModel ? [requestedModel] : []),
+      'gemini-2.5-flash',
       'gemini-2.0-flash',
       'gemini-1.5-flash',
-      'gemini-2.5-flash',
-      'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-3.7-flash',
+      'gemini-flash-latest',
     ];
     const uniqueModels = [...new Set(priorityModels)];
 
@@ -84,11 +81,12 @@ module.exports = async (req, res) => {
     const startTime = Date.now();
 
     for (let i = 0; i < uniqueModels.length; i++) {
-      if (Date.now() - startTime >= 110000) break; // Keep strictly within 120s limit
+      // Keep within 50s total serverless boundary to guarantee HTTP response before gateway timeout
+      if (Date.now() - startTime >= 50000) break;
       const model = uniqueModels[i];
       try {
-        const remainingTimeMs = Math.max(5000, 115000 - (Date.now() - startTime));
-        const perAttemptTimeout = Math.min(35000, remainingTimeMs);
+        const remainingTimeMs = Math.max(5000, 52000 - (Date.now() - startTime));
+        const perAttemptTimeout = Math.min(25000, remainingTimeMs);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), perAttemptTimeout);
 
@@ -115,10 +113,9 @@ module.exports = async (req, res) => {
         console.warn(`Model ${model} returned ${response.status}: ${responseText.slice(0, 200)}`);
         lastErrorResponse = responseText;
 
-        // Rate-limit handling: pause 5-6s for first 3 engines, 10s for remainder engines
         if (response.status === 429) {
-          const pauseMs = i < 3 ? 5500 : 10000;
-          if (Date.now() - startTime + pauseMs < 112000) {
+          const pauseMs = 2500;
+          if (Date.now() - startTime + pauseMs < 50000) {
             await new Promise(r => setTimeout(r, pauseMs));
           }
         }
@@ -129,7 +126,7 @@ module.exports = async (req, res) => {
     }
 
     res.status(lastStatus).setHeader('Content-Type', 'application/json');
-    return res.send(lastErrorResponse || JSON.stringify({ error: 'All Gemini models failed' }));
+    return res.send(lastErrorResponse || JSON.stringify({ error: 'All Gemini models failed or timed out' }));
 
   } catch (e) {
     console.error('Proxy error:', e);

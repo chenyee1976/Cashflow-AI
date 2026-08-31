@@ -22,15 +22,12 @@ class GeminiExtractionService {
     final dio = Dio();
     final String base64Data = base64Encode(fileBytes);
 
-    // Primary AI Models List
+    // Primary AI Models List in speed/accuracy priority
     final modelNames = [
-      'gemini-flash-latest',
+      'gemini-2.5-flash',
       'gemini-2.0-flash',
       'gemini-1.5-flash',
-      'gemini-2.5-flash',
-      'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-3.7-flash',
+      'gemini-flash-latest',
     ];
 
     final rulesService = UserCategoryRulesService();
@@ -160,7 +157,7 @@ You MUST return a raw JSON object formatted precisely as follows:
             headers['x-gemini-key'] = _apiKey;
           }
 
-          final remainingSeconds = (115 - stopwatch.elapsed.inSeconds).clamp(5, 120);
+          final perAttemptSeconds = (50 - stopwatch.elapsed.inSeconds).clamp(10, 45);
 
           final proxyRes = await dio.post(
             '/api/gemini?model=$mName',
@@ -187,8 +184,8 @@ You MUST return a raw JSON object formatted precisely as follows:
             },
             options: Options(
               headers: headers,
-              sendTimeout: Duration(seconds: remainingSeconds),
-              receiveTimeout: Duration(seconds: remainingSeconds),
+              sendTimeout: Duration(seconds: perAttemptSeconds),
+              receiveTimeout: Duration(seconds: perAttemptSeconds),
             ),
           );
 
