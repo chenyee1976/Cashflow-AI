@@ -22,13 +22,12 @@ class GeminiExtractionService {
     final dio = Dio();
     final String base64Data = base64Encode(fileBytes);
 
-    // Primary AI Models List in speed/accuracy priority
+    // Verified-working models ordered by reliability and speed (tested 2026-08-31):
+    // gemini-3.6-flash: 200 OK in 2.2s | gemini-3.5-flash: 200 OK in 9.5s | gemini-3.7-flash: works but rate-limited
     final modelNames = [
-      'gemini-flash-latest',
-      'gemini-3.7-flash',
       'gemini-3.6-flash',
       'gemini-3.5-flash',
-      'gemini-pro-latest',
+      'gemini-3.7-flash',
     ];
 
     final rulesService = UserCategoryRulesService();
@@ -156,11 +155,11 @@ You MUST return a raw JSON object formatted precisely as follows:
     final stopwatch = Stopwatch()..start();
 
     for (int i = 0; i < modelNames.length; i++) {
-      if (stopwatch.elapsed.inSeconds >= 110) break; // Keep strictly within 120s limit
+      if (stopwatch.elapsed.inSeconds >= 150) break; // Keep within 150s overall client limit
       final mName = modelNames[i];
       int attempts = 0;
       while (attempts < 2) {
-        if (stopwatch.elapsed.inSeconds >= 110) break;
+        if (stopwatch.elapsed.inSeconds >= 150) break;
         attempts++;
         try {
           final headers = <String, String>{'Content-Type': 'application/json'};
@@ -168,7 +167,7 @@ You MUST return a raw JSON object formatted precisely as follows:
             headers['x-gemini-key'] = _apiKey;
           }
 
-          final perAttemptSeconds = 75;
+          final perAttemptSeconds = 90;
 
           final proxyRes = await dio.post(
             '/api/gemini?model=$mName',
@@ -239,7 +238,7 @@ You MUST return a raw JSON object formatted precisely as follows:
               });
               // First 3 engines: pause 5-6s, remainder engines: pause 10s
               final pauseSec = i < 3 ? 5 : 10;
-              if (stopwatch.elapsed.inSeconds + pauseSec < 115) {
+              if (stopwatch.elapsed.inSeconds + pauseSec < 145) {
                 await Future.delayed(Duration(seconds: pauseSec));
               }
               if (attempts < 2) {
@@ -488,7 +487,7 @@ You MUST return a raw JSON object formatted precisely as follows:
   /// Parses voice transcripts or text phrases like "Kopi $1.50" or "Lunch $5.20" into structured expense data.
   Future<Map<String, dynamic>> parseVoiceOrTextExpense(String inputPhrase) async {
     final model = GenerativeModel(
-      model: 'gemini-flash-latest',
+      model: 'gemini-3.6-flash',
       apiKey: _apiKey,
     );
 
