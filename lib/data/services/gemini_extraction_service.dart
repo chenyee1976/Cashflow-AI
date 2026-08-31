@@ -74,7 +74,11 @@ Analyze the uploaded statement document/image and extract:
    - paymentDueDate: Payment due date in YYYY-MM-DD format (e.g. "2026-07-15").
 
 4. TRANSACTIONS LIST ("extractedTransactions"):
-   CRITICAL: Extract ALL transaction rows listed on the statement across all pages. DO NOT summarize, aggregate, or sample transactions. Return the full complete list:
+   CRITICAL REQUIREMENTS:
+   - Extract ALL transaction rows across the ENTIRE statement (Page 1, Page 2, Page 3, etc.).
+   - If the statement contains multiple card sections (e.g. PRINCIPAL CARD and SUPPLEMENTARY / ADDITIONAL CARDS), you MUST extract transactions from BOTH the Principal card and ALL Supplementary card sections.
+   - Do NOT stop parsing after the first section or first page.
+   - DO NOT summarize, aggregate, or sample transactions. Return EVERY individual transaction row:
    - dateStr: Date formatted as DD MMM YYYY (e.g. "15 Jun 2026", "28 Jul 2026").
    - merchant: Cleaned merchant or description from statement (e.g. "NTUC FairPrice", "Sheng Siong Supermarket", "PayNow to John", "ATM Cash Withdrawal", "IRAS Tax Payment", "Singtel Bill").
    - amount: Double value. EXPENSES/PURCHASES MUST BE NEGATIVE (e.g. -42.50), PAYMENTS/CREDITS/INCOME MUST BE POSITIVE (e.g. 150.00).
