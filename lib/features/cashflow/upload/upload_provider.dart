@@ -166,46 +166,13 @@ class UploadNotifier extends StateNotifier<UploadState> {
           'institution': institution,
           'error': e.toString(),
         });
-        print('Real-time Gemini extraction failed, creating fallback draft for manual review: $e');
-        final isCard = fileType.toLowerCase().contains('card') || fileType.toLowerCase().contains('credit');
-        draftData = DraftStatementData(
-          accounts: [
-            ExtractedAccountDraft(
-              bank: isCard ? 'Credit Card Bank' : 'Bank',
-              name: fileName,
-              num: '****',
-              balance: '0.00',
-              currency: 'SGD',
-              balanceAsOf: DateTime.now(),
-            )
-          ],
-          cardDraft: isCard
-              ? ExtractedCreditCardDraft(
-                  issuer: 'Card Issuer',
-                  cardType: 'Visa',
-                  cardName: fileName,
-                  cardNumber: '****',
-                  hasMiles: false,
-                  milesOpening: '0',
-                  milesEarned: '0',
-                  milesBonus: '0',
-                  milesRedeemed: '0',
-                  milesEnding: '0',
-                  milesRates: [],
-                  hasCashback: false,
-                  cashbackEarned: '0.00',
-                  cashbackRates: [],
-                  totalSpend: '0.00',
-                  paymentDueDate: DateTime.now().add(const Duration(days: 30)),
-                )
-              : null,
-          transactions: [],
-        );
+        print('Real-time Gemini extraction failed: $e');
+        rethrow;
       }
     }
 
     if (draftData == null) {
-      throw Exception('Gemini AI extraction failed or is running in offline mode. No data uploaded.');
+      throw Exception('Gemini AI extraction failed. No data extracted.');
     }
 
     // 2. Save draft content to local persistent storage
