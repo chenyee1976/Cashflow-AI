@@ -74,69 +74,73 @@ Analyze the uploaded statement document/image and extract:
    - paymentDueDate: Payment due date in YYYY-MM-DD format (e.g. "2026-07-15").
 
 4. TRANSACTIONS LIST ("extractedTransactions"):
-   CRITICAL REQUIREMENTS:
-   - Extract ALL transaction rows across the ENTIRE statement (Page 1, Page 2, Page 3, etc.).
-   - If the statement contains multiple card sections (e.g. PRINCIPAL CARD and SUPPLEMENTARY / ADDITIONAL CARDS), you MUST extract transactions from BOTH the Principal card and ALL Supplementary card sections.
-   - Do NOT stop parsing after the first section or first page.
-   - DO NOT summarize, aggregate, or sample transactions. Return EVERY individual transaction row:
-   - dateStr: Date formatted as DD MMM YYYY (e.g. "15 Jun 2026", "28 Jul 2026").
-   - merchant: Cleaned merchant or description from statement (e.g. "NTUC FairPrice", "Sheng Siong Supermarket", "PayNow to John", "ATM Cash Withdrawal", "IRAS Tax Payment", "Singtel Bill").
-   - amount: Double value. EXPENSES/PURCHASES MUST BE NEGATIVE (e.g. -42.50), PAYMENTS/CREDITS/INCOME MUST BE POSITIVE (e.g. 150.00).
-   - spendCurrency: For credit cards, IF amount > 0 select "SGD Receipt", else select one of: "SGD Spend", "MYR spend", "IDR spend", "FCY Spend".
-   - categoryValue: Select exact value:
-     * Income: 'income_salary', 'income_transfer', 'income_interest', 'income_investments', 'income_dividends', 'income_other'
-     * Expense: 'expense_transfer_to_cash', 'expense_tax', 'expense_dining', 'expense_groceries', 'expense_transport', 'expense_petrol', 'expense_shopping', 'expense_entertainment', 'expense_travel', 'expense_utilities', 'expense_insurance', 'expense_healthcare', 'expense_education', 'expense_investments', 'expense_transfer', 'expense_other'
-   - milesCashbackCategoryValue: Select exact value: 'Automobile', 'Beauty & Wellness', 'Commute', 'Dining & Food Delivery', 'Entertainment', 'Groceries', 'Kids & Pets', 'Online', 'SimplyGo', 'Shopping', 'Fuel', 'Others'.
+   CRITICAL REQUIREMENTS FOR MULTI-PAGE & SUPPLEMENTARY STATEMENTS:
+   - Extract EVERY transaction row across ALL pages (Page 1 to Page 8).
+   - The statement has multiple card sections: TOK CHEN YEE (Principal Card) AND TEOH LEE CHIN (Supplementary Card). You MUST extract ALL transactions from BOTH card sections.
+   - Return every single transaction (there are 50 to 100+ transactions on this statement). Do not skip, group, sample, or truncate any row.
+   - Use compact key names for high speed and token efficiency:
+     * "d": Date formatted as DD MMM YYYY (e.g. "24 Jun 2026", "01 Jul 2026").
+     * "m": Cleaned merchant/description (e.g. "Cold Storage", "Shopee", "Lotus's Bukit Indah", "Pinduoduo", "Sheng Siong", "Giro Pymt").
+     * "a": Double value. EXPENSES MUST BE NEGATIVE (e.g. -12.71), PAYMENTS/CR MUST BE POSITIVE (e.g. 791.18).
+     * "c": Category value (e.g. 'expense_groceries', 'expense_dining', 'expense_transport', 'expense_shopping', 'expense_utilities', 'expense_other', 'income_transfer').
+     * "cur": Currency spend type if foreign, else "SGD Spend" (or "SGD Receipt" if positive payment).
 
 STRICT SINGAPORE CATEGORIZATION RULES:
-- Interest Earned / INT / INT CR / Bonus Interest / Savings Interest / Credit Int (amount > 0) -> categoryValue 'income_interest'.
-- Salary / Payroll / Bonus / AWS / CPF -> categoryValue 'income_salary'.
-- ATM Cash Withdrawals -> categoryValue 'expense_transfer_to_cash'.
-- Taxes & IRAS -> categoryValue 'expense_tax'.
+- Interest Earned / INT / INT CR / Bonus Interest / Savings Interest / Credit Int (amount > 0) -> 'income_interest'.
+- Salary / Payroll / Bonus / AWS / CPF -> 'income_salary'.
+- ATM Cash Withdrawals -> 'expense_transfer_to_cash'.
+- Taxes & IRAS -> 'expense_tax'.
 - PayNow / FAST / FAST Transfer / Giro / Fund Transfers:
-  * If positive (amount > 0) -> categoryValue 'income_transfer' (Transfer In).
-  * If negative (amount < 0) -> categoryValue 'expense_transfer' (Transfer Out).
-- Insurance (AIA, Prudential, Great Eastern, Aviva, Singlife, NTUC Income, AXA, FWD, Manulife) -> categoryValue 'expense_insurance'.
-- Healthcare (Raffles Medical, Mount Elizabeth, Parkway, Gleneagles, Guardian, Watsons, Polyclinic, Hospitals, Clinics, Dental) -> categoryValue 'expense_healthcare'.
-- Petrol / Gas (Shell, Esso, SPC, Caltex) -> categoryValue 'expense_petrol', milesCategory 'Fuel'.
-- Supermarkets (NTUC FairPrice, Sheng Siong, Cold Storage, Giant, Don Don Donki, Meidi-Ya, Prime Super, RedMart) -> 'expense_groceries', milesCategory 'Groceries'.
-- Transport & Rides (SimplyGo, SMRT, SBS Transit, Grab ride, Gojek, Tada, ComfortDelGro) -> 'expense_transport', milesCategory 'SimplyGo' or 'Commute'.
-- Dining & Delivery (Foodpanda, Deliveroo, GrabFood, McDonald's, Starbucks, Toast Box, Ya Kun, restaurants, cafes, Kopitiam) -> 'expense_dining', milesCategory 'Dining & Food Delivery'.
-- Utilities & Telco (Singtel, StarHub, M1, SP Services, SP Group, PUB, Electricity, Circles.Life, Simba, MyRepublic) -> 'expense_utilities'.
-- Streaming & Entertainment (Netflix, Spotify, Disney+, YouTube, Golden Village, Cathay, Shaw) -> 'expense_entertainment', milesCategory 'Entertainment'.
+  * If positive (amount > 0) -> 'income_transfer' (Transfer In / Payment).
+  * If negative (amount < 0) -> 'expense_transfer' (Transfer Out).
+- Insurance (AIA, Prudential, Great Eastern, Aviva, Singlife, NTUC Income, AXA, FWD, Manulife) -> 'expense_insurance'.
+- Healthcare (Raffles Medical, Mount Elizabeth, Parkway, Gleneagles, Guardian, Watsons, Polyclinic, Hospitals, Clinics, Dental) -> 'expense_healthcare'.
+- Petrol / Gas (Shell, Esso, SPC, Caltex) -> 'expense_petrol'.
+- Supermarkets (NTUC FairPrice, Sheng Siong, Cold Storage, Giant, Don Don Donki, Meidi-Ya, Prime Super, RedMart, Lotus's, Ang Mo Supermarket) -> 'expense_groceries'.
+- Transport & Rides (SimplyGo, BUS/MRT, SMRT, SBS Transit, Grab ride, Gojek, Tada, ComfortDelGro) -> 'expense_transport'.
+- Dining & Delivery (Foodpanda, Deliveroo, GrabFood, McDonald's, Starbucks, Toast Box, Ya Kun, Koufu, Kopitiam, Mixue, Pizza Hut, KFC, TGV, Saizeriya, The Hainan Story, Cantine, Sultan Prata, Coffee Bean) -> 'expense_dining'.
+- Utilities & Telco (Singtel, StarHub, M1, Simba, Vivifi, Eight Telecom, Whiz Communications, SP Services, SP Group, PUB) -> 'expense_utilities'.
+- Streaming & Entertainment (Netflix, Spotify, Disney+, YouTube, Golden Village, Cathay, Shaw) -> 'expense_entertainment'.
 - Travel (SIA, Scoot, Jetstar, AirAsia, Klook, Agoda, Booking.com, Hotels) -> 'expense_travel'.
-- Shopping (Shopee, Lazada, Amazon, Taobao, Uniqlo, Zara, H&M, Takashimaya, Tangs) -> 'expense_shopping', milesCategory 'Shopping'.
+- Shopping (Shopee, Lazada, Amazon, Taobao, Pinduoduo, Uniqlo, Zara, H&M, Takashimaya, Tangs, 7-Eleven, Cheers) -> 'expense_shopping'.
 $userRulesSection
 You MUST return a raw JSON object formatted precisely as follows:
 {
   "accounts": [
     {
-      "bankName": "POSB",
-      "accountName": "POSB eSavings Account",
-      "accountNumber": "123-45678-9",
-      "statementEndingBalance": 1250.50,
+      "bankName": "Maybank",
+      "accountName": "Maybank Family & Friends",
+      "accountNumber": "5188-3467-1139-1003",
+      "statementEndingBalance": 888.92,
       "currency": "SGD",
-      "statementEndingDate": "2026-06-30"
+      "statementEndingDate": "2026-07-25"
     }
   ],
   "cardDraft": {
-    "cardIssuer": "Citibank",
+    "cardIssuer": "Maybank",
     "cardType": "Mastercard",
-    "cardName": "CITI PREMIERMILES WORLD MASTER",
-    "cardNumber": "5425-XXXX-7628",
-    "hasMiles": true,
-    "milesEnding": "12500",
-    "totalSpend": 450.80,
-    "paymentDueDate": "2026-07-15"
+    "cardName": "Maybank Family & Friends Card",
+    "cardNumber": "5188-3467-1139-1003",
+    "hasMiles": false,
+    "hasCashback": true,
+    "cashbackEarned": "51.51",
+    "totalSpend": "944.55",
+    "paymentDueDate": "2026-08-14"
   },
   "extractedTransactions": [
     {
-      "dateStr": "15 Jun 2026",
-      "merchant": "NTUC FairPrice",
-      "amount": -42.50,
-      "spendCurrency": "SGD Spend",
-      "categoryValue": "expense_groceries",
-      "milesCashbackCategoryValue": "Groceries"
+      "d": "24 Jun 2026",
+      "m": "Cold Storage - Suntec",
+      "a": -0.05,
+      "c": "expense_groceries",
+      "cur": "SGD Spend"
+    },
+    {
+      "d": "25 Jun 2026",
+      "m": "Vivifi",
+      "a": -9.00,
+      "c": "expense_utilities",
+      "cur": "SGD Spend"
     }
   ]
 }
@@ -438,8 +442,8 @@ You MUST return a raw JSON object formatted precisely as follows:
 
     final transactions = <ExtractedTransactionDraft>[];
     for (final tx in rawTransactions) {
-      final merchantStr = tx['merchant'] as String? ?? 'Transaction';
-      dynamic amtObj = tx['amount'];
+      final merchantStr = tx['m'] as String? ?? tx['merchant'] as String? ?? 'Transaction';
+      dynamic amtObj = tx['a'] ?? tx['amount'];
       double rawAmount = 0.0;
       if (amtObj is num) {
         rawAmount = amtObj.toDouble();
@@ -447,10 +451,10 @@ You MUST return a raw JSON object formatted precisely as follows:
         rawAmount = double.tryParse(amtObj) ?? 0.0;
       }
 
-      final geminiCat = tx['categoryValue'] as String? ?? 'expense_other';
+      final geminiCat = tx['c'] as String? ?? tx['categoryValue'] as String? ?? 'expense_other';
       final geminiMilesCat = tx['milesCashbackCategoryValue'] as String? ?? 'Others';
-      final spendCur = tx['spendCurrency'] as String? ?? 'SGD Spend';
-      final dateValueStr = tx['date'] as String? ?? tx['dateStr'] as String? ?? '';
+      final spendCur = tx['cur'] as String? ?? tx['spendCurrency'] as String? ?? 'SGD Spend';
+      final dateValueStr = tx['d'] as String? ?? tx['date'] as String? ?? tx['dateStr'] as String? ?? '';
 
       // Pass through Intelligent Classifier + User Learned Rules Engine
       final classified = await MerchantCategoryClassifier.classify(
