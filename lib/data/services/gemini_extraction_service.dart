@@ -142,6 +142,7 @@ You MUST return a raw JSON object formatted precisely as follows:
 ''';
 
     String? jsonResponseText;
+    Map<String, dynamic>? parsedJsonMap;
     Object? lastErr;
 
     final stopwatch = Stopwatch()..start();
@@ -203,9 +204,17 @@ You MUST return a raw JSON object formatted precisely as follows:
               if (parts != null && parts.isNotEmpty) {
                 final text = parts[0]['text'] as String?;
                 if (text != null && text.isNotEmpty) {
-                  jsonResponseText = text;
-                  print('Successfully extracted using Vercel Serverless Proxy model: $mName');
-                  break;
+                  // Validate that the JSON can be parsed or repaired
+                  final validatedJson = _tryParseOrRepairJson(text);
+                  if (validatedJson != null) {
+                    jsonResponseText = text;
+                    parsedJsonMap = validatedJson;
+                    print('Successfully extracted and validated JSON using model: $mName');
+                    break;
+                  } else {
+                    print('Model $mName produced unparsable JSON, attempting next model engine...');
+                    lastErr = 'Model $mName produced unparsable JSON text (length: ${text.length})';
+                  }
                 }
               }
             }
@@ -239,59 +248,19 @@ You MUST return a raw JSON object formatted precisely as follows:
         break;
       }
 
-      if (jsonResponseText != null && jsonResponseText.isNotEmpty) {
+      if (parsedJsonMap != null) {
         break;
       }
     }
 
-    if (jsonResponseText == null || jsonResponseText.isEmpty) {
+    if (parsedJsonMap == null) {
       AnalyticsService().logEvent('gemini_extraction_failed', parameters: {
         'error': lastErr.toString(),
       });
-      throw Exception('Gemini API extraction failed across models. Last error: $lastErr');
-    }
-    final text = jsonResponseText;
-
-    // 5. Decode JSON and map to target structures with robust repair
-    String cleanText = text.trim();
-    if (cleanText.contains('```') || !cleanText.startsWith('{')) {
-      final start = cleanText.indexOf('{');
-      final end = cleanText.lastIndexOf('}');
-      if (start != -1 && end != -1) {
-        cleanText = cleanText.substring(start, end + 1);
-      }
+      throw Exception('Gemini API extraction failed across all models. Last error: $lastErr');
     }
 
-    Map<String, dynamic> parsed;
-    try {
-      parsed = jsonDecode(cleanText) as Map<String, dynamic>;
-    } catch (e) {
-      // Robust repair fallback for unescaped newlines, tabs, and unescaped quotes
-      try {
-        String repaired = cleanText
-            .replaceAll(RegExp(r'[\x00-\x09\x0B\x0C\x0E-\x1F]'), ' ')
-            .replaceAll(r'\"', '"')
-            .replaceAll(RegExp(r',\s*([\}\]])'), r'$1');
-
-        parsed = jsonDecode(repaired) as Map<String, dynamic>;
-      } catch (_) {
-        // Second level repair: extract outermost JSON block
-        try {
-          final start = cleanText.indexOf('{');
-          final end = cleanText.lastIndexOf('}');
-          if (start != -1 && end != -1 && end > start) {
-            String fixed = cleanText.substring(start, end + 1);
-            fixed = fixed.replaceAll(RegExp(r',\s*([\}\]])'), r'$1');
-            parsed = jsonDecode(fixed) as Map<String, dynamic>;
-          } else {
-            rethrow;
-          }
-        } catch (finalErr) {
-          debugPrint('JSON Decode failed even after repair attempts: $finalErr');
-          rethrow;
-        }
-      }
-    }
+    final Map<String, dynamic> parsed = parsedJsonMap;
 
     final List<dynamic> rawAccounts = (parsed['accounts'] as List<dynamic>?) ?? 
         (parsed['accountList'] as List<dynamic>?) ?? 
@@ -557,5 +526,82 @@ User input phrase: "$inputPhrase"
       'amount': (parsed['amount'] as num? ?? 0.0).toDouble(),
       'categoryValue': parsed['categoryValue']?.toString() ?? 'expense_other',
     };
+  }
+
+  /// Progressively tries to decode and repair potentially truncated or malformed JSON from Gemini LLM
+  static Map<String, dynamic>? _tryParseOrRepairJson(String raw) {
+    String cleanText = raw.trim();
+    if (cleanText.contains('```') || !cleanText.startsWith('{')) {
+      final start = cleanText.indexOf('{');
+      final end = cleanText.lastIndexOf('}');
+      if (start != -1 && end != -1 && end > start) {
+        cleanText = cleanText.substring(start, end + 1);
+      }
+    }
+
+    // 1. Direct standard parse
+    try {
+      final res = jsonDecode(cleanText);
+      if (res is Map<String, dynamic>) return res;
+    } catch (_) {}
+
+    // 2. Remove control characters and normalize escaped quotes and trailing commas
+    try {
+      String repaired = cleanText
+          .replaceAll(RegExp(r'[\x00-\x09\x0B\x0C\x0E-\x1F]'), ' ')
+          .replaceAll(r'\"', '"')
+          .replaceAll(RegExp(r',\s*([\}\]])'), r'$1');
+
+      final res = jsonDecode(repaired);
+      if (res is Map<String, dynamic>) return res;
+    } catch (_) {}
+
+    // 3. Handle truncated JSON array / object from token limits by auto-closing brackets
+    try {
+      String truncated = cleanText
+          .replaceAll(RegExp(r'[\x00-\x09\x0B\x0C\x0E-\x1F]'), ' ')
+          .replaceAll(r'\"', '"');
+
+      // Cut off incomplete trailing JSON tokens (e.g. incomplete key/value at the end)
+      final lastClosingBrace = truncated.lastIndexOf('}');
+      if (lastClosingBrace != -1) {
+        String sub = truncated.substring(0, lastClosingBrace + 1);
+        sub = sub.replaceAll(RegExp(r',\s*([\}\]])'), r'$1');
+        // Count unclosed brackets
+        int openBraces = 0;
+        int openBrackets = 0;
+        for (int i = 0; i < sub.length; i++) {
+          final c = sub[i];
+          if (c == '{') openBraces++;
+          if (c == '}') openBraces--;
+          if (c == '[') openBrackets++;
+          if (c == ']') openBrackets--;
+        }
+        while (openBrackets > 0) {
+          sub += ']';
+          openBrackets--;
+        }
+        while (openBraces > 0) {
+          sub += '}';
+          openBraces--;
+        }
+        final res = jsonDecode(sub);
+        if (res is Map<String, dynamic>) return res;
+      }
+    } catch (_) {}
+
+    // 4. Outermost bracket extraction fallback
+    try {
+      final start = cleanText.indexOf('{');
+      final end = cleanText.lastIndexOf('}');
+      if (start != -1 && end != -1 && end > start) {
+        String fixed = cleanText.substring(start, end + 1);
+        fixed = fixed.replaceAll(RegExp(r',\s*([\}\]])'), r'$1');
+        final res = jsonDecode(fixed);
+        if (res is Map<String, dynamic>) return res;
+      }
+    } catch (_) {}
+
+    return null;
   }
 }
