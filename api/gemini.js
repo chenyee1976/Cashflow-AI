@@ -86,7 +86,7 @@ module.exports = async (req, res) => {
       const model = uniqueModels[i];
       try {
         const remainingTimeMs = Math.max(5000, 52000 - (Date.now() - startTime));
-        const perAttemptTimeout = Math.min(25000, remainingTimeMs);
+        const perAttemptTimeout = Math.min(42000, remainingTimeMs);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), perAttemptTimeout);
 

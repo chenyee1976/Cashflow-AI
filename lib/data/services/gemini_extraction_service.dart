@@ -167,7 +167,7 @@ You MUST return a raw JSON object formatted precisely as follows:
             headers['x-gemini-key'] = _apiKey;
           }
 
-          final perAttemptSeconds = (50 - stopwatch.elapsed.inSeconds).clamp(10, 45);
+          final perAttemptSeconds = 75;
 
           final proxyRes = await dio.post(
             '/api/gemini?model=$mName',
