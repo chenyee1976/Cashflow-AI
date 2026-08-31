@@ -261,6 +261,7 @@ You MUST return a raw JSON object formatted precisely as follows:
     }
 
     final Map<String, dynamic> parsed = parsedJsonMap;
+    final String cleanText = (jsonResponseText ?? '').trim();
 
     final List<dynamic> rawAccounts = (parsed['accounts'] as List<dynamic>?) ?? 
         (parsed['accountList'] as List<dynamic>?) ?? 
