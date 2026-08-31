@@ -74,17 +74,17 @@ Analyze the uploaded statement document/image and extract:
    - paymentDueDate: Payment due date in YYYY-MM-DD format (e.g. "2026-07-15").
 
 4. TRANSACTIONS LIST ("extractedTransactions"):
-   CRITICAL REQUIREMENTS FOR MULTI-PAGE & SUPPLEMENTARY STATEMENTS:
-   - Extract EVERY transaction row across ALL pages of the statement (Page 1 to the final page).
-   - If the statement contains multiple card sections or multiple cardholders (e.g. Principal Cardmember AND any Supplementary / Additional Cardmembers), you MUST extract ALL transactions from BOTH the Principal card section AND ALL Supplementary card sections.
-   - Do NOT stop parsing when reaching the end of the first cardholder section or page.
-   - Return every single transaction (even if there are 50 to 100+ transactions on the statement). Do not skip, group, sample, or truncate any row.
-   - Use compact key names for high speed and token efficiency:
-     * "d": Date formatted as DD MMM YYYY (e.g. "24 Jun 2026", "01 Jul 2026").
-     * "m": Cleaned merchant/description (e.g. "Cold Storage", "Shopee", "Lotus's Bukit Indah", "Pinduoduo", "Sheng Siong", "Giro Pymt").
-     * "a": Double value. EXPENSES MUST BE NEGATIVE (e.g. -12.71), PAYMENTS/CR MUST BE POSITIVE (e.g. 791.18).
-     * "c": Category value (e.g. 'expense_groceries', 'expense_dining', 'expense_transport', 'expense_shopping', 'expense_utilities', 'expense_other', 'income_transfer').
-     * "cur": Currency spend type if foreign, else "SGD Spend" (or "SGD Receipt" if positive payment).
+   CRITICAL RULES TO EXTRACT ALL 90+ TRANSACTIONS:
+   - This document contains multiple transaction tables across pages 1, 2, 3, 4, and 5.
+   - You MUST read and extract EVERY transaction row from EVERY page sequentially.
+   - Extract rows from the Principal card table (e.g. Page 1, Page 2, Page 3, Page 4) AND CONTINUE extracting from the Supplementary / Additional card table (e.g. Page 4, Page 5).
+   - DO NOT stop after Page 2 or Page 3. DO NOT group, summarize, or sample transactions. Return the full list of all 90+ rows.
+   - Use compact single-letter keys to maximize token space:
+     * "d": Date formatted as DD MMM YYYY (e.g. "25 May 2026", "04 Jun 2026", "23 Jun 2026"). Look at the TRANSACTION DATE column.
+     * "m": Clean merchant/description (e.g. "Vivifi", "McDonalds", "Lotus's KSL City", "Sheng Siong", "Shopee", "Taobao", "Pinduoduo", "Giro Pymt").
+     * "a": Transaction amount double. EXPENSES / PURCHASES MUST BE NEGATIVE (e.g. -9.00, -35.88), CREDITS / PAYMENTS / CASHBACK MUST BE POSITIVE (e.g. 57.71, 888.73). Look for "CR" suffix for positive values.
+     * "c": Exact category (e.g. 'expense_groceries', 'expense_dining', 'expense_transport', 'expense_shopping', 'expense_utilities', 'expense_other', 'income_transfer').
+     * "cur": "SGD Spend" (or "SGD Receipt" if CR / Payment, or "MYR spend" / "FCY Spend" if foreign).
 
 STRICT SINGAPORE CATEGORIZATION RULES:
 - Interest Earned / INT / INT CR / Bonus Interest / Savings Interest / Credit Int (amount > 0) -> 'income_interest'.
@@ -112,9 +112,9 @@ You MUST return a raw JSON object formatted precisely as follows:
       "bankName": "Bank Name",
       "accountName": "Account or Card Product Name",
       "accountNumber": "1234-5678-9012-3456",
-      "statementEndingBalance": 888.92,
+      "statementEndingBalance": 876.32,
       "currency": "SGD",
-      "statementEndingDate": "2026-07-25"
+      "statementEndingDate": "2026-06-25"
     }
   ],
   "cardDraft": {
@@ -124,23 +124,24 @@ You MUST return a raw JSON object formatted precisely as follows:
     "cardNumber": "1234-5678-9012-3456",
     "hasMiles": false,
     "hasCashback": true,
-    "cashbackEarned": "51.51",
-    "totalSpend": "944.55",
-    "paymentDueDate": "2026-08-14"
+    "cashbackEarned": "57.71",
+    "totalSpend": "905.46",
+    "statementEndingDate": "2026-06-25",
+    "paymentDueDate": "2026-07-15"
   },
   "extractedTransactions": [
     {
-      "d": "24 Jun 2026",
-      "m": "Cold Storage - Suntec",
-      "a": -0.05,
-      "c": "expense_groceries",
-      "cur": "SGD Spend"
-    },
-    {
-      "d": "25 Jun 2026",
+      "d": "25 May 2026",
       "m": "Vivifi",
       "a": -9.00,
       "c": "expense_utilities",
+      "cur": "SGD Spend"
+    },
+    {
+      "d": "25 May 2026",
+      "m": "McDonalds 930234",
+      "a": -1.00,
+      "c": "expense_dining",
       "cur": "SGD Spend"
     }
   ]
