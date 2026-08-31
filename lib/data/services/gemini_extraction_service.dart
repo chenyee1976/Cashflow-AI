@@ -74,10 +74,10 @@ Analyze the uploaded statement document/image and extract:
    - paymentDueDate: Payment due date in YYYY-MM-DD format (e.g. "2026-07-15").
 
 4. TRANSACTIONS LIST ("extractedTransactions"):
-   Extract EVERY transaction row listed on the statement:
+   CRITICAL: Extract ALL transaction rows listed on the statement across all pages. DO NOT summarize, aggregate, or sample transactions. Return the full complete list:
    - dateStr: Date formatted as DD MMM YYYY (e.g. "15 Jun 2026", "28 Jul 2026").
    - merchant: Cleaned merchant or description from statement (e.g. "NTUC FairPrice", "Sheng Siong Supermarket", "PayNow to John", "ATM Cash Withdrawal", "IRAS Tax Payment", "Singtel Bill").
-   - amount: Double value. EXPENSES MUST BE NEGATIVE (e.g. -42.50), INCOME/DEPOSITS MUST BE POSITIVE (e.g. 150.00).
+   - amount: Double value. EXPENSES/PURCHASES MUST BE NEGATIVE (e.g. -42.50), PAYMENTS/CREDITS/INCOME MUST BE POSITIVE (e.g. 150.00).
    - spendCurrency: For credit cards, IF amount > 0 select "SGD Receipt", else select one of: "SGD Spend", "MYR spend", "IDR spend", "FCY Spend".
    - categoryValue: Select exact value:
      * Income: 'income_salary', 'income_transfer', 'income_interest', 'income_investments', 'income_dividends', 'income_other'
