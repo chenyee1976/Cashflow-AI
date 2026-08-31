@@ -177,7 +177,10 @@ You MUST return a raw JSON object. IMPORTANT: Output "extractedTransactions" FIR
               ],
               'generationConfig': {
                 'responseMimeType': 'application/json',
-                'maxOutputTokens': 65536,
+                'maxOutputTokens': 16384,
+                'thinkingConfig': {
+                  'thinkingBudget': 0,
+                },
               },
             },
             options: Options(

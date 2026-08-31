@@ -63,7 +63,18 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+    let parsedBody = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+    // Ensure thinkingBudget is 0 so Gemini 3.x doesn't waste 30s generating thinking tokens
+    if (parsedBody && typeof parsedBody === 'object') {
+      parsedBody.generationConfig = parsedBody.generationConfig || {};
+      if (!parsedBody.generationConfig.thinkingConfig) {
+        parsedBody.generationConfig.thinkingConfig = { thinkingBudget: 0 };
+      }
+      if (!parsedBody.generationConfig.maxOutputTokens || parsedBody.generationConfig.maxOutputTokens > 16384) {
+        parsedBody.generationConfig.maxOutputTokens = 16384;
+      }
+    }
+    const body = JSON.stringify(parsedBody);
     const requestedModel = req.query.model;
 
     // Verified-working models ordered by reliability and speed (tested 2026-08-31):
@@ -79,20 +90,18 @@ module.exports = async (req, res) => {
     let lastErrorResponse = null;
     let lastStatus = 500;
     const startTime = Date.now();
-    const TOTAL_BUDGET_MS = 58000; // Stay within Vercel Free 60s limit
+    const TOTAL_BUDGET_MS = 55000; // Safely within Vercel Free 60s limit
 
     for (let i = 0; i < uniqueModels.length; i++) {
       const elapsed = Date.now() - startTime;
       if (elapsed >= TOTAL_BUDGET_MS) break;
       const model = uniqueModels[i];
       try {
-        // Give the first model nearly the full budget (55s) since large PDFs need 30-50s.
-        // Subsequent models get whatever time remains.
         const remainingMs = TOTAL_BUDGET_MS - (Date.now() - startTime);
         const perAttemptTimeout = i === 0
-          ? Math.min(55000, remainingMs - 1000)
-          : Math.min(55000, Math.max(5000, remainingMs - 1000));
-        if (perAttemptTimeout < 5000) break; // Not enough time for another attempt
+          ? Math.min(50000, remainingMs - 1000)
+          : Math.min(50000, Math.max(5000, remainingMs - 1000));
+        if (perAttemptTimeout < 5000) break;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), perAttemptTimeout);
