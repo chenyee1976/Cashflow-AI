@@ -635,9 +635,9 @@ class CardRulesRegistry {
       roundingMethod: RoundingMethod.keepDecimal,
       defaultLocalRate: 0.22, // 0.22% base cashback
       defaultRatesList: [
-        {'category': 'Base Rate (All Spend)', 'rate': '0.22', 'minSpend': '', 'maxSpend': ''},
-        {'category': 'Bonus Tier 1 (5 Selected Categories + MYR + IDR, min S\$800 spend)', 'rate': '6.0', 'minSpend': '800', 'maxSpend': '333.33'},
-        {'category': 'Bonus Tier 2 (5 Selected Categories + MYR + IDR, min S\$1600 spend - 6% Groceries, 8% others)', 'rate': '8.0', 'minSpend': '1600', 'maxSpend': '375.00'},
+        {'category': 'Base Rate', 'rate': '0.22', 'minSpend': '', 'maxSpend': ''},
+        {'category': 'Bonus Tier 1', 'rate': '6.0', 'minSpend': '800', 'maxSpend': '333.33'},
+        {'category': 'Bonus Tier 2', 'rate': '8.0', 'minSpend': '1600', 'maxSpend': '375.00'},
       ],
     ),
     'maybank_platinum_visa_card': const CardCalculationRule(

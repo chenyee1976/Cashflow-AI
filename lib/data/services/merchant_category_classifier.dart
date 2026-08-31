@@ -194,6 +194,10 @@ class MerchantCategoryClassifier {
 
     // 10. Transport / Commute / SimplyGo
     if (lower.contains('simplygo') ||
+        lower.contains('bus/mrt') ||
+        lower.contains('bus / mrt') ||
+        lower.contains('bus') ||
+        lower.contains('mrt') ||
         (lower.contains('grab') && !lower.contains('food') && !lower.contains('mart')) ||
         lower.contains('gojek') ||
         lower.contains('tada') ||
@@ -334,8 +338,10 @@ class MerchantCategoryClassifier {
       );
     }
 
-    // 17. Shopping & E-commerce
-    if (lower.contains('shopee') ||
+    // 17. Shopping & E-commerce (Shopee, Lazada, Taobao, Pinduoduo, Amazon)
+    if (lower.contains('pinduoduo') ||
+        lower.contains('pdd') ||
+        lower.contains('shopee') ||
         lower.contains('lazada') ||
         lower.contains('amazon') ||
         lower.contains('taobao') ||
@@ -351,9 +357,15 @@ class MerchantCategoryClassifier {
         lower.contains('takashimaya') ||
         lower.contains('tang plaza') ||
         lower.contains('isetan')) {
+      final isOnline = lower.contains('pinduoduo') ||
+          lower.contains('pdd') ||
+          lower.contains('shopee') ||
+          lower.contains('lazada') ||
+          lower.contains('amazon') ||
+          lower.contains('taobao');
       return ClassificationResult(
         expenseCategory: 'expense_shopping',
-        milesCategory: 'Shopping',
+        milesCategory: isOnline ? 'Online Shopping' : 'Shopping',
       );
     }
 

@@ -150,7 +150,10 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
 
   static const List<String> _categoryOptions = [
     'All spend',
+    'Base Rate',
     'Base Rate (All Spend)',
+    'Bonus Tier 1',
+    'Bonus Tier 2',
     'SGD Spend',
     'FCY Spend',
     'MYR Spend',
@@ -170,6 +173,47 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
     'Fuel',
     'Others',
   ];
+
+  static String? _getCategoryInfo(String cat) {
+    final c = cat.trim();
+    if (c == 'Base Rate' || c == 'Base Rate (All Spend)') {
+      return 'Base Rate (All Spend): 0.22% base cashback earned on all eligible general retail spend without minimum spend requirements.';
+    }
+    if (c == 'Bonus Tier 1' || c.startsWith('Bonus Tier 1')) {
+      return 'Bonus Tier 1 (5 Selected Categories + MYR + IDR, min S\$800 spend): 6% Cashback on 5 selected preferred categories + all Malaysian Ringgit (MYR) & Indonesian Rupiah (IDR) spend (Min. spend S\$800/month, Max spend cap: S\$333.33/category).';
+    }
+    if (c == 'Bonus Tier 2' || c.startsWith('Bonus Tier 2')) {
+      return 'Bonus Tier 2 (5 Selected Categories + MYR + IDR, min S\$1600 spend): 8% Cashback on 5 selected preferred categories (6% Groceries) + all Malaysian Ringgit (MYR) & Indonesian Rupiah (IDR) spend (Min. spend S\$1,600/month, Max spend cap: S\$375.00/category).';
+    }
+    return null;
+  }
+
+  void _showCategoryInfoDialog(BuildContext context, String cat) {
+    final info = _getCategoryInfo(cat) ?? cat;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.info_outline, color: AppColors.primary, size: 22),
+            const SizedBox(width: 8),
+            Expanded(child: Text(cat, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+          ],
+        ),
+        content: Text(
+          info,
+          style: const TextStyle(fontSize: 14, height: 1.4, color: AppColors.textPrimary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Got it', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+          ),
+        ],
+      ),
+    );
+  }
 
   static const List<String> _ccTransactionCategoryOptions = [
     'Automobile',
@@ -342,9 +386,9 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
               }
             } else if (isMaybankFamily) {
               _cashbackRates.addAll([
-                ReviewRateItem(category: 'Base Rate (All Spend)', rate: '0.22', minSpend: '', maxSpend: ''),
-                ReviewRateItem(category: 'MYR Spend', rate: '6.0', minSpend: '800', maxSpend: '333.33'),
-                ReviewRateItem(category: 'IDR Spend', rate: '6.0', minSpend: '800', maxSpend: '333.33'),
+                ReviewRateItem(category: 'Base Rate', rate: '0.22', minSpend: '', maxSpend: ''),
+                ReviewRateItem(category: 'Bonus Tier 1', rate: '6.0', minSpend: '800', maxSpend: '333.33'),
+                ReviewRateItem(category: 'Bonus Tier 2', rate: '8.0', minSpend: '1600', maxSpend: '375.00'),
               ]);
               _cashbackMinSpendCtrl.text = '';
               _cashbackMaxSpendCtrl.text = '333.33';
@@ -516,9 +560,9 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                 }
               } else if (isMaybankFamily) {
                 _cashbackRates.addAll([
-                  ReviewRateItem(category: 'Base Rate (All Spend)', rate: '0.22', minSpend: '', maxSpend: ''),
-                  ReviewRateItem(category: 'MYR Spend', rate: '6.0', minSpend: '800', maxSpend: '333.33'),
-                  ReviewRateItem(category: 'IDR Spend', rate: '6.0', minSpend: '800', maxSpend: '333.33'),
+                  ReviewRateItem(category: 'Base Rate', rate: '0.22', minSpend: '', maxSpend: ''),
+                  ReviewRateItem(category: 'Bonus Tier 1', rate: '6.0', minSpend: '800', maxSpend: '333.33'),
+                  ReviewRateItem(category: 'Bonus Tier 2', rate: '8.0', minSpend: '1600', maxSpend: '375.00'),
                 ]);
                 _cashbackMinSpendCtrl.text = '';
                 _cashbackMaxSpendCtrl.text = '333.33';
@@ -1686,10 +1730,28 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                                 contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                 border: OutlineInputBorder(),
                                               ),
+                                              selectedItemBuilder: (context) => (tx.amount > 0 ? TransactionCategory.incomeCategories : TransactionCategory.expenseCategories)
+                                                  .map((cat) => Align(
+                                                        alignment: Alignment.centerLeft,
+                                                        child: Text(
+                                                          cat.displayName,
+                                                          style: const TextStyle(fontSize: 10, height: 1.15),
+                                                          maxLines: 2,
+                                                          softWrap: true,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ))
+                                                  .toList(),
                                               items: (tx.amount > 0 ? TransactionCategory.incomeCategories : TransactionCategory.expenseCategories)
                                                   .map((cat) => DropdownMenuItem(
                                                         value: cat,
-                                                        child: Text(cat.displayName, style: const TextStyle(fontSize: 10)),
+                                                        child: Text(
+                                                          cat.displayName,
+                                                          style: const TextStyle(fontSize: 10, height: 1.15),
+                                                          maxLines: 2,
+                                                          softWrap: true,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
                                                       ))
                                                   .toList(),
                                               onChanged: (newCat) {
@@ -1717,10 +1779,28 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                                                 contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                 border: OutlineInputBorder(),
                                               ),
+                                              selectedItemBuilder: (context) => _ccTransactionCategoryOptions
+                                                  .map((cat) => Align(
+                                                        alignment: Alignment.centerLeft,
+                                                        child: Text(
+                                                          cat,
+                                                          style: const TextStyle(fontSize: 10, height: 1.15),
+                                                          maxLines: 2,
+                                                          softWrap: true,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ))
+                                                  .toList(),
                                               items: _ccTransactionCategoryOptions
                                                   .map((cat) => DropdownMenuItem(
                                                         value: cat,
-                                                        child: Text(cat, style: const TextStyle(fontSize: 10)),
+                                                        child: Text(
+                                                          cat,
+                                                          style: const TextStyle(fontSize: 10, height: 1.15),
+                                                          maxLines: 2,
+                                                          softWrap: true,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
                                                       ))
                                                   .toList(),
                                               onChanged: (newCat) {
@@ -2049,6 +2129,8 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
   Widget _buildRewardRateItem(ReviewRateItem rate, int index, bool isMiles) {
     final hasOthersCategory = rate.category == 'Others';
     final isFirstRow = index == 0;
+    final infoText = _getCategoryInfo(rate.category);
+
     return Padding(
       padding: EdgeInsets.only(bottom: isFirstRow ? 6.0 : 4.0),
       child: Column(
@@ -2062,10 +2144,22 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (isFirstRow) ...[
-                      const Text('CATEGORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
-                      const SizedBox(height: 6),
-                    ],
+                    Row(
+                      children: [
+                        if (isFirstRow)
+                          const Text('CATEGORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary))
+                        else
+                          const SizedBox(height: 14),
+                        if (infoText != null) ...[
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            onTap: () => _showCategoryInfoDialog(context, rate.category),
+                            child: const Icon(Icons.info_outline, size: 14, color: AppColors.primary),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
                     Builder(
                       builder: (context) {
                         String resolvedCategory = 'Others';
@@ -2077,12 +2171,34 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
 
                         return DropdownButtonFormField<String>(
                           value: resolvedCategory,
+                          isExpanded: true,
                           decoration: const InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                             border: OutlineInputBorder(),
                           ),
+                          selectedItemBuilder: (context) => optionsList
+                              .map((cat) => Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      cat,
+                                      style: const TextStyle(fontSize: 11, height: 1.15),
+                                      maxLines: 2,
+                                      softWrap: true,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ))
+                              .toList(),
                           items: optionsList
-                              .map((cat) => DropdownMenuItem(value: cat, child: Text(cat, style: const TextStyle(fontSize: 12))))
+                              .map((cat) => DropdownMenuItem(
+                                    value: cat,
+                                    child: Text(
+                                      cat,
+                                      style: const TextStyle(fontSize: 11, height: 1.15),
+                                      maxLines: 2,
+                                      softWrap: true,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ))
                               .toList(),
                           onChanged: (newCat) {
                             if (newCat != null) {
@@ -2176,6 +2292,8 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
     required String label,
     TextInputType keyboardType = TextInputType.text,
     ValueChanged<String>? onChanged,
+    int? maxLines = 1,
+    int? minLines,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2189,11 +2307,13 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
           controller: controller,
           keyboardType: keyboardType,
           onChanged: onChanged,
-          style: const TextStyle(fontSize: 14),
+          maxLines: maxLines,
+          minLines: minLines,
+          style: const TextStyle(fontSize: 13, height: 1.25),
           decoration: InputDecoration(
             fillColor: AppColors.white,
             filled: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.divider)),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.divider)),
           ),
@@ -2278,9 +2398,9 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: _buildInputField(controller: _cardNameCtrl, label: 'CARD NAME')),
+                  Expanded(child: _buildInputField(controller: _cardNameCtrl, label: 'CARD NAME', maxLines: 2, minLines: 1)),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildInputField(controller: _cardNumberCtrl, label: 'CARD NUMBER')),
+                  Expanded(child: _buildInputField(controller: _cardNumberCtrl, label: 'CARD NUMBER', maxLines: 2, minLines: 1)),
                 ],
               ),
             ],
