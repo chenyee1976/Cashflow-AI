@@ -14,26 +14,30 @@ module.exports = async (req, res) => {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (body) {
-        const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'Unknown IP';
         const incomingItems = Array.isArray(body) ? body : [body];
 
-        const rows = incomingItems.map(item => ({
-          user_hash: item.userHash || 'anonymous',
-          month_year: item.monthYear || new Date().toISOString().substring(0, 7),
-          bank_statements_count: item.bankStatementsCount || 0,
-          card_statements_count: item.cardStatementsCount || 0,
-          net_cash_position: item.netCashPosition || 0.0,
-          monthly_income: item.monthlyIncome || 0.0,
-          monthly_expenses: item.monthlyExpenses || 0.0,
-          category_breakdown: item.categoryBreakdown || {},
-          total_miles_balance: item.totalMilesBalance || 0.0,
-          total_cashback_earned: item.totalCashbackEarned || 0.0,
-          manual_input_count: item.manualInputCount || 0,
-          voice_upload_count: item.voiceUploadCount || 0,
-          report_view_count: item.reportViewCount || 0,
-          report_download_count: item.reportDownloadCount || 0,
-          last_synced_at: new Date().toISOString(),
-        }));
+        const rows = incomingItems.map(item => {
+          // Store all custom telemetry (manual inputs, voice uploads, report views/downloads) inside category_breakdown jsonb
+          const categoryMap = item.categoryBreakdown || {};
+          if (item.manualInputCount) categoryMap._meta_manual_inputs = item.manualInputCount;
+          if (item.voiceUploadCount) categoryMap._meta_voice_uploads = item.voiceUploadCount;
+          if (item.reportViewCount) categoryMap._meta_report_views = item.reportViewCount;
+          if (item.reportDownloadCount) categoryMap._meta_report_downloads = item.reportDownloadCount;
+
+          return {
+            user_hash: item.userHash || 'anonymous',
+            month_year: item.monthYear || new Date().toISOString().substring(0, 7),
+            bank_statements_count: item.bankStatementsCount || 0,
+            card_statements_count: item.cardStatementsCount || 0,
+            net_cash_position: item.netCashPosition || 0.0,
+            monthly_income: item.monthlyIncome || 0.0,
+            monthly_expenses: item.monthlyExpenses || 0.0,
+            category_breakdown: categoryMap,
+            total_miles_balance: item.totalMilesBalance || 0.0,
+            total_cashback_earned: item.totalCashbackEarned || 0.0,
+            last_synced_at: new Date().toISOString(),
+          };
+        });
 
         const response = await fetch(`${SUPABASE_URL}/rest/v1/monthly_aggregate_metrics`, {
           method: 'POST',
@@ -41,7 +45,7 @@ module.exports = async (req, res) => {
             'Content-Type': 'application/json',
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Prefer': 'resolution=merge-duplicates',
+            'Prefer': 'return=minimal',
           },
           body: JSON.stringify(rows),
         });
