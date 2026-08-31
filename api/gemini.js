@@ -66,13 +66,14 @@ module.exports = async (req, res) => {
     const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
     const requestedModel = req.query.model;
 
-    // Fast, production-ready active models in order of proven response speed and reliability
+    // Fast, production-ready active models in order of verified availability and speed
     const priorityModels = [
       ...(requestedModel ? [requestedModel] : []),
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
       'gemini-flash-latest',
+      'gemini-3.7-flash',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash',
+      'gemini-pro-latest',
     ];
     const uniqueModels = [...new Set(priorityModels)];
 
