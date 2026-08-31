@@ -105,46 +105,34 @@ STRICT SINGAPORE CATEGORIZATION RULES:
 - Travel (SIA, Scoot, Jetstar, AirAsia, Klook, Agoda, Booking.com, Hotels) -> 'expense_travel'.
 - Shopping (Shopee, Lazada, Amazon, Taobao, Pinduoduo, Uniqlo, Zara, H&M, Takashimaya, Tangs, 7-Eleven, Cheers) -> 'expense_shopping'.
 $userRulesSection
-You MUST return a raw JSON object formatted precisely as follows:
+You MUST return a raw JSON object. IMPORTANT: Output "extractedTransactions" FIRST, before "accounts" and "cardDraft", using this exact structure:
 {
+  "extractedTransactions": [
+    {"d": "25 May 2026", "m": "Vivifi", "a": -9.00, "c": "expense_utilities", "cur": "SGD Spend"},
+    {"d": "25 May 2026", "m": "McDonalds 930234", "a": -1.00, "c": "expense_dining", "cur": "SGD Spend"}
+  ],
   "accounts": [
     {
       "bankName": "Bank Name",
-      "accountName": "Account or Card Product Name",
-      "accountNumber": "1234-5678-9012-3456",
+      "accountName": "Account Name",
+      "accountNumber": "1234-5678-9",
       "statementEndingBalance": 876.32,
       "currency": "SGD",
       "statementEndingDate": "2026-06-25"
     }
   ],
   "cardDraft": {
-    "cardIssuer": "Bank Issuer",
+    "cardIssuer": "Maybank",
     "cardType": "Mastercard",
     "cardName": "Full Card Product Name",
-    "cardNumber": "1234-5678-9012-3456",
+    "cardNumber": "5425-XXXX-7628",
     "hasMiles": false,
     "hasCashback": true,
     "cashbackEarned": "57.71",
     "totalSpend": "905.46",
     "statementEndingDate": "2026-06-25",
     "paymentDueDate": "2026-07-15"
-  },
-  "extractedTransactions": [
-    {
-      "d": "25 May 2026",
-      "m": "Vivifi",
-      "a": -9.00,
-      "c": "expense_utilities",
-      "cur": "SGD Spend"
-    },
-    {
-      "d": "25 May 2026",
-      "m": "McDonalds 930234",
-      "a": -1.00,
-      "c": "expense_dining",
-      "cur": "SGD Spend"
-    }
-  ]
+  }
 }
 ''';
 
@@ -189,7 +177,7 @@ You MUST return a raw JSON object formatted precisely as follows:
               ],
               'generationConfig': {
                 'responseMimeType': 'application/json',
-                'maxOutputTokens': 8192,
+                'maxOutputTokens': 65536,
               },
             },
             options: Options(
