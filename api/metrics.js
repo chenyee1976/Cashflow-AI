@@ -34,6 +34,7 @@ module.exports = async (req, res) => {
             bank_statements_count: item.bankStatementsCount || 0,
             card_statements_count: item.cardStatementsCount || 0,
             net_cash_position: item.netCashPosition || 0.0,
+            net_cash_flow: item.netCashFlow || 0.0,
             monthly_income: item.monthlyIncome || 0.0,
             monthly_expenses: item.monthlyExpenses || 0.0,
             monthly_transfers: item.monthlyTransfers || 0.0,

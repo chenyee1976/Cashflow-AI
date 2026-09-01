@@ -205,11 +205,12 @@ class AggregateMetricsSyncService {
           monthNetCash += (cashOnHandBase + cashAdjustmentsTotal);
         }
 
-        // 3. Monthly Income, Expenses, Transfers & Structured Category Breakdown
+        // 3. Monthly Income, Expenses, Net Transfers & Structured Category Breakdown
         final monthTxs = allTxs.where((tx) => tx.date >= startTimestamp && tx.date <= endTimestamp).toList();
         double monthlyIncome = 0.0;
         double monthlyExpenses = 0.0;
-        double monthlyTransfers = 0.0;
+        double transfersIn = 0.0;
+        double transfersOut = 0.0;
         final Map<String, double> incomeCategoryMap = {};
         final Map<String, double> expenseCategoryMap = {};
         int manualInputCount = 0;
@@ -219,10 +220,14 @@ class AggregateMetricsSyncService {
             manualInputCount++;
           }
 
-          // Track internal bank transfers separately
+          // Track internal bank transfers (In vs Out)
           final isTransfer = TransactionCategory.fromValue(tx.category).isTransfer;
           if (isTransfer) {
-            monthlyTransfers += tx.amount.abs();
+            if (tx.amount > 0) {
+              transfersIn += tx.amount;
+            } else {
+              transfersOut += tx.amount.abs();
+            }
             continue;
           }
 
@@ -238,6 +243,9 @@ class AggregateMetricsSyncService {
             expenseCategoryMap[displayCat] = (expenseCategoryMap[displayCat] ?? 0.0) + tx.amount.abs();
           }
         }
+
+        final double netCashFlow = monthlyIncome - monthlyExpenses;
+        final double netTransfers = transfersIn - transfersOut;
 
         final Map<String, dynamic> structuredBreakdown = {
           'income': incomeCategoryMap,
@@ -272,27 +280,28 @@ class AggregateMetricsSyncService {
           'bank_statements_count': monthBankCount,
           'card_statements_count': monthCardCount,
           'net_cash_position': double.parse(monthNetCash.toStringAsFixed(2)),
+          'net_cash_flow': double.parse(netCashFlow.toStringAsFixed(2)),
           'monthly_income': double.parse(monthlyIncome.toStringAsFixed(2)),
-          'monthly_expenses': double.parse(monthlyExpenses.toStringAsFixed(2)),
-          'monthly_transfers': double.parse(monthlyTransfers.toStringAsFixed(2)),
+          'monthly_expenses': double.parse((-monthlyExpenses).toStringAsFixed(2)),
+          'monthly_transfers': double.parse(netTransfers.toStringAsFixed(2)),
           'total_miles_balance': totalMiles,
           'total_cashback_earned': double.parse(totalCashback.toStringAsFixed(2)),
           'income_salary': incomeCategoryMap['Salary'] ?? 0.0,
           'income_interest': incomeCategoryMap['Interest'] ?? 0.0,
           'income_transfers': incomeCategoryMap['Transfers'] ?? 0.0,
           'income_other': incomeCategoryMap['Other'] ?? 0.0,
-          'expense_groceries': expenseCategoryMap['Groceries'] ?? 0.0,
-          'expense_dining': expenseCategoryMap['Dining & Food Delivery'] ?? expenseCategoryMap['Dining'] ?? 0.0,
-          'expense_commute': expenseCategoryMap['Commute'] ?? expenseCategoryMap['Transport'] ?? 0.0,
-          'expense_online_shopping': expenseCategoryMap['Online Shopping'] ?? 0.0,
-          'expense_shopping': expenseCategoryMap['Shopping'] ?? 0.0,
-          'expense_utilities_telco': expenseCategoryMap['Utilities & Telco'] ?? expenseCategoryMap['Utilities'] ?? 0.0,
-          'expense_insurance': expenseCategoryMap['Insurance'] ?? 0.0,
-          'expense_healthcare': expenseCategoryMap['Healthcare'] ?? 0.0,
-          'expense_petrol': expenseCategoryMap['Petrol'] ?? 0.0,
-          'expense_entertainment': expenseCategoryMap['Entertainment'] ?? 0.0,
-          'expense_education': expenseCategoryMap['Education'] ?? 0.0,
-          'expense_other': expenseCategoryMap['Other'] ?? 0.0,
+          'expense_groceries': -(expenseCategoryMap['Groceries'] ?? 0.0),
+          'expense_dining': -(expenseCategoryMap['Dining & Food Delivery'] ?? expenseCategoryMap['Dining'] ?? 0.0),
+          'expense_commute': -(expenseCategoryMap['Commute'] ?? expenseCategoryMap['Transport'] ?? 0.0),
+          'expense_online_shopping': -(expenseCategoryMap['Online Shopping'] ?? 0.0),
+          'expense_shopping': -(expenseCategoryMap['Shopping'] ?? 0.0),
+          'expense_utilities_telco': -(expenseCategoryMap['Utilities & Telco'] ?? expenseCategoryMap['Utilities'] ?? 0.0),
+          'expense_insurance': -(expenseCategoryMap['Insurance'] ?? 0.0),
+          'expense_healthcare': -(expenseCategoryMap['Healthcare'] ?? 0.0),
+          'expense_petrol': -(expenseCategoryMap['Petrol'] ?? 0.0),
+          'expense_entertainment': -(expenseCategoryMap['Entertainment'] ?? 0.0),
+          'expense_education': -(expenseCategoryMap['Education'] ?? 0.0),
+          'expense_other': -(expenseCategoryMap['Other'] ?? 0.0),
           'manual_inputs_count': manualInputCount,
           'last_synced_at': DateTime.now().toUtc().toIso8601String(),
         });
