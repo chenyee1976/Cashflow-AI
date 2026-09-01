@@ -57,7 +57,7 @@ module.exports = async (req, res) => {
             net_cash_position: item.netCashPosition || 0.0,
             monthly_income: item.monthlyIncome || 0.0,
             monthly_expenses: item.monthlyExpenses || 0.0,
-            category_breakdown: item.categoryBreakdown || {},
+            monthly_transfers: item.monthlyTransfers || 0.0,
             total_miles_balance: item.totalMilesBalance || 0.0,
             total_cashback_earned: item.totalCashbackEarned || 0.0,
 
