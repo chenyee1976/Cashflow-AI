@@ -14,16 +14,36 @@ module.exports = async (req, res) => {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (body) {
+        // Clean old probe rows if present
+        try {
+          await fetch(`${SUPABASE_URL}/rest/v1/monthly_aggregate_metrics?id=in.(1,2,3,4,6)`, {
+            method: 'DELETE',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+          });
+        } catch (_) {}
+
         const incomingItems = Array.isArray(body) ? body : [body];
 
-        const rows = incomingItems.map(item => {
-          // Store all custom telemetry (manual inputs, voice uploads, report views/downloads) inside category_breakdown jsonb
-          const categoryMap = item.categoryBreakdown || {};
-          if (item.manualInputCount) categoryMap._meta_manual_inputs = item.manualInputCount;
-          if (item.voiceUploadCount) categoryMap._meta_voice_uploads = item.voiceUploadCount;
-          if (item.reportViewCount) categoryMap._meta_report_views = item.reportViewCount;
-          if (item.reportDownloadCount) categoryMap._meta_report_downloads = item.reportDownloadCount;
+        for (const item of incomingItems) {
+          const userHash = item.userHash || 'anonymous';
+          const monthYear = item.monthYear || new Date().toISOString().substring(0, 7);
 
+          // Delete prior record for this user and month to prevent duplicates
+          try {
+            await fetch(`${SUPABASE_URL}/rest/v1/monthly_aggregate_metrics?user_hash=eq.${encodeURIComponent(userHash)}&month_year=eq.${encodeURIComponent(monthYear)}`, {
+              method: 'DELETE',
+              headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              },
+            });
+          } catch (_) {}
+        }
+
+        const rows = incomingItems.map(item => {
           return {
             user_hash: item.userHash || 'anonymous',
             month_year: item.monthYear || new Date().toISOString().substring(0, 7),
@@ -32,7 +52,7 @@ module.exports = async (req, res) => {
             net_cash_position: item.netCashPosition || 0.0,
             monthly_income: item.monthlyIncome || 0.0,
             monthly_expenses: item.monthlyExpenses || 0.0,
-            category_breakdown: categoryMap,
+            category_breakdown: item.categoryBreakdown || {},
             total_miles_balance: item.totalMilesBalance || 0.0,
             total_cashback_earned: item.totalCashbackEarned || 0.0,
             last_synced_at: new Date().toISOString(),

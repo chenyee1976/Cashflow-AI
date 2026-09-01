@@ -57,8 +57,13 @@ class AggregateMetricsSyncService {
       }
       final consolidatedAccounts = uniqueAccounts.values.toList();
 
-      // Collect all active months from statements and transactions (e.g. 2026-06, 2026-07, 2026-08)
-      final Set<String> activeMonths = {};
+      // Collect all active months from statements, transactions, and standard window (June, July, August, September 2026)
+      final Set<String> activeMonths = {
+        '2026-06',
+        '2026-07',
+        '2026-08',
+        '2026-09',
+      };
       final now = DateTime.now();
       activeMonths.add(DateFormat('yyyy-MM').format(now));
       activeMonths.add(DateFormat('yyyy-MM').format(DateTime(now.year, now.month - 1))); // Last month
@@ -108,7 +113,6 @@ class AggregateMetricsSyncService {
         // 2. Net Cash Position (SGD Equivalent with proper FX conversion and deduplication)
         double monthNetCash = 0.0;
         for (final acc in consolidatedAccounts) {
-          // Find matching snapshot on or closest-before target month end
           final sameSnapshots = allAccounts.where((a) =>
             normalize(a.bankName) == normalize(acc.bankName) &&
             normalize(a.accountNumber ?? '') == normalize(acc.accountNumber ?? '')
@@ -142,7 +146,8 @@ class AggregateMetricsSyncService {
             monthNetCash += rawBal;
           } else {
             final savedRate = await _storage.getFxRate(currencyStr);
-            final rate = double.tryParse(savedRate ?? '') ?? (currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : 1.0));
+            final defaultFx = currencyStr == 'USD' ? 1.30 : (currencyStr == 'JPY' ? 0.0080 : (currencyStr == 'MYR' ? 0.30 : (currencyStr == 'IDR' ? 0.000083 : 1.0)));
+            final rate = double.tryParse(savedRate ?? '') ?? defaultFx;
             monthNetCash += rawBal * rate;
           }
         }
@@ -151,23 +156,39 @@ class AggregateMetricsSyncService {
         final cashOnHandBase = await _storage.getCashOnHandBaseForMonth(year: year, month: month) ?? 0.0;
         monthNetCash += cashOnHandBase;
 
-        // 3. Monthly Income, Expenses & Category Breakdown for this specific month
+        // 3. Monthly Income, Expenses & Structured Category Breakdown
         final monthTxs = allTxs.where((tx) => tx.date >= startTimestamp && tx.date <= endTimestamp).toList();
         double monthlyIncome = 0.0;
         double monthlyExpenses = 0.0;
-        final Map<String, double> categoryBreakdown = {};
+        final Map<String, double> incomeCategoryMap = {};
+        final Map<String, double> expenseCategoryMap = {};
+        int manualInputCount = 0;
 
         for (final tx in monthTxs) {
+          if (tx.accountId == 'manual' || tx.accountId == 'manual_cash') {
+            manualInputCount++;
+          }
+
           if (tx.amount > 0) {
             monthlyIncome += tx.amount;
-            final cat = 'income_${tx.category}';
-            categoryBreakdown[cat] = (categoryBreakdown[cat] ?? 0.0) + tx.amount;
+            final cat = tx.category.replaceAll('income_', '').replaceAll('_', ' ');
+            final displayCat = cat.isNotEmpty ? '${cat[0].toUpperCase()}${cat.substring(1)}' : 'Other';
+            incomeCategoryMap[displayCat] = (incomeCategoryMap[displayCat] ?? 0.0) + tx.amount;
           } else {
             monthlyExpenses += tx.amount.abs();
-            final cat = 'expense_${tx.category}';
-            categoryBreakdown[cat] = (categoryBreakdown[cat] ?? 0.0) + tx.amount.abs();
+            final cat = tx.category.replaceAll('expense_', '').replaceAll('_', ' ');
+            final displayCat = cat.isNotEmpty ? '${cat[0].toUpperCase()}${cat.substring(1)}' : 'Other';
+            expenseCategoryMap[displayCat] = (expenseCategoryMap[displayCat] ?? 0.0) + tx.amount.abs();
           }
         }
+
+        final Map<String, dynamic> structuredBreakdown = {
+          'income': incomeCategoryMap,
+          'expenses': expenseCategoryMap,
+          'telemetry': {
+            'manual_inputs': manualInputCount,
+          },
+        };
 
         // 4. Miles & Cashback for this month
         double totalMiles = 0.0;
@@ -188,7 +209,7 @@ class AggregateMetricsSyncService {
           'netCashPosition': double.parse(monthNetCash.toStringAsFixed(2)),
           'monthlyIncome': double.parse(monthlyIncome.toStringAsFixed(2)),
           'monthlyExpenses': double.parse(monthlyExpenses.toStringAsFixed(2)),
-          'categoryBreakdown': categoryBreakdown,
+          'categoryBreakdown': structuredBreakdown,
           'totalMilesBalance': totalMiles,
           'totalCashbackEarned': double.parse(totalCashback.toStringAsFixed(2)),
         });

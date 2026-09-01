@@ -2144,22 +2144,10 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        if (isFirstRow)
-                          const Text('CATEGORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary))
-                        else
-                          const SizedBox(height: 14),
-                        if (infoText != null) ...[
-                          const SizedBox(width: 4),
-                          GestureDetector(
-                            onTap: () => _showCategoryInfoDialog(context, rate.category),
-                            child: const Icon(Icons.info_outline, size: 14, color: AppColors.primary),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 6),
+                    if (isFirstRow) ...[
+                      const Text('CATEGORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                      const SizedBox(height: 6),
+                    ],
                     Builder(
                       builder: (context) {
                         String resolvedCategory = 'Others';
@@ -2214,7 +2202,22 @@ class _TransactionReviewScreenState extends ConsumerState<TransactionReviewScree
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              Padding(
+                padding: EdgeInsets.only(
+                  top: isFirstRow ? 26.0 : 8.0,
+                  left: 6.0,
+                  right: 6.0,
+                ),
+                child: infoText != null
+                    ? GestureDetector(
+                        onTap: () => _showCategoryInfoDialog(context, rate.category),
+                        child: const Tooltip(
+                          message: 'Tap for details',
+                          child: Icon(Icons.info_outline, size: 18, color: AppColors.primary),
+                        ),
+                      )
+                    : const SizedBox(width: 18),
+              ),
               Expanded(
                 flex: 3,
                 child: Column(
