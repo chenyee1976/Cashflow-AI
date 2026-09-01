@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/services/analytics_service.dart';
+import '../../data/services/aggregate_metrics_sync_service.dart';
 import '../notifications/notification_dialog.dart';
 
 import 'dart:convert';
@@ -112,9 +113,10 @@ class BetaAnalyticsDialog extends ConsumerWidget {
                   InkWell(
                     onTap: () async {
                       await analytics.syncAllLocalToCloud();
+                      await ref.read(aggregateMetricsSyncServiceProvider).syncCurrentMonthMetrics();
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Cloud Sync Complete! All records updated.')),
+                          const SnackBar(content: Text('Cloud Sync Complete! All aggregate metrics updated.')),
                         );
                       }
                     },

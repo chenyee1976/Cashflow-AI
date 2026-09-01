@@ -266,31 +266,59 @@ class AggregateMetricsSyncService {
             : 'Mobile / Native';
 
         payloadRows.add({
-          'userHash': userEmail, // Store readable User Email
-          'monthYear': mStr,
+          'user_hash': userEmail,
+          'month_year': mStr,
           'environment': appEnvironment,
-          'bankStatementsCount': monthBankCount,
-          'cardStatementsCount': monthCardCount,
-          'netCashPosition': double.parse(monthNetCash.toStringAsFixed(2)),
-          'monthlyIncome': double.parse(monthlyIncome.toStringAsFixed(2)),
-          'monthlyExpenses': double.parse(monthlyExpenses.toStringAsFixed(2)),
-          'monthlyTransfers': double.parse(monthlyTransfers.toStringAsFixed(2)),
-          'categoryBreakdown': structuredBreakdown,
-          'totalMilesBalance': totalMiles,
-          'totalCashbackEarned': double.parse(totalCashback.toStringAsFixed(2)),
+          'bank_statements_count': monthBankCount,
+          'card_statements_count': monthCardCount,
+          'net_cash_position': double.parse(monthNetCash.toStringAsFixed(2)),
+          'monthly_income': double.parse(monthlyIncome.toStringAsFixed(2)),
+          'monthly_expenses': double.parse(monthlyExpenses.toStringAsFixed(2)),
+          'monthly_transfers': double.parse(monthlyTransfers.toStringAsFixed(2)),
+          'total_miles_balance': totalMiles,
+          'total_cashback_earned': double.parse(totalCashback.toStringAsFixed(2)),
+          'income_salary': incomeCategoryMap['Salary'] ?? 0.0,
+          'income_interest': incomeCategoryMap['Interest'] ?? 0.0,
+          'income_transfers': incomeCategoryMap['Transfers'] ?? 0.0,
+          'income_other': incomeCategoryMap['Other'] ?? 0.0,
+          'expense_groceries': expenseCategoryMap['Groceries'] ?? 0.0,
+          'expense_dining': expenseCategoryMap['Dining & Food Delivery'] ?? expenseCategoryMap['Dining'] ?? 0.0,
+          'expense_commute': expenseCategoryMap['Commute'] ?? expenseCategoryMap['Transport'] ?? 0.0,
+          'expense_online_shopping': expenseCategoryMap['Online Shopping'] ?? 0.0,
+          'expense_shopping': expenseCategoryMap['Shopping'] ?? 0.0,
+          'expense_utilities_telco': expenseCategoryMap['Utilities & Telco'] ?? expenseCategoryMap['Utilities'] ?? 0.0,
+          'expense_insurance': expenseCategoryMap['Insurance'] ?? 0.0,
+          'expense_healthcare': expenseCategoryMap['Healthcare'] ?? 0.0,
+          'expense_petrol': expenseCategoryMap['Petrol'] ?? 0.0,
+          'expense_entertainment': expenseCategoryMap['Entertainment'] ?? 0.0,
+          'expense_education': expenseCategoryMap['Education'] ?? 0.0,
+          'expense_other': expenseCategoryMap['Other'] ?? 0.0,
+          'manual_inputs_count': manualInputCount,
+          'last_synced_at': DateTime.now().toUtc().toIso8601String(),
         });
       }
 
       if (payloadRows.isEmpty) return;
+
+      const supabaseUrl = 'https://damkiewubedfkajbvoeo.supabase.co';
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhbWtpZXd1YmVkZmthamJ2b2VvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODIyOTgsImV4cCI6MjEwMjg1ODI5OH0.DumsVaIE0R0qJax221CieE8_ldi3YMchybZome2c1G4';
 
       final dio = Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 10),
       ));
 
-      final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
-      await dio.post('$baseUrl/api/metrics', data: payloadRows);
-      debugPrint('✅ [AggregateMetrics] synced ${payloadRows.length} months successfully for $userEmail');
+      await dio.post(
+        '$supabaseUrl/rest/v1/monthly_aggregate_metrics?on_conflict=user_hash,month_year',
+        data: payloadRows,
+        options: Options(headers: {
+          'apikey': supabaseKey,
+          'Authorization': 'Bearer $supabaseKey',
+          'Prefer': 'resolution=merge-duplicates',
+          'Content-Type': 'application/json',
+        }),
+      );
+      debugPrint('✅ [AggregateMetrics] synced ${payloadRows.length} months directly to Supabase for $userEmail');
     } catch (e) {
       debugPrint('⚠️ [AggregateMetrics] sync failed: $e');
     }
