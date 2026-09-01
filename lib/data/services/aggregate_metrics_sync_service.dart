@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/category_enum.dart';
 import '../database/app_database.dart';
 import '../secure_storage/secure_storage_service.dart';
 
@@ -184,11 +185,23 @@ class AggregateMetricsSyncService {
           }
         }
 
+        // Net cash adjustments from cash-on-hand transactions up to target month end
+        double cashAdjustmentsTotal = 0.0;
+        for (final tx in allTxs) {
+          if (tx.date <= endTimestamp) {
+            if (tx.accountId == 'manual_cash' || tx.accountId == 'manual') {
+              cashAdjustmentsTotal += tx.amount;
+            } else if (tx.category == TransactionCategory.expenseTransferToCash.value) {
+              cashAdjustmentsTotal += tx.amount.abs();
+            }
+          }
+        }
+
         // Add Physical Cash pool if defined
         final cashOnHandBase = await _storage.getCashOnHandBaseForMonth(year: year, month: month) ?? 0.0;
-        monthNetCash += cashOnHandBase;
+        monthNetCash += (cashOnHandBase + cashAdjustmentsTotal);
 
-        // 3. Monthly Income, Expenses & Structured Category Breakdown
+        // 3. Monthly Income, Expenses & Structured Category Breakdown (Excluding internal bank transfers to match Dashboard)
         final monthTxs = allTxs.where((tx) => tx.date >= startTimestamp && tx.date <= endTimestamp).toList();
         double monthlyIncome = 0.0;
         double monthlyExpenses = 0.0;
@@ -200,6 +213,10 @@ class AggregateMetricsSyncService {
           if (tx.accountId == 'manual' || tx.accountId == 'manual_cash') {
             manualInputCount++;
           }
+
+          // Exclude internal bank transfers to match Dashboard exactly
+          final isTransfer = TransactionCategory.fromValue(tx.category).isTransfer;
+          if (isTransfer) continue;
 
           if (tx.amount > 0) {
             monthlyIncome += tx.amount;
