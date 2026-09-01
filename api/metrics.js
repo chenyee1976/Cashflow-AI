@@ -14,34 +14,7 @@ module.exports = async (req, res) => {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (body) {
-        // Clean old probe rows if present
-        try {
-          await fetch(`${SUPABASE_URL}/rest/v1/monthly_aggregate_metrics?id=in.(1,2,3,4,6)`, {
-            method: 'DELETE',
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            },
-          });
-        } catch (_) {}
-
         const incomingItems = Array.isArray(body) ? body : [body];
-
-        for (const item of incomingItems) {
-          const userHash = item.userHash || 'anonymous';
-          const monthYear = item.monthYear || new Date().toISOString().substring(0, 7);
-
-          // Delete prior record for this user and month to prevent duplicates
-          try {
-            await fetch(`${SUPABASE_URL}/rest/v1/monthly_aggregate_metrics?user_hash=eq.${encodeURIComponent(userHash)}&month_year=eq.${encodeURIComponent(monthYear)}`, {
-              method: 'DELETE',
-              headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              },
-            });
-          } catch (_) {}
-        }
 
         const host = req.headers['host'] || req.headers['x-forwarded-host'] || '';
         const defaultEnvironment = host.includes('web-kappa') 
