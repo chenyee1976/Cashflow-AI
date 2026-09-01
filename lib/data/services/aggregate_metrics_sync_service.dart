@@ -143,7 +143,7 @@ class AggregateMetricsSyncService {
           }
         }
 
-        // 2. Net Cash Position (SGD Equivalent with proper FX conversion and deduplication)
+        // 2. Net Cash Position (Exact match with Cash Position card on Dashboard)
         double monthNetCash = 0.0;
         for (final acc in consolidatedAccounts) {
           final sameSnapshots = allAccounts.where((a) =>
@@ -187,19 +187,23 @@ class AggregateMetricsSyncService {
 
         // Net cash adjustments from cash-on-hand transactions up to target month end
         double cashAdjustmentsTotal = 0.0;
+        bool hasCashTxs = false;
         for (final tx in allTxs) {
           if (tx.date <= endTimestamp) {
             if (tx.accountId == 'manual_cash' || tx.accountId == 'manual') {
               cashAdjustmentsTotal += tx.amount;
+              hasCashTxs = true;
             } else if (tx.category == TransactionCategory.expenseTransferToCash.value) {
               cashAdjustmentsTotal += tx.amount.abs();
+              hasCashTxs = true;
             }
           }
         }
 
-        // Add Physical Cash pool if defined
         final cashOnHandBase = await _storage.getCashOnHandBaseForMonth(year: year, month: month) ?? 0.0;
-        monthNetCash += (cashOnHandBase + cashAdjustmentsTotal);
+        if (cashOnHandBase > 0.0 || hasCashTxs) {
+          monthNetCash += (cashOnHandBase + cashAdjustmentsTotal);
+        }
 
         // 3. Monthly Income, Expenses, Transfers & Structured Category Breakdown
         final monthTxs = allTxs.where((tx) => tx.date >= startTimestamp && tx.date <= endTimestamp).toList();
@@ -254,10 +258,11 @@ class AggregateMetricsSyncService {
           totalCashback += tx.cashbackEarned;
         }
 
+        final urlString = kIsWeb ? Uri.base.toString().toLowerCase() : '';
         final appEnvironment = kIsWeb
-            ? (Uri.base.host.contains('web-kappa')
+            ? (urlString.contains('web-kappa')
                 ? 'Preview (web-kappa)'
-                : (Uri.base.host.contains('sgcashflowai') ? 'Live / Production' : 'Development / Localhost'))
+                : (urlString.contains('sgcashflowai') ? 'Live / Production (sgcashflowai)' : 'Preview (web-kappa)'))
             : 'Mobile / Native';
 
         payloadRows.add({
