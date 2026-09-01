@@ -60,7 +60,7 @@ class AggregateMetricsSyncService {
       final List<Statement> statements = [];
       final List<BankAccount> allAccounts = [];
       final List<Transaction> allTxs = [];
-      final List<MilesWallet> milesList = [];
+      final List<MilesWalletData> milesList = [];
 
       for (final uid in candidateUserIds) {
         final stmts = await _db.getStatementsByUser(uid);
