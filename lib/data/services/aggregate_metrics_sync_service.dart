@@ -254,9 +254,16 @@ class AggregateMetricsSyncService {
           totalCashback += tx.cashbackEarned;
         }
 
+        final appEnvironment = kIsWeb
+            ? (Uri.base.host.contains('web-kappa')
+                ? 'Preview (web-kappa)'
+                : (Uri.base.host.contains('sgcashflowai') ? 'Live / Production' : 'Development / Localhost'))
+            : 'Mobile / Native';
+
         payloadRows.add({
           'userHash': userEmail, // Store readable User Email
           'monthYear': mStr,
+          'environment': appEnvironment,
           'bankStatementsCount': monthBankCount,
           'cardStatementsCount': monthCardCount,
           'netCashPosition': double.parse(monthNetCash.toStringAsFixed(2)),

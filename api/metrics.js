@@ -43,6 +43,11 @@ module.exports = async (req, res) => {
           } catch (_) {}
         }
 
+        const host = req.headers['host'] || req.headers['x-forwarded-host'] || '';
+        const defaultEnvironment = host.includes('web-kappa') 
+          ? 'Preview (web-kappa)' 
+          : (host.includes('sgcashflowai') ? 'Live / Production (sgcashflowai)' : (host.includes('localhost') ? 'Localhost' : 'Live / Production'));
+
         const rows = incomingItems.map(item => {
           const cat = item.categoryBreakdown || {};
           const inc = cat.income || {};
@@ -52,6 +57,7 @@ module.exports = async (req, res) => {
           return {
             user_hash: item.userHash || 'anonymous',
             month_year: item.monthYear || new Date().toISOString().substring(0, 7),
+            environment: item.environment || defaultEnvironment,
             bank_statements_count: item.bankStatementsCount || 0,
             card_statements_count: item.cardStatementsCount || 0,
             net_cash_position: item.netCashPosition || 0.0,
