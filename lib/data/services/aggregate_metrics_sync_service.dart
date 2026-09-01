@@ -42,11 +42,43 @@ class AggregateMetricsSyncService {
         userEmail = rawUserId;
       }
 
-      // Fetch all statements, bank accounts, transactions, and miles for this user
-      final statements = await _db.getStatementsByUser(rawUserId);
-      final allAccounts = await _db.getBankAccountsByUser(rawUserId);
-      final allTxs = await _db.getTransactionsByUser(rawUserId);
-      final milesList = await _db.getMilesWalletByUser(rawUserId);
+      // Collect all possible user ID aliases to ensure 100% of real user data is retrieved
+      final candidateUserIds = <String>{};
+      if (rawUserId.isNotEmpty) candidateUserIds.add(rawUserId);
+      if (testerEmail.isNotEmpty) {
+        candidateUserIds.add(testerEmail);
+        candidateUserIds.add('tester_${testerEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}');
+      }
+      final googleEmail = await _storage.getGoogleEmail();
+      if (googleEmail != null && googleEmail.isNotEmpty) {
+        candidateUserIds.add(googleEmail);
+        candidateUserIds.add('tester_${googleEmail.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}');
+      }
+      candidateUserIds.add('chenyee_user');
+
+      final List<Statement> statements = [];
+      final List<BankAccount> allAccounts = [];
+      final List<Transaction> allTxs = [];
+      final List<MilesWallet> milesList = [];
+
+      for (final uid in candidateUserIds) {
+        final stmts = await _db.getStatementsByUser(uid);
+        for (final s in stmts) {
+          if (!statements.any((existing) => existing.id == s.id)) statements.add(s);
+        }
+        final accs = await _db.getBankAccountsByUser(uid);
+        for (final a in accs) {
+          if (!allAccounts.any((existing) => existing.id == a.id)) allAccounts.add(a);
+        }
+        final txs = await _db.getTransactionsByUser(uid);
+        for (final t in txs) {
+          if (!allTxs.any((existing) => existing.id == t.id)) allTxs.add(t);
+        }
+        final mls = await _db.getMilesWalletByUser(uid);
+        for (final m in mls) {
+          if (!milesList.any((existing) => existing.id == m.id)) milesList.add(m);
+        }
+      }
 
       // Consolidate unique accounts by bankName + accountNumber
       String normalize(String s) => s.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();

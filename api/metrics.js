@@ -44,6 +44,11 @@ module.exports = async (req, res) => {
         }
 
         const rows = incomingItems.map(item => {
+          const cat = item.categoryBreakdown || {};
+          const inc = cat.income || {};
+          const exp = cat.expenses || {};
+          const tel = cat.telemetry || {};
+
           return {
             user_hash: item.userHash || 'anonymous',
             month_year: item.monthYear || new Date().toISOString().substring(0, 7),
@@ -55,6 +60,33 @@ module.exports = async (req, res) => {
             category_breakdown: item.categoryBreakdown || {},
             total_miles_balance: item.totalMilesBalance || 0.0,
             total_cashback_earned: item.totalCashbackEarned || 0.0,
+
+            // Dedicated Income columns
+            income_salary: item.incomeSalary ?? inc['Salary'] ?? inc['salary'] ?? 0.0,
+            income_interest: item.incomeInterest ?? inc['Interest'] ?? inc['interest'] ?? 0.0,
+            income_transfers: item.incomeTransfers ?? inc['Transfers'] ?? inc['transfers'] ?? inc['Transfer'] ?? 0.0,
+            income_other: item.incomeOther ?? inc['Other'] ?? inc['other'] ?? 0.0,
+
+            // Dedicated Expense columns
+            expense_groceries: item.expenseGroceries ?? exp['Groceries'] ?? exp['groceries'] ?? 0.0,
+            expense_dining: item.expenseDining ?? exp['Dining & Food Delivery'] ?? exp['dining'] ?? exp['Dining'] ?? 0.0,
+            expense_commute: item.expenseCommute ?? exp['Commute'] ?? exp['commute'] ?? exp['Transport & Commute'] ?? exp['transport'] ?? 0.0,
+            expense_online_shopping: item.expenseOnlineShopping ?? exp['Online Shopping'] ?? exp['online_shopping'] ?? 0.0,
+            expense_shopping: item.expenseShopping ?? exp['Shopping'] ?? exp['shopping'] ?? 0.0,
+            expense_utilities_telco: item.expenseUtilitiesTelco ?? exp['Utilities & Telco'] ?? exp['utilities'] ?? exp['telco'] ?? 0.0,
+            expense_insurance: item.expenseInsurance ?? exp['Insurance'] ?? exp['insurance'] ?? 0.0,
+            expense_healthcare: item.expenseHealthcare ?? exp['Healthcare'] ?? exp['healthcare'] ?? 0.0,
+            expense_petrol: item.expensePetrol ?? exp['Petrol'] ?? exp['petrol'] ?? exp['Fuel'] ?? 0.0,
+            expense_entertainment: item.expenseEntertainment ?? exp['Entertainment'] ?? exp['entertainment'] ?? 0.0,
+            expense_education: item.expenseEducation ?? exp['Education'] ?? exp['education'] ?? 0.0,
+            expense_other: item.expenseOther ?? exp['Other'] ?? exp['other'] ?? 0.0,
+
+            // Dedicated Telemetry columns
+            manual_inputs_count: item.manualInputsCount ?? tel['manual_inputs'] ?? 0,
+            voice_uploads_count: item.voiceUploadCount ?? tel['voice_uploads'] ?? 0,
+            report_views_count: item.reportViewsCount ?? tel['report_views'] ?? 0,
+            report_downloads_count: item.reportDownloadsCount ?? tel['report_downloads'] ?? 0,
+
             last_synced_at: new Date().toISOString(),
           };
         });
