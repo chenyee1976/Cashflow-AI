@@ -44,8 +44,9 @@ module.exports = async (req, res) => {
             // Dedicated Income columns
             income_salary: item.incomeSalary ?? inc['Salary'] ?? inc['salary'] ?? 0.0,
             income_interest: item.incomeInterest ?? inc['Interest'] ?? inc['interest'] ?? 0.0,
-            income_transfers: item.incomeTransfers ?? inc['Transfers'] ?? inc['transfers'] ?? inc['Transfer'] ?? 0.0,
-            income_other: item.incomeOther ?? inc['Other'] ?? inc['other'] ?? 0.0,
+            income_investments: item.incomeInvestments ?? inc['Investments'] ?? inc['investments'] ?? 0.0,
+            income_dividends: item.incomeDividends ?? inc['Dividends'] ?? inc['dividends'] ?? 0.0,
+            income_other: item.incomeOther ?? inc['Other Income'] ?? inc['Other'] ?? 0.0,
 
             // Dedicated Expense columns (negative values)
             expense_groceries: item.expenseGroceries ?? (exp['Groceries'] ? -Math.abs(exp['Groceries']) : 0.0),

@@ -234,7 +234,24 @@ class AggregateMetricsSyncService {
           if (tx.amount > 0) {
             monthlyIncome += tx.amount;
             final catEnum = TransactionCategory.fromValue(tx.category);
-            final displayCat = catEnum.displayName;
+            String displayCat;
+            switch (catEnum) {
+              case TransactionCategory.incomeSalary:
+                displayCat = 'Salary';
+                break;
+              case TransactionCategory.incomeInterest:
+                displayCat = 'Interest';
+                break;
+              case TransactionCategory.incomeInvestments:
+                displayCat = 'Investments';
+                break;
+              case TransactionCategory.incomeDividends:
+                displayCat = 'Dividends';
+                break;
+              default:
+                displayCat = 'Other Income';
+                break;
+            }
             incomeCategoryMap[displayCat] = (incomeCategoryMap[displayCat] ?? 0.0) + tx.amount;
           } else {
             monthlyExpenses += tx.amount.abs();
@@ -326,8 +343,9 @@ class AggregateMetricsSyncService {
           'total_cashback_earned': double.parse(totalCashback.toStringAsFixed(2)),
           'income_salary': incomeCategoryMap['Salary'] ?? 0.0,
           'income_interest': incomeCategoryMap['Interest'] ?? 0.0,
-          'income_transfers': incomeCategoryMap['Transfers'] ?? 0.0,
-          'income_other': incomeCategoryMap['Other Income'] ?? incomeCategoryMap['Other'] ?? 0.0,
+          'income_investments': incomeCategoryMap['Investments'] ?? 0.0,
+          'income_dividends': incomeCategoryMap['Dividends'] ?? 0.0,
+          'income_other': incomeCategoryMap['Other Income'] ?? 0.0,
           'expense_groceries': -(expenseCategoryMap['Groceries'] ?? 0.0),
           'expense_transport': -(expenseCategoryMap['Transport'] ?? 0.0),
           'expense_shopping': -(expenseCategoryMap['Shopping'] ?? 0.0),
