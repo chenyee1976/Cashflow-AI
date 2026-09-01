@@ -59,13 +59,13 @@ module.exports = async (req, res) => {
           };
         });
 
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/monthly_aggregate_metrics`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/monthly_aggregate_metrics?on_conflict=user_hash,month_year`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Prefer': 'return=minimal',
+            'Prefer': 'resolution=merge-duplicates',
           },
           body: JSON.stringify(rows),
         });
