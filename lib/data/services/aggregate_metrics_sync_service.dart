@@ -233,13 +233,51 @@ class AggregateMetricsSyncService {
 
           if (tx.amount > 0) {
             monthlyIncome += tx.amount;
-            final cat = tx.category.replaceAll('income_', '').replaceAll('_', ' ');
-            final displayCat = cat.isNotEmpty ? '${cat[0].toUpperCase()}${cat.substring(1)}' : 'Other';
+            final catEnum = TransactionCategory.fromValue(tx.category);
+            final displayCat = catEnum.displayName;
             incomeCategoryMap[displayCat] = (incomeCategoryMap[displayCat] ?? 0.0) + tx.amount;
           } else {
             monthlyExpenses += tx.amount.abs();
-            final cat = tx.category.replaceAll('expense_', '').replaceAll('_', ' ');
-            final displayCat = cat.isNotEmpty ? '${cat[0].toUpperCase()}${cat.substring(1)}' : 'Other';
+            final catEnum = TransactionCategory.fromValue(tx.category);
+            String displayCat;
+            switch (catEnum) {
+              case TransactionCategory.expenseGroceries:
+                displayCat = 'Groceries';
+                break;
+              case TransactionCategory.expenseTransport:
+                displayCat = 'Transport';
+                break;
+              case TransactionCategory.expenseShopping:
+                displayCat = 'Shopping';
+                break;
+              case TransactionCategory.expenseDining:
+                displayCat = 'Dining';
+                break;
+              case TransactionCategory.expenseEducation:
+                displayCat = 'Education';
+                break;
+              case TransactionCategory.expenseUtilities:
+                displayCat = 'Utilities';
+                break;
+              case TransactionCategory.expenseInvestments:
+                displayCat = 'Investments';
+                break;
+              case TransactionCategory.expenseTax:
+                displayCat = 'Tax';
+                break;
+              case TransactionCategory.expenseHealthcare:
+                displayCat = 'Healthcare';
+                break;
+              case TransactionCategory.expensePetrol:
+                displayCat = 'Petrol';
+                break;
+              case TransactionCategory.expenseEntertainment:
+                displayCat = 'Entertainment';
+                break;
+              default:
+                displayCat = 'Other expenses';
+                break;
+            }
             expenseCategoryMap[displayCat] = (expenseCategoryMap[displayCat] ?? 0.0) + tx.amount.abs();
           }
         }
@@ -289,19 +327,19 @@ class AggregateMetricsSyncService {
           'income_salary': incomeCategoryMap['Salary'] ?? 0.0,
           'income_interest': incomeCategoryMap['Interest'] ?? 0.0,
           'income_transfers': incomeCategoryMap['Transfers'] ?? 0.0,
-          'income_other': incomeCategoryMap['Other'] ?? 0.0,
+          'income_other': incomeCategoryMap['Other Income'] ?? incomeCategoryMap['Other'] ?? 0.0,
           'expense_groceries': -(expenseCategoryMap['Groceries'] ?? 0.0),
-          'expense_dining': -(expenseCategoryMap['Dining & Food Delivery'] ?? expenseCategoryMap['Dining'] ?? 0.0),
-          'expense_commute': -(expenseCategoryMap['Commute'] ?? expenseCategoryMap['Transport'] ?? 0.0),
-          'expense_online_shopping': -(expenseCategoryMap['Online Shopping'] ?? 0.0),
+          'expense_transport': -(expenseCategoryMap['Transport'] ?? 0.0),
           'expense_shopping': -(expenseCategoryMap['Shopping'] ?? 0.0),
-          'expense_utilities_telco': -(expenseCategoryMap['Utilities & Telco'] ?? expenseCategoryMap['Utilities'] ?? 0.0),
-          'expense_insurance': -(expenseCategoryMap['Insurance'] ?? 0.0),
+          'expense_dining': -(expenseCategoryMap['Dining'] ?? 0.0),
+          'expense_education': -(expenseCategoryMap['Education'] ?? 0.0),
+          'expense_utilities': -(expenseCategoryMap['Utilities'] ?? 0.0),
+          'expense_investments': -(expenseCategoryMap['Investments'] ?? 0.0),
+          'expense_tax': -(expenseCategoryMap['Tax'] ?? 0.0),
           'expense_healthcare': -(expenseCategoryMap['Healthcare'] ?? 0.0),
           'expense_petrol': -(expenseCategoryMap['Petrol'] ?? 0.0),
           'expense_entertainment': -(expenseCategoryMap['Entertainment'] ?? 0.0),
-          'expense_education': -(expenseCategoryMap['Education'] ?? 0.0),
-          'expense_other': -(expenseCategoryMap['Other'] ?? 0.0),
+          'expense_other': -(expenseCategoryMap['Other expenses'] ?? 0.0),
           'manual_inputs_count': manualInputCount,
           'last_synced_at': DateTime.now().toUtc().toIso8601String(),
         });

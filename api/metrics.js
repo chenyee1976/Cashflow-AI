@@ -47,19 +47,19 @@ module.exports = async (req, res) => {
             income_transfers: item.incomeTransfers ?? inc['Transfers'] ?? inc['transfers'] ?? inc['Transfer'] ?? 0.0,
             income_other: item.incomeOther ?? inc['Other'] ?? inc['other'] ?? 0.0,
 
-            // Dedicated Expense columns
-            expense_groceries: item.expenseGroceries ?? exp['Groceries'] ?? exp['groceries'] ?? 0.0,
-            expense_dining: item.expenseDining ?? exp['Dining & Food Delivery'] ?? exp['dining'] ?? exp['Dining'] ?? 0.0,
-            expense_commute: item.expenseCommute ?? exp['Commute'] ?? exp['commute'] ?? exp['Transport & Commute'] ?? exp['transport'] ?? 0.0,
-            expense_online_shopping: item.expenseOnlineShopping ?? exp['Online Shopping'] ?? exp['online_shopping'] ?? 0.0,
-            expense_shopping: item.expenseShopping ?? exp['Shopping'] ?? exp['shopping'] ?? 0.0,
-            expense_utilities_telco: item.expenseUtilitiesTelco ?? exp['Utilities & Telco'] ?? exp['utilities'] ?? exp['telco'] ?? 0.0,
-            expense_insurance: item.expenseInsurance ?? exp['Insurance'] ?? exp['insurance'] ?? 0.0,
-            expense_healthcare: item.expenseHealthcare ?? exp['Healthcare'] ?? exp['healthcare'] ?? 0.0,
-            expense_petrol: item.expensePetrol ?? exp['Petrol'] ?? exp['petrol'] ?? exp['Fuel'] ?? 0.0,
-            expense_entertainment: item.expenseEntertainment ?? exp['Entertainment'] ?? exp['entertainment'] ?? 0.0,
-            expense_education: item.expenseEducation ?? exp['Education'] ?? exp['education'] ?? 0.0,
-            expense_other: item.expenseOther ?? exp['Other'] ?? exp['other'] ?? 0.0,
+            // Dedicated Expense columns (negative values)
+            expense_groceries: item.expenseGroceries ?? (exp['Groceries'] ? -Math.abs(exp['Groceries']) : 0.0),
+            expense_transport: item.expenseTransport ?? (exp['Transport'] ? -Math.abs(exp['Transport']) : 0.0),
+            expense_shopping: item.expenseShopping ?? (exp['Shopping'] ? -Math.abs(exp['Shopping']) : 0.0),
+            expense_dining: item.expenseDining ?? (exp['Dining'] ? -Math.abs(exp['Dining']) : 0.0),
+            expense_education: item.expenseEducation ?? (exp['Education'] ? -Math.abs(exp['Education']) : 0.0),
+            expense_utilities: item.expenseUtilities ?? (exp['Utilities'] ? -Math.abs(exp['Utilities']) : 0.0),
+            expense_investments: item.expenseInvestments ?? (exp['Investments'] ? -Math.abs(exp['Investments']) : 0.0),
+            expense_tax: item.expenseTax ?? (exp['Tax'] ? -Math.abs(exp['Tax']) : 0.0),
+            expense_healthcare: item.expenseHealthcare ?? (exp['Healthcare'] ? -Math.abs(exp['Healthcare']) : 0.0),
+            expense_petrol: item.expensePetrol ?? (exp['Petrol'] ? -Math.abs(exp['Petrol']) : 0.0),
+            expense_entertainment: item.expenseEntertainment ?? (exp['Entertainment'] ? -Math.abs(exp['Entertainment']) : 0.0),
+            expense_other: item.expenseOther ?? (exp['Other expenses'] || exp['Other'] ? -Math.abs(exp['Other expenses'] || exp['Other']) : 0.0),
 
             // Dedicated Telemetry columns
             manual_inputs_count: item.manualInputsCount ?? tel['manual_inputs'] ?? 0,
