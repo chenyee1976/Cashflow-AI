@@ -30,7 +30,7 @@ android {
 
     defaultConfig {
         applicationId = "com.sgcashflowai.app"
-        minSdk = flutter.minSdkVersion
+        minSdk = 21
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -43,7 +43,8 @@ android {
             storePassword = keystoreProperties.getProperty("storePassword")
             val storeFilePath = keystoreProperties.getProperty("storeFile")
             if (storeFilePath != null) {
-                storeFile = rootProject.file(storeFilePath)
+                val f = rootProject.file(storeFilePath)
+                storeFile = if (f.exists()) f else file(storeFilePath)
             }
         }
     }

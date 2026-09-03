@@ -50,6 +50,8 @@ jobs:
 
           echo "Writing android/key.properties..."
           printf "storePassword=sgcashflowai2026\nkeyPassword=sgcashflowai2026\nkeyAlias=upload\nstoreFile=upload-keystore.jks\n" > android/key.properties
+          cp android/key.properties android/app/key.properties
+          cp android/upload-keystore.jks android/app/upload-keystore.jks
 
           echo "Verifying generated keystore and key.properties:"
           ls -la android/
@@ -59,10 +61,24 @@ jobs:
         run: flutter pub get
 
       - name: Build Android App Bundle (.aab for Google Play)
-        run: flutter build appbundle --release -v
+        run: |
+          set -o pipefail
+          flutter build appbundle --release -v 2>&1 | tee build_aab.log
 
       - name: Build Android APK (for direct install on test phones)
-        run: flutter build apk --release
+        run: |
+          set -o pipefail
+          flutter build apk --release -v 2>&1 | tee build_apk.log
+
+      - name: Upload Build Failure Logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-failure-logs
+          path: |
+            build_aab.log
+            build_apk.log
+          retention-days: 14
 
       - name: Upload Google Play App Bundle (.aab)
         uses: actions/upload-artifact@v4
