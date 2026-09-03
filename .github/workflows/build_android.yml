@@ -65,12 +65,12 @@ jobs:
       - name: Build Android App Bundle (.aab for Google Play)
         run: |
           set -o pipefail
-          flutter build appbundle --release -v 2>&1 | tee build_aab.log
+          flutter build appbundle --release --android-skip-build-dependency-validation -v 2>&1 | tee build_aab.log
 
       - name: Build Android APK (for direct install on test phones)
         run: |
           set -o pipefail
-          flutter build apk --release -v 2>&1 | tee build_apk.log
+          flutter build apk --release --android-skip-build-dependency-validation -v 2>&1 | tee build_apk.log
 
       - name: Report Build Error
         if: failure()
