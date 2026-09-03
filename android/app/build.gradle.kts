@@ -20,12 +20,12 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -38,16 +38,12 @@ android {
 
     signingConfigs {
         create("release") {
-            val keyAliasVal = keystoreProperties.getProperty("keyAlias")
-            val keyPasswordVal = keystoreProperties.getProperty("keyPassword")
-            val storePasswordVal = keystoreProperties.getProperty("storePassword")
-            val storeFileVal = keystoreProperties.getProperty("storeFile")
-
-            if (keyAliasVal != null && storeFileVal != null) {
-                keyAlias = keyAliasVal
-                keyPassword = keyPasswordVal
-                storeFile = rootProject.file(storeFileVal)
-                storePassword = storePasswordVal
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+            storePassword = keystoreProperties.getProperty("storePassword")
+            val storeFilePath = keystoreProperties.getProperty("storeFile")
+            if (storeFilePath != null) {
+                storeFile = rootProject.file(storeFilePath)
             }
         }
     }

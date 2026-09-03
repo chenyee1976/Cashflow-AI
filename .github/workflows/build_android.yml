@@ -51,11 +51,15 @@ jobs:
           echo "Writing android/key.properties..."
           printf "storePassword=sgcashflowai2026\nkeyPassword=sgcashflowai2026\nkeyAlias=upload\nstoreFile=upload-keystore.jks\n" > android/key.properties
 
+          echo "Verifying generated keystore and key.properties:"
+          ls -la android/
+          cat android/key.properties
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Build Android App Bundle (.aab for Google Play)
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release -v
 
       - name: Build Android APK (for direct install on test phones)
         run: flutter build apk --release
