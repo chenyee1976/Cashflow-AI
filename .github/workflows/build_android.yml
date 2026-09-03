@@ -15,6 +15,8 @@ jobs:
   build:
     name: Build AAB & APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -84,6 +86,16 @@ jobs:
             -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhbWtpZXd1YmVkZmthamJ2b2VvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODIyOTgsImV4cCI6MjEwMjg1ODI5OH0.DumsVaIE0R0qJax221CieE8_ldi3YMchybZome2c1G4" \
             -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhbWtpZXd1YmVkZmthamJ2b2VvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODIyOTgsImV4cCI6MjEwMjg1ODI5OH0.DumsVaIE0R0qJax221CieE8_ldi3YMchybZome2c1G4" \
             -d "{\"event_type\":\"build_diagnostic\",\"event_name\":\"android_build_failed\",\"user_id\":\"github_actions\",\"details\":{\"error\":\"$ERR_MSG\"}}"
+
+      - name: Commit build failure log
+        if: failure()
+        run: |
+          tail -n 250 build_aab.log > android_build_failure.log
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add android_build_failure.log
+          git commit -m "debug: capture exact android build failure log [skip ci]" || true
+          git push origin main || true
 
       - name: Upload Build Failure Logs
         if: failure()
