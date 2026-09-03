@@ -70,15 +70,20 @@ jobs:
           set -o pipefail
           flutter build apk --release -v 2>&1 | tee build_apk.log
 
-      - name: Report Build Error to Supabase
+      - name: Report Build Error
         if: failure()
         run: |
-          ERR_MSG=$(tail -n 80 build_aab.log | tr -d '\r' | sed 's/"/'\''/g' | tr '\n' ' ' | cut -c 1-3000)
+          echo "## ❌ Android Build Failure Log" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 80 build_aab.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          ERR_MSG=$(tail -n 60 build_aab.log | tr -d '\r' | sed 's/"/'\''/g' | tr '\n' ' ' | cut -c 1-2500)
           curl -X POST "https://damkiewubedfkajbvoeo.supabase.co/rest/v1/activity_logs" \
             -H "Content-Type: application/json" \
             -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhbWtpZXd1YmVkZmthamJ2b2VvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODIyOTgsImV4cCI6MjEwMjg1ODI5OH0.DumsVaIE0R0qJax221CieE8_ldi3YMchybZome2c1G4" \
             -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhbWtpZXd1YmVkZmthamJ2b2VvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODIyOTgsImV4cCI6MjEwMjg1ODI5OH0.DumsVaIE0R0qJax221CieE8_ldi3YMchybZome2c1G4" \
-            -d "{\"event_type\":\"android_build_failed\",\"user_id\":\"github_actions\",\"metadata\":{\"error\":\"$ERR_MSG\"}}"
+            -d "{\"event_type\":\"build_diagnostic\",\"event_name\":\"android_build_failed\",\"user_id\":\"github_actions\",\"details\":{\"error\":\"$ERR_MSG\"}}"
 
       - name: Upload Build Failure Logs
         if: failure()
