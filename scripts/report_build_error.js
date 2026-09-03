@@ -9,10 +9,17 @@ async function report() {
     }
     const content = fs.readFileSync(logPath, 'utf8');
     const lines = content.split('\n');
-    const lastLines = lines.slice(-120).join('\n');
 
-    console.log('=== EXTRACTED LAST 120 LINES ===');
-    console.log(lastLines);
+    let errorSection = '';
+    const errorIdx = lines.findIndex(l => l.includes('FAILURE: Build failed with an exception') || l.includes('* What went wrong:') || l.includes('What went wrong:'));
+    if (errorIdx !== -1) {
+      errorSection = lines.slice(errorIdx, errorIdx + 80).join('\n');
+    } else {
+      errorSection = lines.slice(-200).filter(l => !l.includes('org.gradle.internal.execution.steps')).slice(-80).join('\n');
+    }
+
+    console.log('=== EXTRACTED ERROR SECTION ===');
+    console.log(errorSection);
 
     const res = await fetch('https://damkiewubedfkajbvoeo.supabase.co/rest/v1/activity_logs', {
       method: 'POST',
@@ -26,7 +33,7 @@ async function report() {
         event_name: 'android_build_failed',
         user_id: 'github_actions',
         details: {
-          error: lastLines.substring(0, 10000)
+          error: errorSection.substring(0, 8000)
         },
         client_timestamp: new Date().toISOString()
       })
