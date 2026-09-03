@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,10 +6,8 @@ import '../../../core/utils/snackbar_utils.dart';
 import '../../../shared/widgets/app_header_brand.dart';
 import '../../../shared/widgets/app_footer_brand.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/secure_storage/secure_storage_service.dart';
 import 'beta_feedback_dialog.dart';
 import 'beta_analytics_dialog.dart';
-import '../legal/legal_viewer_dialog.dart';
 
 class SupportScreen extends ConsumerStatefulWidget {
   const SupportScreen({super.key});
@@ -125,51 +121,25 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
 
   Future<void> _openWhatsApp() async {
     const phone = '6587194254';
-    const urlStr = 'https://wa.me/$phone';
-
-    if (kIsWeb) {
-      try {
-        final anchor = html.AnchorElement(href: urlStr)
-          ..target = '_blank'
-          ..rel = 'noopener noreferrer';
-        html.document.body?.children.add(anchor);
-        anchor.click();
-        anchor.remove();
-      } catch (_) {
+    final uri = Uri.parse('https://wa.me/$phone');
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
         _showAppNotDetectedDialog('WhatsApp', '+65 8719 4254');
       }
-    } else {
-      final uri = Uri.parse(urlStr);
-      try {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (_) {
-        _showAppNotDetectedDialog('WhatsApp', '+65 8719 4254');
-      }
+    } catch (_) {
+      _showAppNotDetectedDialog('WhatsApp', '+65 8719 4254');
     }
   }
 
   Future<void> _openTelegram() async {
     const handle = 'SGCashFlowAI';
-    const urlStr = 'https://t.me/$handle';
-
-    if (kIsWeb) {
-      try {
-        final anchor = html.AnchorElement(href: urlStr)
-          ..target = '_blank'
-          ..rel = 'noopener noreferrer';
-        html.document.body?.children.add(anchor);
-        anchor.click();
-        anchor.remove();
-      } catch (_) {
+    final uri = Uri.parse('https://t.me/$handle');
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
         _showAppNotDetectedDialog('Telegram', '@SGCashFlowAI');
       }
-    } else {
-      final uri = Uri.parse(urlStr);
-      try {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (_) {
-        _showAppNotDetectedDialog('Telegram', '@SGCashFlowAI');
-      }
+    } catch (_) {
+      _showAppNotDetectedDialog('Telegram', '@SGCashFlowAI');
     }
   }
 

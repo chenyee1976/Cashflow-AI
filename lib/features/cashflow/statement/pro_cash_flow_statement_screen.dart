@@ -5,7 +5,7 @@ import 'dart:typed_data' show Uint8List;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:html' as html;
+import '../../../core/utils/platform_web_utils.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/theme/app_colors.dart';
@@ -635,16 +635,7 @@ class _ProCashFlowStatementScreenState extends ConsumerState<ProCashFlowStatemen
                         );
 
                         final fileName = 'CashFlow_Statement_${_periodType}_${DateFormat('yyyyMMdd').format(selectedMonth)}.pdf';
-                        final blob = html.Blob([pdfBytes], 'application/pdf');
-                        final url = html.Url.createObjectUrlFromBlob(blob);
-
-                        final anchor = html.AnchorElement(href: url)
-                          ..setAttribute('download', fileName)
-                          ..click();
-
-                        Future.delayed(const Duration(seconds: 2), () {
-                          html.Url.revokeObjectUrl(url);
-                        });
+                        downloadFileWeb(pdfBytes, fileName, 'application/pdf');
 
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(

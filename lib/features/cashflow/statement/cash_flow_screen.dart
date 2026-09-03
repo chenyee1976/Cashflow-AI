@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:html' as html;
+import '../../../core/utils/platform_web_utils.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/category_enum.dart';
@@ -365,12 +365,7 @@ class CashFlowHomeScreen extends ConsumerWidget {
 
                                     try {
                                       if (kIsWeb) {
-                                        final blob = html.Blob([bytes], 'text/csv');
-                                        final url = html.Url.createObjectUrlFromBlob(blob);
-                                        final anchor = html.AnchorElement(href: url)
-                                          ..setAttribute('download', fileName)
-                                          ..click();
-                                        html.Url.revokeObjectUrl(url);
+                                        downloadFileWeb(bytes, fileName, 'text/csv');
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(content: Text('Downloaded: $fileName')),
                                         );

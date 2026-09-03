@@ -10,7 +10,6 @@ import '../../../core/constants/category_enum.dart';
 import '../../../shared/widgets/app_header_brand.dart';
 import '../statement/cashflow_provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../data/database/app_database.dart';

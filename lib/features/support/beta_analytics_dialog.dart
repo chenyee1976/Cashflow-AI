@@ -8,8 +8,7 @@ import '../notifications/notification_dialog.dart';
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import '../../core/utils/platform_web_utils.dart';
 
 class BetaAnalyticsDialog extends ConsumerWidget {
   const BetaAnalyticsDialog({super.key});
@@ -53,12 +52,7 @@ class BetaAnalyticsDialog extends ConsumerWidget {
 
     try {
       if (kIsWeb) {
-        final blob = html.Blob([bytes], 'text/csv');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute('download', fileName)
-          ..click();
-        html.Url.revokeObjectUrl(url);
+        downloadFileWeb(bytes, fileName, 'text/csv');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Exported: $fileName')),
         );

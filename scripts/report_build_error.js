@@ -11,11 +11,12 @@ async function report() {
     const lines = content.split('\n');
 
     let errorSection = '';
-    const errorIdx = lines.findIndex(l => l.includes('FAILURE: Build failed with an exception') || l.includes('* What went wrong:') || l.includes('What went wrong:'));
+    const errorIdx = lines.findIndex(l => l.includes('FAILURE: Build failed with an exception') || l.includes('* What went wrong:'));
     if (errorIdx !== -1) {
-      errorSection = lines.slice(errorIdx, errorIdx + 80).join('\n');
+      const start = Math.max(0, errorIdx - 50);
+      errorSection = lines.slice(start, errorIdx + 10).join('\n');
     } else {
-      errorSection = lines.slice(-200).filter(l => !l.includes('org.gradle.internal.execution.steps')).slice(-80).join('\n');
+      errorSection = lines.slice(-100).join('\n');
     }
 
     console.log('=== EXTRACTED ERROR SECTION ===');

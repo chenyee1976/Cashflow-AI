@@ -4,8 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
-import 'dart:html' as html;
-import 'dart:js' as js;
+import '../../core/utils/platform_web_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/category_enum.dart';
@@ -1705,21 +1704,17 @@ class _VoiceExpenseCardState extends State<_VoiceExpenseCard> {
         _isListening = true;
       });
 
-      js.context.callMethod('initiateSpeechRecognition', [
-        'en-SG',
-        js.allowInterop((dynamic transcript) {
-          final text = transcript?.toString().trim();
-          if (text != null && text.isNotEmpty) {
-            if (mounted) {
-              setState(() {
-                _isListening = false;
-                _inputCtrl.text = text;
-              });
-              _processExpense(text);
-            }
+      initiateWebSpeechRecognition(
+        onResult: (text) {
+          if (mounted) {
+            setState(() {
+              _isListening = false;
+              _inputCtrl.text = text;
+            });
+            _processExpense(text);
           }
-        }),
-        js.allowInterop((dynamic error) {
+        },
+        onError: (error) {
           debugPrint('Speech recognition error: $error');
           if (mounted) {
             setState(() {
@@ -1729,18 +1724,17 @@ class _VoiceExpenseCardState extends State<_VoiceExpenseCard> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(errStr == 'unsupported'
-                    ? 'Speech recognition is not supported in this browser. You can type your expense directly!'
+                    ? 'Speech recognition is not supported on this platform. You can type your expense directly!'
                     : (errStr == 'not-allowed' || errStr == 'permission-denied')
-                        ? 'Microphone permission blocked. Please enable mic access in your browser settings or type your expense!'
+                        ? 'Microphone permission blocked. Please enable mic access in your device settings or type your expense!'
                         : 'Microphone listening ended ($errStr). You can type your expense directly!'),
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 4),
               ),
             );
           }
-        }),
-        js.allowInterop((dynamic gotResult) {
-          final bool success = gotResult == true;
+        },
+        onDone: (success) {
           if (mounted && _isListening) {
             setState(() {
               _isListening = false;
@@ -1755,8 +1749,8 @@ class _VoiceExpenseCardState extends State<_VoiceExpenseCard> {
               );
             }
           }
-        }),
-      ]);
+        },
+      );
     } catch (err) {
       debugPrint('Speech recognition exception: $err');
       if (mounted) {
