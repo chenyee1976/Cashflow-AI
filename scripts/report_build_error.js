@@ -10,39 +10,19 @@ async function report() {
     const content = fs.readFileSync(logPath, 'utf8');
     const lines = content.split('\n');
 
-    // 1. Look for Target ... failed
-    let relevantLines = [];
-    const targetIdx = lines.findIndex(l => l.includes('Target ') && l.includes('failed'));
-    if (targetIdx !== -1) {
-      const start = Math.max(0, targetIdx - 20);
-      const end = Math.min(lines.length, targetIdx + 80);
-      relevantLines.push('=== TARGET FAILURE SECTION ===');
-      relevantLines.push(...lines.slice(start, end));
-    }
+    const cleanLines = lines.filter(l => {
+      const trimmed = l.trim();
+      if (!trimmed) return false;
+      if (trimmed.includes('at org.gradle.')) return false;
+      if (trimmed.includes('at java.base/')) return false;
+      if (trimmed.includes('<asynchronous suspension>')) return false;
+      if (/#\d+\s+/.test(trimmed)) return false;
+      return true;
+    });
 
-    // 2. Look for compileFlutterBuildRelease or throwToolExit
-    const toolExitIdx = lines.findIndex(l => l.includes('throwToolExit'));
-    if (toolExitIdx !== -1) {
-      const start = Math.max(0, toolExitIdx - 40);
-      const end = Math.min(lines.length, toolExitIdx + 20);
-      relevantLines.push('=== THROW TOOL EXIT SECTION ===');
-      relevantLines.push(...lines.slice(start, end));
-    }
-
-    // 3. Fallback: all lines containing error, failed, exception (case insensitive)
-    if (relevantLines.length === 0) {
-      const matching = lines.filter(l => 
-        (l.toLowerCase().includes('error') || l.toLowerCase().includes('exception') || l.toLowerCase().includes('failed')) &&
-        !l.includes('org.gradle.internal.execution.steps')
-      );
-      relevantLines.push('=== FILTERED ERROR/EXCEPTION LINES ===');
-      relevantLines.push(...matching.slice(-100));
-    }
-
-    const outputText = relevantLines.join('\n').substring(0, 15000);
-
-    console.log('=== EXTRACTED TEXT ===');
-    console.log(outputText);
+    const last120Clean = cleanLines.slice(-120).join('\n');
+    console.log('=== CLEAN ERROR LOG ===');
+    console.log(last120Clean);
 
     const res = await fetch('https://damkiewubedfkajbvoeo.supabase.co/rest/v1/activity_logs', {
       method: 'POST',
@@ -56,15 +36,14 @@ async function report() {
         event_name: 'android_build_failed',
         user_id: 'github_actions',
         details: {
-          error: outputText
+          error: last120Clean.substring(0, 10000)
         },
         client_timestamp: new Date().toISOString()
       })
     });
-
     console.log('Reported to Supabase! HTTP status:', res.status);
   } catch (e) {
-    console.error('Error reporting build failure:', e);
+    console.error('Error reporting:', e);
   }
 }
 
