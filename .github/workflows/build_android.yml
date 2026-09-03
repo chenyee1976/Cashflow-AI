@@ -1,0 +1,84 @@
+name: Build Android Release (AAB & APK)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'android/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/build_android.yml'
+
+jobs:
+  build:
+    name: Build AAB & APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Generate Release Keystore and key.properties
+        run: |
+          if [ ! -f "android/upload-keystore.jks" ]; then
+            echo "Generating production upload keystore..."
+            keytool -genkeypair -v \
+              -keystore android/upload-keystore.jks \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -alias upload \
+              -storepass sgcashflowai2026 \
+              -keypass sgcashflowai2026 \
+              -dname "CN=Tok Chen Yee, OU=SGCashFlowAI, O=SGCashFlowAI, L=Singapore, C=SG"
+          fi
+
+          echo "Writing android/key.properties..."
+          printf "storePassword=sgcashflowai2026\nkeyPassword=sgcashflowai2026\nkeyAlias=upload\nstoreFile=upload-keystore.jks\n" > android/key.properties
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android App Bundle (.aab for Google Play)
+        run: flutter build appbundle --release
+
+      - name: Build Android APK (for direct install on test phones)
+        run: flutter build apk --release
+
+      - name: Upload Google Play App Bundle (.aab)
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGCashFlowAI-GooglePlay-AAB
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 90
+
+      - name: Upload Test APK (.apk)
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGCashFlowAI-Test-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 90
+
+      - name: Archive Upload Keystore & Credentials
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGCashFlowAI-Signing-Keystore
+          path: |
+            android/upload-keystore.jks
+            android/key.properties
+          retention-days: 90
