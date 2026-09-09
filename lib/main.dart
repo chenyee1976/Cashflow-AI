@@ -11,7 +11,11 @@ void main() async {
 
   // Initialize Google Mobile Ads on mobile platforms
   if (!kIsWeb) {
-    MobileAds.instance.initialize();
+    try {
+      MobileAds.instance.initialize();
+    } catch (e) {
+      debugPrint('MobileAds init error: $e');
+    }
   }
 
   // Portrait only
