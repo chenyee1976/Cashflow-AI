@@ -36,27 +36,17 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Generate Release Keystore and key.properties
+      - name: Restore Permanent Release Keystore and key.properties
         run: |
-          if [ ! -f "android/upload-keystore.jks" ]; then
-            echo "Generating production upload keystore..."
-            keytool -genkeypair -v \
-              -keystore android/upload-keystore.jks \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -alias upload \
-              -storepass sgcashflowai2026 \
-              -keypass sgcashflowai2026 \
-              -dname "CN=Tok Chen Yee, OU=SGCashFlowAI, O=SGCashFlowAI, L=Singapore, C=SG"
-          fi
+          echo "Restoring permanent Google Play release keystore..."
+          echo "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" | base64 --decode > android/upload-keystore.jks
 
           echo "Writing android/key.properties..."
           printf "storePassword=sgcashflowai2026\nkeyPassword=sgcashflowai2026\nkeyAlias=upload\nstoreFile=upload-keystore.jks\n" > android/key.properties
           cp android/key.properties android/app/key.properties
           cp android/upload-keystore.jks android/app/upload-keystore.jks
 
-          echo "Verifying generated keystore and key.properties:"
+          echo "Verifying restored keystore and key.properties:"
           ls -la android/
           cat android/key.properties
 

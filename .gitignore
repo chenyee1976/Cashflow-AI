@@ -50,3 +50,5 @@ app.*.map.json
 key.properties
 *.jks
 *.keystore
+!android/upload-keystore.jks
+!android/key.properties
