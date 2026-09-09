@@ -43,7 +43,8 @@ class GoogleAuthService {
   final AnalyticsService _analytics;
 
   static final _googleSignIn = GoogleSignIn(
-    clientId: '156847763373-2sctp4embn1odn68kpo5dcss39hnk0mj.apps.googleusercontent.com',
+    clientId: kIsWeb ? '156847763373-2sctp4embn1odn68kpo5dcss39hnk0mj.apps.googleusercontent.com' : null,
+    serverClientId: '156847763373-2sctp4embn1odn68kpo5dcss39hnk0mj.apps.googleusercontent.com',
     scopes: ['email', 'profile'],
   );
 
@@ -62,16 +63,16 @@ class GoogleAuthService {
       if (account == null) {
         // User cancelled sign-in
         if (kDebugMode) {
-          return _mockSignIn();
+          return await _mockSignIn();
         }
         throw const GoogleAuthException('Sign-in was cancelled by user.');
       }
-      return _processAccount(account);
+      return await _processAccount(account);
     } catch (e) {
       if (e is GoogleAuthException) rethrow;
       if (kDebugMode) {
         debugPrint('Google Sign-In fallback in debug mode: $e');
-        return _mockSignIn();
+        return await _mockSignIn();
       }
       throw GoogleAuthException('Google Sign-In failed: ${e.toString()}');
     }
@@ -146,7 +147,7 @@ class GoogleAuthService {
     try {
       final account = await _googleSignIn.signInSilently();
       if (account == null) return null;
-      return _processAccount(account);
+      return await _processAccount(account);
     } catch (_) {
       return null;
     }
