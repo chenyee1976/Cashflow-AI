@@ -43,12 +43,15 @@ class GoogleAuthService {
   final AnalyticsService _analytics;
 
   static final _googleSignIn = GoogleSignIn(
-    // Web uses the Web Client ID; Android uses the Play Signing OAuth Client ID.
-    // The Android clientId is required to resolve OAuth config without google-services.json.
+    // clientId is only used on Web. On Android, leave null — the Android OAuth client
+    // is identified by package name + SHA-1 fingerprint registered in Google Cloud.
     clientId: kIsWeb
         ? '156847763373-2sctp4embn1odn68kpo5dcss39hnk0mj.apps.googleusercontent.com'
-        : '156847763373-j25d65i3or6ns2uljgboui9qp1gnd7th.apps.googleusercontent.com',
-    serverClientId: kIsWeb ? '156847763373-2sctp4embn1odn68kpo5dcss39hnk0mj.apps.googleusercontent.com' : null,
+        : null,
+    // serverClientId (Web Client ID) is required on Android so Google Play Services
+    // can resolve the OAuth project configuration via requestServerAuthCode.
+    // Without this (or google-services.json), Android throws DEVELOPER_ERROR (code 10).
+    serverClientId: '156847763373-2sctp4embn1odn68kpo5dcss39hnk0mj.apps.googleusercontent.com',
     scopes: ['email', 'profile'],
   );
 
