@@ -156,9 +156,9 @@ You MUST return a raw JSON object. IMPORTANT: Output "extractedTransactions" FIR
           }
 
           final perAttemptSeconds = 90;
-
+          final baseUrl = kIsWeb ? '' : 'https://web-kappa-kohl-74.vercel.app';
           final proxyRes = await dio.post(
-            '/api/gemini?model=$mName',
+            '$baseUrl/api/gemini?model=$mName',
             data: {
               'contents': [
                 {
