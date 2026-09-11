@@ -180,6 +180,15 @@ class LoginScreen extends ConsumerWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: 12),
+                const Text(
+                  'v1.0.1 (Build 9)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
               ],
             ),
           ),
