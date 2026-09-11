@@ -43,7 +43,11 @@ class GoogleAuthService {
   final AnalyticsService _analytics;
 
   static final _googleSignIn = GoogleSignIn(
-    clientId: kIsWeb ? '156847763373-2sctp4embn1odn68kpo5dcss39hnk0mj.apps.googleusercontent.com' : null,
+    // Web uses the Web Client ID; Android uses the Play Signing OAuth Client ID.
+    // The Android clientId is required to resolve OAuth config without google-services.json.
+    clientId: kIsWeb
+        ? '156847763373-2sctp4embn1odn68kpo5dcss39hnk0mj.apps.googleusercontent.com'
+        : '156847763373-j25d65i3or6ns2uljgboui9qp1gnd7th.apps.googleusercontent.com',
     serverClientId: kIsWeb ? '156847763373-2sctp4embn1odn68kpo5dcss39hnk0mj.apps.googleusercontent.com' : null,
     scopes: ['email', 'profile'],
   );
