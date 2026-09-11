@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
         const incomingItems = Array.isArray(body) ? body : [body];
 
         const host = req.headers['host'] || req.headers['x-forwarded-host'] || 'web';
-        const environment = host.includes('web-kappa') ? 'Beta (web-kappa)' : (host.includes('sgcashflowai') ? 'Production (sgcashflowai)' : host);
+        const defaultEnvironment = host.includes('web-kappa') ? 'Beta (web-kappa)' : (host.includes('sgcashflowai') ? 'Production (sgcashflowai)' : host);
 
         const rows = [];
         for (const item of incomingItems) {
@@ -55,6 +55,7 @@ module.exports = async (req, res) => {
             ? details.userEmail 
             : ((details.email && details.email.includes('@')) ? details.email : null);
           const userId = (details.userId && details.userId !== 'unknown_user') ? details.userId : null;
+          const itemPlatform = details.platform || item.platform || defaultEnvironment;
 
           rows.push({
             event_type: item.type || 'event',
@@ -62,7 +63,7 @@ module.exports = async (req, res) => {
             user_id: userId,
             user_email: email,
             ip_address: clientIp,
-            platform: environment,
+            platform: itemPlatform,
             details: details,
             client_timestamp: item.timestamp || null,
             server_timestamp: new Date().toISOString(),
@@ -97,10 +98,11 @@ module.exports = async (req, res) => {
 
             if (email) {
               const nowIso = new Date().toISOString();
+              const itemPlatform = details.platform || item.platform || defaultEnvironment;
               // First try to update existing user by email
               const patchPayload = {
                 last_login_at: nowIso,
-                platform: environment,
+                platform: itemPlatform,
                 display_name: details.displayName || email,
               };
               if (details.firstName) patchPayload.first_name = details.firstName;
@@ -140,7 +142,7 @@ module.exports = async (req, res) => {
                     mobile_number: details.mobileNumber || null,
                     google_id: details.googleId || null,
                     photo_url: details.photoUrl || null,
-                    platform: environment,
+                    platform: itemPlatform,
                     registered_at: nowIso,
                     last_login_at: nowIso,
                   }),

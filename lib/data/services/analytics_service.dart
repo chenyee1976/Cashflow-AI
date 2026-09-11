@@ -97,6 +97,18 @@ class AnalyticsService {
   String _currentUserEmail = '';
   final Completer<void> _identityReady = Completer<void>();
 
+  String get appPlatform {
+    if (kIsWeb) return 'Web (PWA)';
+    // On Android, check installer or default to Android App
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'Android App';
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return 'iOS App';
+    }
+    return defaultTargetPlatform.name;
+  }
+
   AnalyticsService() {
     _initUser();
   }
@@ -256,6 +268,7 @@ class AnalyticsService {
       type: 'event',
       name: eventName,
       details: {
+        'platform': appPlatform,
         'userId': parameters?['userId'] ?? _currentUserId,
         'userEmail': parameters?['userEmail'] ?? parameters?['email'] ?? _currentUserEmail,
         ...?parameters,
@@ -281,6 +294,7 @@ class AnalyticsService {
       type: 'error',
       name: errorName,
       details: {
+        'platform': appPlatform,
         'userId': _currentUserId,
         'userEmail': _currentUserEmail,
         'error': error.toString(),
